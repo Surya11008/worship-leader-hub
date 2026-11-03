@@ -402,7 +402,7 @@
                 <span>L Support Central Portal</span>
               </div>
               <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight" id="homeWelcomeHeading">
-                Welcome to L Support, <span id="homeUserName">User</span>! 👋
+                Welcome to L Support! 👋
               </h1>
               <p class="text-xs sm:text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
                 Access your sermons, study files, announcements, and personal ministry records in one unified workspace.
@@ -518,7 +518,16 @@
                   <p class="text-[11px] text-slate-400">Service times, feasts, and church calendar</p>
                 </div>
               </div>
-              <span class="text-[11px] font-bold text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-500/20">Active Order</span>
+              <div class="flex items-center gap-2">
+                <button 
+                  id="btnAdminAddSchedule" 
+                  onclick="openAddScheduleModal()" 
+                  class="hidden px-2.5 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold text-xs rounded-xl border border-sky-500/30 transition flex items-center gap-1.5"
+                >
+                  <i class="fa-solid fa-plus text-[10px]"></i> Add Event
+                </button>
+                <span class="text-[11px] font-bold text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-500/20">Calendar</span>
+              </div>
             </div>
 
             <div class="flex-1 space-y-3 overflow-y-auto custom-scrollbar max-h-96 pr-1" id="homeScheduleContainer">
@@ -1876,7 +1885,27 @@
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1">Content / Message *</label>
-          <textarea id="noticeContentInput" required rows="4" placeholder="Write announcement details here..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none resize-none"></textarea>
+          <textarea id="noticeContentInput" required rows="3" placeholder="Write announcement details here..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none resize-none"></textarea>
+        </div>
+        <!-- ATTACH FILES (ALL KINDS, NO LIMIT) -->
+        <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-2">
+          <label class="block text-xs font-bold text-slate-300">
+            <i class="fa-solid fa-paperclip mr-1 text-rose-400"></i> Attach Files & Documents (All formats, No limit)
+          </label>
+          <input 
+            type="file" 
+            id="noticeFileInput" 
+            multiple 
+            onchange="handleNoticeFileSelect(this)" 
+            class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-rose-300 hover:file:bg-slate-700 cursor-pointer"
+          >
+          <input 
+            type="url" 
+            id="noticeLinkInput" 
+            placeholder="Or attach Google Docs, Drive, or Audio/Video link" 
+            class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none"
+          >
+          <div id="noticeSelectedFilesContainer" class="flex flex-wrap gap-1.5 pt-1"></div>
         </div>
         <div class="flex items-center justify-end gap-2 pt-2">
           <button type="button" onclick="closeAddNoticeModal()" class="px-3 py-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs">Cancel</button>
@@ -2054,6 +2083,64 @@
 
     </div>
   </div>
+    <!-- ======================================================== -->
+  <!-- MODAL: ADD / EDIT SCHEDULE EVENT (ADMIN ONLY)            -->
+  <!-- ======================================================== -->
+  <div id="addScheduleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700 p-6 transform scale-95 transition-transform duration-300" id="addScheduleModalContainer">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-calendar-plus text-sky-400"></i> <span id="scheduleModalTitle">Add Worship Event</span>
+        </h3>
+        <button onclick="closeAddScheduleModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+      <form onsubmit="handleSaveSchedule(event)" class="pt-4 space-y-3.5">
+        <input type="hidden" id="editScheduleTargetId" value="">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Event / Service Title *</label>
+          <input type="text" id="schedTitleInput" required placeholder="e.g. Tuesday Evening Service, Holy Sabbath" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Worship Type</label>
+            <select id="schedTypeInput" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+              <option value="Tuesday Service">Tuesday Service</option>
+              <option value="Sabbath Worship">Sabbath Worship</option>
+              <option value="Sacred Feast">Sacred Feast</option>
+              <option value="Special Prayer">Special Prayer</option>
+              <option value="Bible Seminar">Bible Seminar</option>
+              <option value="Other Gathering">Other Gathering</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Icon / Emoji</label>
+            <input type="text" id="schedIconInput" value="⛪" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-center text-sm text-white outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Date *</label>
+            <input type="date" id="schedDateInput" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Time *</label>
+            <input type="text" id="schedTimeInput" required placeholder="e.g. 07:30 PM, 10:00 AM" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Description / Preparation Notes</label>
+          <textarea id="schedDescInput" rows="2" placeholder="e.g. Please prepare new songs #12, #45..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none resize-none"></textarea>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeAddScheduleModal()" class="px-3 py-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs">Cancel</button>
+          <button type="submit" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs">Save to Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-16 opacity-0 transition-all duration-300 pointer-events-none">
     <div class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs font-semibold">
