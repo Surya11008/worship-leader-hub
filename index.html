@@ -76,6 +76,10 @@
   </script>
 
   <!-- ======================================================== -->
+  <!-- PORTAL APPLICATION WRAPPER (HIDDEN UNTIL AUTHENTICATED)  -->
+  <!-- ======================================================== -->
+  <div id="portalAppRoot" class="hidden h-full flex flex-1 overflow-hidden w-full" style="display: none;">
+  <!-- ======================================================== -->
   <!-- COLLAPSIBLE SIDEBAR                                     -->
   <!-- ======================================================== -->
   <aside id="mainSidebar" class="sidebar-transition w-72 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 z-40 fixed inset-y-0 left-0 md:static md:translate-x-0 -translate-x-full overflow-hidden">
@@ -742,6 +746,7 @@
     </div>
 
   </main>
+  </div>
 
   <!-- ======================================================== -->
   <!-- MODAL: RECORD SERMON USAGE IN MY ROOM                   -->
@@ -1592,10 +1597,10 @@
   </div>
 
   <!-- ======================================================== -->
-  <!-- MODAL: LOGIN & CREATE ID / PASSWORD SCREEN               -->
+  <!-- DEDICATED FULL-SCREEN LOGIN & CREATE ID / PASSWORD PAGE   -->
   <!-- ======================================================== -->
-  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
-    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800 overflow-hidden transform scale-95 transition-transform duration-300 p-6 sm:p-8" id="authModalContainer">
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 overflow-y-auto p-4 sm:p-6 transition-all duration-300" style="display: flex;">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800 overflow-hidden transform scale-100 transition-transform duration-300 p-6 sm:p-8" id="authModalContainer">
       
       <!-- Brand Logo -->
       <div class="text-center mb-6">
