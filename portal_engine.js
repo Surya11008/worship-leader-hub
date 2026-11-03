@@ -279,7 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize Firebase Realtime Cloud Sync
   initFirebase();
 
-  if (!CURRENT_USER) {
+  const hasActiveSession = sessionStorage.getItem('l_support_session_active') === 'true';
+
+  if (!CURRENT_USER || !hasActiveSession) {
+    // Show Full Dedicated Login Page on first visit / new link open
     openAuthModal();
   } else {
     logActivity('Session Start', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
@@ -287,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isLocked) {
       showAppPinLock();
     } else {
+      closeAuthModal();
       switchView('home');
       if (CURRENT_USER.role === 'admin') {
         setTimeout(() => checkPendingApprovals(), 500);
@@ -435,26 +439,56 @@ function handleLogout() {
   if (!confirm('Are you sure you want to log out of L Support?')) return;
   logActivity('Logout', 'User signed out');
   localStorage.removeItem('wlh_current_user');
+  sessionStorage.removeItem('l_support_session_active');
   localStorage.removeItem('l_support_screen_locked');
   CURRENT_USER = null;
+  const loginPassInput = document.getElementById('loginPassword');
+  const loginPinInput = document.getElementById('loginPin');
+  if (loginPassInput) loginPassInput.value = '';
+  if (loginPinInput) loginPinInput.value = '';
   openAuthModal();
 }
 
 function openAuthModal() {
+  const portalRoot = document.getElementById('portalAppRoot');
   const modal = document.getElementById('authModal');
   const container = document.getElementById('authModalContainer');
-  modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
+  if (portalRoot) {
+    portalRoot.classList.add('hidden');
+    portalRoot.style.display = 'none';
+  }
+  if (modal) {
+    modal.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
+    modal.style.display = 'flex';
+  }
+  if (container) {
+    container.classList.remove('scale-95');
+    container.classList.add('scale-100');
+  }
+  if (CURRENT_USER && CURRENT_USER.userId) {
+    const uidInput = document.getElementById('loginUserId');
+    if (uidInput && !uidInput.value) uidInput.value = CURRENT_USER.userId;
+  }
 }
 
 function closeAuthModal() {
   if (!CURRENT_USER) return; // Cannot close on first visit without signing in!
+  const portalRoot = document.getElementById('portalAppRoot');
   const modal = document.getElementById('authModal');
   const container = document.getElementById('authModalContainer');
-  modal.classList.add('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-100');
-  container.classList.add('scale-95');
+  if (modal) {
+    modal.classList.add('opacity-0', 'pointer-events-none', 'hidden');
+    modal.style.display = 'none';
+  }
+  if (container) {
+    container.classList.remove('scale-100');
+    container.classList.add('scale-95');
+  }
+  if (portalRoot) {
+    portalRoot.classList.remove('hidden');
+    portalRoot.style.display = 'flex';
+  }
+  updateUserUI();
 }
 
 function switchAuthMode(mode) {
@@ -509,8 +543,10 @@ function handleLoginSubmit(e) {
 
   CURRENT_USER = user;
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
+  sessionStorage.setItem('l_support_session_active', 'true');
   localStorage.removeItem('l_support_screen_locked');
   closeAuthModal();
+  switchView('home');
   refreshDataModel();
   updateUserUI();
   updateTotalCounts();
@@ -2770,7 +2806,9 @@ function unlockAppWithPin() {
 
   if (pinEntered === CURRENT_USER.pin || (CURRENT_USER.role === 'admin' && pinEntered === '742766')) {
     localStorage.removeItem('l_support_screen_locked');
+    sessionStorage.setItem('l_support_session_active', 'true');
     closeAppPinLock();
+    closeAuthModal();
     showToast('Unlocked! Welcome back, ' + CURRENT_USER.fullName);
     if (CURRENT_USER.role === 'admin') {
       setTimeout(() => checkPendingApprovals(), 400);
@@ -2783,9 +2821,16 @@ function unlockAppWithPin() {
 }
 
 function logoutFromPinLock() {
+  localStorage.removeItem('wlh_current_user');
+  sessionStorage.removeItem('l_support_session_active');
   localStorage.removeItem('l_support_screen_locked');
+  CURRENT_USER = null;
   closeAppPinLock();
-  handleLogout();
+  openAuthModal();
+}
+
+function switchToLoginFromPin() {
+  logoutFromPinLock();
 }
 
 // ========================================================
