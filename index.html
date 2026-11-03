@@ -738,10 +738,10 @@
 
       // Generate preview URL
       let previewUrl = url;
-      if (previewUrl.includes('docs.google.com/document/d/')) {
-        previewUrl = previewUrl.replace(//edit(?.*)?$/, '/preview');
-      } else if (previewUrl.includes('drive.google.com/file/d/')) {
-        previewUrl = previewUrl.replace(//view(?.*)?$/, '/preview');
+      if (previewUrl.indexOf('docs.google.com/document/d/') !== -1) {
+        previewUrl = previewUrl.split('/edit')[0] + '/preview';
+      } else if (previewUrl.indexOf('drive.google.com/file/d/') !== -1) {
+        previewUrl = previewUrl.split('/view')[0] + '/preview';
       }
 
       const newItem = {
