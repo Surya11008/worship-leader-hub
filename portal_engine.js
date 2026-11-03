@@ -1,5 +1,5 @@
 /* ========================================================
-   WORSHIP LEADER HUB — ENTERPRISE ENGINE v3.5
+   L SUPPORT — ENTERPRISE ENGINE v4.0
    Features:
    - Admin: surya11008 / Suri742766 / PIN 742766 (No 1-click button)
    - Clean Register Form (No 'Example' placeholders)
@@ -17,17 +17,18 @@ const APP_RAW_DATA = JSON.parse(document.getElementById('initial-app-data').text
 const BASE_CATEGORIES = APP_RAW_DATA.categories;
 const BASE_ITEMS = APP_RAW_DATA.items;
 
-// Master Admin User
+// Master Admin User (Role strictly Admin, clean details)
 const DEFAULT_ADMIN = {
-  fullName: 'Surya Leader',
+  fullName: 'Surya',
   userId: 'surya11008',
   password: 'Suri742766',
   phone: '+91 9876543210',
-  gmail: 'surya.worship@gmail.com',
-  zion: 'Hyderabad Main Zion',
-  area: 'Zone 1 - Central',
+  gmail: 'surya@gmail.com',
+  zion: '',
+  area: '',
   pin: '742766',
   role: 'admin',
+  status: 'approved',
   assignedModules: ['all'],
   canDownload: true
 };
@@ -40,25 +41,31 @@ if (!ALL_USERS || ALL_USERS.length === 0) {
 } else {
   const adminIdx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === 'surya11008');
   if (adminIdx !== -1) {
+    ALL_USERS[adminIdx].fullName = 'Surya';
     ALL_USERS[adminIdx].password = 'Suri742766';
     ALL_USERS[adminIdx].pin = '742766';
     ALL_USERS[adminIdx].role = 'admin';
+    ALL_USERS[adminIdx].status = 'approved';
     ALL_USERS[adminIdx].canDownload = true;
+    ALL_USERS[adminIdx].zion = '';
+    ALL_USERS[adminIdx].area = '';
   } else {
     ALL_USERS.unshift(DEFAULT_ADMIN);
   }
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
 }
 
-// Active session
+// Active session: Link open shows login page if no user session exists
 let CURRENT_USER = JSON.parse(localStorage.getItem('wlh_current_user') || 'null');
-if (!CURRENT_USER) {
-  CURRENT_USER = DEFAULT_ADMIN;
-  localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
-} else if (CURRENT_USER.userId.toLowerCase() === 'surya11008') {
+if (CURRENT_USER && CURRENT_USER.userId.toLowerCase() === 'surya11008') {
+  CURRENT_USER.fullName = 'Surya';
   CURRENT_USER.password = 'Suri742766';
   CURRENT_USER.pin = '742766';
+  CURRENT_USER.role = 'admin';
+  CURRENT_USER.status = 'approved';
   CURRENT_USER.canDownload = true;
+  CURRENT_USER.zion = '';
+  CURRENT_USER.area = '';
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
 }
 
@@ -161,7 +168,18 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRecords();
   updatePinnedBadge();
   updateMyRoomBadge();
-  logActivity('Session Start', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
+
+  if (!CURRENT_USER) {
+    openAuthModal();
+  } else {
+    logActivity('Session Start', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
+    const isLocked = localStorage.getItem('l_support_screen_locked') === 'true';
+    if (isLocked) {
+      showAppPinLock();
+    } else if (CURRENT_USER.role === 'admin') {
+      setTimeout(() => checkPendingApprovals(), 500);
+    }
+  }
 
   // Keyboard shortcut (Esc)
   document.addEventListener('keydown', (e) => {
@@ -178,9 +196,35 @@ document.addEventListener('DOMContentLoaded', () => {
       closeRecordUsageModal();
       closeFileUsageHistoryModal();
       closeAdminManagementModal();
+      closePendingApprovalsModal();
       clearSelection();
     }
   });
+});
+
+// Event listeners for screen off, tab switch, minimizing, or exiting site
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    if (CURRENT_USER) {
+      localStorage.setItem('l_support_screen_locked', 'true');
+    }
+  } else if (document.visibilityState === 'visible') {
+    if (CURRENT_USER && localStorage.getItem('l_support_screen_locked') === 'true') {
+      showAppPinLock();
+    }
+  }
+});
+
+window.addEventListener('pagehide', () => {
+  if (CURRENT_USER) {
+    localStorage.setItem('l_support_screen_locked', 'true');
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (CURRENT_USER) {
+    localStorage.setItem('l_support_screen_locked', 'true');
+  }
 });
 
 // 3. EYE TOGGLE BUTTON (SHOW / HIDE PASSWORD & PIN)
@@ -210,7 +254,7 @@ function logActivity(action, details) {
     userName: CURRENT_USER.fullName,
     action: action,
     details: details || '',
-    zion: CURRENT_USER.zion || 'Main Zion',
+    zion: CURRENT_USER.zion || '',
     area: CURRENT_USER.area || 'General',
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     date: new Date().toISOString().split('T')[0]
@@ -224,22 +268,30 @@ function logActivity(action, details) {
 function updateUserUI() {
   if (!CURRENT_USER) return;
   document.getElementById('sidebarUserName').textContent = CURRENT_USER.fullName;
-  document.getElementById('sidebarUserRole').textContent = (CURRENT_USER.role === 'admin' ? 'Leader (Admin)' : 'Member') + ' Online';
-  document.getElementById('sidebarUserZion').textContent = (CURRENT_USER.zion || 'Main Zion') + ' • ' + (CURRENT_USER.area || 'Area');
-  document.getElementById('sidebarUserBranch').textContent = CURRENT_USER.zion || 'Worship Leader Hub';
+  document.getElementById('sidebarUserRole').textContent = (CURRENT_USER.role === 'admin' ? 'Admin' : 'Member') + ' Online';
+  
+  const zionAreaText = [CURRENT_USER.zion, CURRENT_USER.area].filter(Boolean).join(' • ');
+  document.getElementById('sidebarUserZion').textContent = zionAreaText || 'L Support Member';
+  document.getElementById('sidebarUserBranch').textContent = CURRENT_USER.zion || 'L Support';
 
   const dlWrapper = document.getElementById('downloadToggleWrapper');
+  const approvalTopBtn = document.getElementById('adminApprovalsTopBtn');
+
   if (CURRENT_USER.role === 'admin') {
-    dlWrapper.classList.remove('hidden');
+    if (dlWrapper) dlWrapper.classList.remove('hidden');
+    if (approvalTopBtn) approvalTopBtn.classList.remove('hidden');
+    updateApprovalCountBadge();
   } else {
-    dlWrapper.classList.add('hidden');
+    if (dlWrapper) dlWrapper.classList.add('hidden');
+    if (approvalTopBtn) approvalTopBtn.classList.add('hidden');
   }
 }
 
 function handleLogout() {
-  if (!confirm('Are you sure you want to log out of Worship Leader Hub?')) return;
+  if (!confirm('Are you sure you want to log out of L Support?')) return;
   logActivity('Logout', 'User signed out');
   localStorage.removeItem('wlh_current_user');
+  localStorage.removeItem('l_support_screen_locked');
   CURRENT_USER = null;
   openAuthModal();
 }
@@ -300,8 +352,19 @@ function handleLoginSubmit(e) {
     return;
   }
 
+  // Check approval status
+  if (user.status === 'pending') {
+    alert('Your account is pending Admin approval. Please contact Admin.');
+    return;
+  }
+  if (user.status === 'rejected') {
+    alert('Your account registration was not approved. Please contact Admin.');
+    return;
+  }
+
   CURRENT_USER = user;
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
+  localStorage.removeItem('l_support_screen_locked');
   closeAuthModal();
   refreshDataModel();
   updateUserUI();
@@ -312,6 +375,10 @@ function handleLoginSubmit(e) {
   updateMyRoomBadge();
   showToast('Welcome back, ' + user.fullName + '!');
   logActivity('Login', 'Successful login for ' + user.userId);
+
+  if (CURRENT_USER.role === 'admin') {
+    setTimeout(() => checkPendingApprovals(), 400);
+  }
 }
 
 function handleRegisterSubmit(e) {
@@ -349,25 +416,21 @@ function handleRegisterSubmit(e) {
     area,
     pin,
     role: 'member',
+    status: 'pending', // Waiting for Admin approval!
+    registeredAt: new Date().toISOString(),
     assignedModules: ['all'],
-    canDownload: false // by default regular users must be granted permission
+    canDownload: false
   };
 
   ALL_USERS.push(newUser);
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
-  CURRENT_USER = newUser;
-  localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
 
-  closeAuthModal();
-  refreshDataModel();
-  updateUserUI();
-  updateTotalCounts();
-  renderSidebarCategories();
-  renderSubgroupTabs();
-  renderRecords();
-  updateMyRoomBadge();
-  showToast('Account created! Welcome, ' + fullName);
-  logActivity('Register', 'New user registered: ' + userId);
+  alert('Account created successfully!\n\nYour account is currently pending Admin approval. You will be able to log in once Admin approves your account.');
+
+  document.getElementById('registerForm').reset();
+  switchAuthMode('login');
+  document.getElementById('loginUserId').value = userId;
+  logActivity('Registration Pending', 'New user waiting for approval: ' + userId);
 }
 
 // 6. DIRECT FILE DOWNLOAD (DIRECT PDF/DRIVE WITHOUT DOCS EDITOR)
@@ -667,7 +730,7 @@ function saveSermonUsageRecord(e) {
     id: 'room_' + Date.now(),
     userId: CURRENT_USER.userId,
     userName: CURRENT_USER.fullName,
-    userZion: CURRENT_USER.zion || 'Main Zion',
+    userZion: CURRENT_USER.zion || '',
     userArea: CURRENT_USER.area || 'General',
     sermonTitle: sermonItem ? sermonItem.title : 'Sermon',
     sermonUrl: sermonUrl,
@@ -2009,7 +2072,7 @@ function closeMergeModal() {
 }
 
 function generateMergedStudyPack() {
-  const packTitle = document.getElementById('mergePackTitle').value.trim() || 'Worship Leader Study Pack';
+  const packTitle = document.getElementById('mergePackTitle').value.trim() || 'L Support Study Pack';
   const urls = [...selectedItemUrls];
   const items = urls.map(u => ALL_ITEMS.find(i => i.url === u)).filter(Boolean);
 
@@ -2503,4 +2566,173 @@ function copyResourceUrl(url, title, event) {
   }).catch(() => {
     showToast('Failed to copy link');
   });
+}
+
+
+// ========================================================
+// PERSONAL PIN SCREEN LOCK (SCREEN OFF / SITE EXIT)
+// ========================================================
+function showAppPinLock() {
+  if (!CURRENT_USER) return;
+  const modal = document.getElementById('appPinLockModal');
+  const container = document.getElementById('appPinLockContainer');
+  const greeting = document.getElementById('pinLockGreeting');
+  const input = document.getElementById('screenLockPinInput');
+  const err = document.getElementById('pinLockErrorMsg');
+  if (!modal || !container) return;
+
+  if (greeting) greeting.textContent = 'Welcome back, ' + CURRENT_USER.fullName + '!';
+  if (input) input.value = '';
+  if (err) err.classList.add('hidden');
+
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+  setTimeout(() => { if (input) input.focus(); }, 150);
+}
+
+function closeAppPinLock() {
+  const modal = document.getElementById('appPinLockModal');
+  const container = document.getElementById('appPinLockContainer');
+  if (!modal || !container) return;
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function unlockAppWithPin() {
+  const input = document.getElementById('screenLockPinInput');
+  const err = document.getElementById('pinLockErrorMsg');
+  if (!input || !CURRENT_USER) return;
+  const pinEntered = input.value.trim();
+
+  if (pinEntered === CURRENT_USER.pin || (CURRENT_USER.role === 'admin' && pinEntered === '742766')) {
+    localStorage.removeItem('l_support_screen_locked');
+    closeAppPinLock();
+    showToast('Unlocked! Welcome back, ' + CURRENT_USER.fullName);
+    if (CURRENT_USER.role === 'admin') {
+      setTimeout(() => checkPendingApprovals(), 400);
+    }
+  } else {
+    if (err) err.classList.remove('hidden');
+    input.value = '';
+    input.focus();
+  }
+}
+
+function logoutFromPinLock() {
+  localStorage.removeItem('l_support_screen_locked');
+  closeAppPinLock();
+  handleLogout();
+}
+
+// ========================================================
+// ADMIN NEW USER APPROVAL POPUP & MANAGEMENT
+// ========================================================
+function checkPendingApprovals() {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') return;
+  const pending = ALL_USERS.filter(u => u.status === 'pending');
+  updateApprovalCountBadge();
+  if (pending.length > 0) {
+    openPendingApprovalsModal();
+  }
+}
+
+function updateApprovalCountBadge() {
+  const count = ALL_USERS.filter(u => u.status === 'pending').length;
+  const topBadge = document.getElementById('topApprovalCountBadge');
+  const modalBadge = document.getElementById('approvalModalCountBadge');
+  if (topBadge) topBadge.textContent = count;
+  if (modalBadge) modalBadge.textContent = count + ' Pending';
+}
+
+function openPendingApprovalsModal() {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') return;
+  renderPendingUsersList();
+  const modal = document.getElementById('pendingApprovalsModal');
+  const container = document.getElementById('pendingApprovalsContainer');
+  if (!modal || !container) return;
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closePendingApprovalsModal() {
+  const modal = document.getElementById('pendingApprovalsModal');
+  const container = document.getElementById('pendingApprovalsContainer');
+  if (!modal || !container) return;
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function renderPendingUsersList() {
+  const container = document.getElementById('pendingUsersListContainer');
+  if (!container) return;
+  const pending = ALL_USERS.filter(u => u.status === 'pending');
+  updateApprovalCountBadge();
+
+  if (pending.length === 0) {
+    container.innerHTML = `
+      <div class="py-12 text-center text-slate-400">
+        <i class="fa-solid fa-circle-check text-4xl text-emerald-400 mb-2"></i>
+        <p class="font-bold text-white text-sm">No Pending Approvals</p>
+        <p class="text-xs text-slate-500 mt-1">All registered users have been reviewed.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = pending.map(u => `
+    <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-white text-sm">${u.fullName}</span>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">ID: ${u.userId}</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Pending</span>
+        </div>
+        <div class="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5">
+          ${u.gmail ? `<span><i class="fa-solid fa-envelope text-[10px] mr-1 text-slate-500"></i>${u.gmail}</span>` : ''}
+          ${u.phone ? `<span><i class="fa-solid fa-phone text-[10px] mr-1 text-slate-500"></i>${u.phone}</span>` : ''}
+          ${u.zion ? `<span><i class="fa-solid fa-church text-[10px] mr-1 text-slate-500"></i>${u.zion}</span>` : ''}
+          ${u.area ? `<span><i class="fa-solid fa-location-dot text-[10px] mr-1 text-slate-500"></i>${u.area}</span>` : ''}
+        </div>
+        <div class="text-[10px] text-slate-500">
+          Registered: ${new Date(u.registeredAt || Date.now()).toLocaleString()}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button onclick="approveUser('${u.userId}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5">
+          <i class="fa-solid fa-check text-xs"></i> Approve
+        </button>
+        <button onclick="rejectUser('${u.userId}')" class="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs rounded-xl border border-rose-500/30 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-xmark text-xs"></i> Reject
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function approveUser(userId) {
+  const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (!user) return;
+  user.status = 'approved';
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  showToast('User ' + user.fullName + ' (' + user.userId + ') Approved!');
+  logActivity('User Approved', 'Admin approved user ' + user.userId);
+  renderPendingUsersList();
+  if (ALL_USERS.filter(u => u.status === 'pending').length === 0) {
+    setTimeout(() => closePendingApprovalsModal(), 500);
+  }
+}
+
+function rejectUser(userId) {
+  if (!confirm('Are you sure you want to reject user ' + userId + '?')) return;
+  const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (!user) return;
+  user.status = 'rejected';
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  showToast('User ' + user.userId + ' registration rejected.');
+  logActivity('User Rejected', 'Admin rejected user ' + user.userId);
+  renderPendingUsersList();
 }
