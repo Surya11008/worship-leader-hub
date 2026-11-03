@@ -10,6 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap" rel="stylesheet">
   
+    <!-- Firebase Realtime Sync SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome -->
@@ -92,8 +95,12 @@
         </div>
       </div>
       
-      <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition" title="Collapse Sidebar">
+      <button onclick="toggleSidebar()" class="relative text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 transition border border-slate-700" title="Toggle Sidebar">
         <i class="fa-solid fa-angles-left text-xs"></i>
+        <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+        </span>
       </button>
     </div>
 
@@ -127,23 +134,39 @@
       </div>
     </div>
 
-    <!-- MY ROOM (🔥 నూతన My Room బటన్) -->
-    <div class="px-3.5 pb-2 flex-shrink-0">
+    <!-- SIDEBAR NAVIGATION: HOME & DYNAMIC USER ROOM -->
+    <div class="px-3.5 pb-2 flex-shrink-0 space-y-1.5">
+      <!-- 1. HOME BUTTON -->
+      <button 
+        onclick="switchView('home')" 
+        id="btnHomeSidebar"
+        class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-slate-800 hover:bg-slate-750 border border-slate-700/80 text-white shadow-sm group"
+      >
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm group-hover:scale-110 transition">
+            <i class="fa-solid fa-house"></i>
+          </div>
+          <span class="font-bold">Home</span>
+        </div>
+        <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold uppercase">Main</span>
+      </button>
+
+      <!-- 2. DYNAMIC USER ROOM (e.g. Admin Room, David Room, Peter Room) -->
       <button 
         onclick="switchToMyRoom()" 
         id="btnMyRoomSidebar"
-        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition bg-gradient-to-r from-purple-900/60 to-indigo-900/60 hover:from-purple-800/80 hover:to-indigo-800/80 border border-purple-500/30 text-white shadow-md shadow-purple-900/20 group"
+        class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-gradient-to-r from-purple-950/70 to-indigo-950/70 hover:from-purple-900/80 hover:to-indigo-900/80 border border-purple-500/30 text-white shadow-sm group"
       >
-        <div class="flex items-center gap-2.5">
-          <div class="w-7 h-7 rounded-lg bg-purple-500/30 text-purple-300 flex items-center justify-center text-sm group-hover:scale-110 transition">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-7 h-7 rounded-lg bg-purple-500/30 text-purple-300 flex items-center justify-center text-sm group-hover:scale-110 transition flex-shrink-0">
             <i class="fa-solid fa-book-bookmark"></i>
           </div>
-          <div class="text-left">
-            <div class="leading-tight">My Room</div>
-            <div class="text-[10px] text-purple-300/80 font-normal">Sermon & Ministry Journal</div>
+          <div class="text-left min-w-0 truncate">
+            <div class="leading-tight font-extrabold truncate" id="sidebarRoomBtnText">Admin Room</div>
+            <div class="text-[9px] text-purple-300/80 font-normal truncate">Ministry Journal</div>
           </div>
         </div>
-        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/30" id="myRoomRecordsBadge">0</span>
+        <span class="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/30 flex-shrink-0" id="myRoomRecordsBadge">0</span>
       </button>
     </div>
 
@@ -255,15 +278,38 @@
           <span id="topApprovalCountBadge" class="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950">0</span>
         </button>
 
-        <!-- Top My Room Shortcut -->
+        <!-- Top Home Shortcut -->
+        <button 
+          onclick="switchView('home')" 
+          id="btnHomeTop"
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition"
+          title="Go to Home"
+        >
+          <i class="fa-solid fa-house text-xs text-indigo-400"></i>
+          <span>Home</span>
+        </button>
+
+        <!-- Top Dynamic Room Shortcut -->
         <button 
           onclick="switchToMyRoom()" 
           id="btnMyRoomTop"
           class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-bold transition"
-          title="Open My Room (Ministry Journal)"
+          title="Open Room Journal"
         >
           <i class="fa-solid fa-book-bookmark text-xs text-purple-400"></i>
-          <span>My Room</span>
+          <span id="topRoomBtnText">Admin Room</span>
+        </button>
+
+        <!-- Dedicated Admin Control Panel Button (Admin Only) -->
+        <button 
+          onclick="openAdminControlPanel()" 
+          id="topAdminPanelBtn"
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold transition"
+          title="Open Dedicated Admin Panel"
+        >
+          <i class="fa-solid fa-shield-halved text-xs text-rose-400"></i>
+          <span>Admin Panel</span>
+          <span id="adminPanelBadge" class="hidden text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950">0</span>
         </button>
 
         <!-- Master Download Permission Toggle (Admin Controlled) -->
@@ -342,7 +388,149 @@
       <!-- ======================================================== -->
       <!-- VIEW 1: REGULAR RESOURCES TABLE & GRID VIEW             -->
       <!-- ======================================================== -->
-      <div id="resourcesViewContainer">
+            <!-- ======================================================== -->
+      <!-- VIEW 0: HOME PAGE (DEFAULT LANDING PAGE AFTER LOGIN)     -->
+      <!-- ======================================================== -->
+      <div id="homeViewContainer" class="space-y-6">
+        
+        <!-- Hero Welcome Banner -->
+        <div class="relative bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 border border-indigo-500/30 p-6 sm:p-8 rounded-3xl shadow-2xl overflow-hidden">
+          <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold mb-3">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>L Support Central Portal</span>
+              </div>
+              <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight" id="homeWelcomeHeading">
+                Welcome to L Support, <span id="homeUserName">User</span>! 👋
+              </h1>
+              <p class="text-xs sm:text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
+                Access your sermons, study files, announcements, and personal ministry records in one unified workspace.
+              </p>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
+              <button 
+                onclick="toggleSidebar(true)" 
+                class="relative px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 group"
+                title="Click to browse modules and study library"
+              >
+                <i class="fa-solid fa-layer-group text-sm group-hover:scale-110 transition"></i>
+                <span>Browse Library</span>
+                <span class="relative flex h-2.5 w-2.5 ml-1">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400"></span>
+                </span>
+              </button>
+
+              <button 
+                onclick="switchToMyRoom()" 
+                class="px-4 py-2.5 rounded-2xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-xs transition flex items-center gap-2"
+              >
+                <i class="fa-solid fa-book-bookmark text-sm text-purple-400"></i>
+                <span id="homeRoomBtnText">Admin Room</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: NEW ARRIVALS -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-sparkles"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-extrabold text-white flex items-center gap-2">
+                  New Arrivals
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">Latest Added</span>
+                </h2>
+                <p class="text-[11px] text-slate-400">Recently added files across all modules</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <select 
+                id="homeNewArrivalsFilter" 
+                onchange="filterHomeNewArrivals(this.value)" 
+                class="bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500"
+              >
+                <option value="all">All Modules</option>
+              </select>
+
+              <button 
+                onclick="openNewArrivalsModal()" 
+                class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-white text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5"
+                title="Open New Arrivals in Popup"
+              >
+                <i class="fa-solid fa-up-right-from-square text-[10px]"></i>
+                <span>View All Popup</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- New Arrivals Cards Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5" id="homeNewArrivalsGrid">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Grid with 2 Columns: NOTICES & WORSHIP SCHEDULE -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- NOTICES & ANNOUNCEMENTS -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4 flex-shrink-0">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center text-lg">
+                  <i class="fa-solid fa-bullhorn"></i>
+                </div>
+                <div>
+                  <h2 class="text-base font-extrabold text-white">Notices & Announcements</h2>
+                  <p class="text-[11px] text-slate-400">Important church updates and announcements</p>
+                </div>
+              </div>
+              <button 
+                id="btnAdminAddNotice" 
+                onclick="openAddNoticeModal()" 
+                class="hidden px-2.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs rounded-xl border border-rose-500/30 transition flex items-center gap-1.5"
+              >
+                <i class="fa-solid fa-plus text-[10px]"></i> Post Notice
+              </button>
+            </div>
+
+            <div class="flex-1 space-y-3 overflow-y-auto custom-scrollbar max-h-96 pr-1" id="homeNoticesContainer">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- WORSHIP & MINISTRY SCHEDULE -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4 flex-shrink-0">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-lg">
+                  <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                <div>
+                  <h2 class="text-base font-extrabold text-white">Worship Schedule</h2>
+                  <p class="text-[11px] text-slate-400">Service times, feasts, and church calendar</p>
+                </div>
+              </div>
+              <span class="text-[11px] font-bold text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-500/20">Active Order</span>
+            </div>
+
+            <div class="flex-1 space-y-3 overflow-y-auto custom-scrollbar max-h-96 pr-1" id="homeScheduleContainer">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div id="resourcesViewContainer" class="hidden">
         
         <!-- TABLE VIEW -->
         <div id="tableViewWrapper" class="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
@@ -1615,7 +1803,258 @@
     </div>
   </div>
 
-<!-- TOAST NOTIFICATION -->
+  <!-- ======================================================== -->
+  <!-- MODAL: NEW ARRIVALS POPUP                                -->
+  <!-- ======================================================== -->
+  <div id="newArrivalsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl border border-slate-700 p-6 transform scale-95 transition-transform duration-300 flex flex-col max-h-[85vh]" id="newArrivalsModalContainer">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-sparkles"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold text-white">New Arrivals</h3>
+            <p class="text-xs text-slate-400">Recently added resources across all modules</p>
+          </div>
+        </div>
+        <button onclick="closeNewArrivalsModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="py-3 flex items-center justify-between flex-shrink-0 border-b border-slate-800/60">
+        <span class="text-xs text-slate-400 font-bold">Filter by Module:</span>
+        <select id="modalNewArrivalsFilter" onchange="filterModalNewArrivals(this.value)" class="bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl px-3 py-1.5 outline-none">
+          <option value="all">All Modules</option>
+        </select>
+      </div>
+
+      <div class="flex-1 overflow-y-auto custom-scrollbar py-4 space-y-2.5" id="modalNewArrivalsList">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: POST NEW NOTICE (ADMIN ONLY)                      -->
+  <!-- ======================================================== -->
+  <div id="addNoticeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700 p-6 transform scale-95 transition-transform duration-300" id="addNoticeModalContainer">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-bullhorn text-rose-400"></i> Post New Notice
+        </h3>
+        <button onclick="closeAddNoticeModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+      <form onsubmit="handleSaveNotice(event)" class="pt-4 space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Notice Title *</label>
+          <input type="text" id="noticeTitleInput" required placeholder="e.g. Special Service Timing Change" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Category</label>
+            <select id="noticeCategoryInput" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+              <option value="Important">Important</option>
+              <option value="Worship Update">Worship Update</option>
+              <option value="Feast Notice">Feast Notice</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Badge Color</label>
+            <select id="noticeColorInput" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+              <option value="rose">Red / Urgent</option>
+              <option value="amber">Amber / Alert</option>
+              <option value="indigo">Indigo / Info</option>
+              <option value="emerald">Green / Good News</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Content / Message *</label>
+          <textarea id="noticeContentInput" required rows="4" placeholder="Write announcement details here..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none resize-none"></textarea>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeAddNoticeModal()" class="px-3 py-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs">Cancel</button>
+          <button type="submit" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs">Publish Notice</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: DEDICATED ADMIN CONTROL PANEL                     -->
+  <!-- ======================================================== -->
+  <div id="adminControlPanelModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-4xl border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[92vh] flex flex-col" id="adminControlPanelContainer">
+      
+      <!-- Panel Header -->
+      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+              Admin Control Panel
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Master Authority</span>
+            </h3>
+            <p class="text-[11px] text-slate-400">Approvals, user downloads, notices, audit history & live sync</p>
+          </div>
+        </div>
+        <button onclick="closeAdminControlPanel()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Panel Tabs -->
+      <div class="flex items-center gap-2 px-6 pt-3 border-b border-slate-800 bg-slate-950/40 text-xs font-bold overflow-x-auto flex-shrink-0">
+        <button onclick="switchAdminPanelTab('approvals')" id="admtab-approvals" class="px-3.5 py-2 border-b-2 border-amber-500 text-amber-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-clock"></i> User Approvals <span id="admtabApprovalBadge" class="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold">0</span>
+        </button>
+        <button onclick="switchAdminPanelTab('users')" id="admtab-users" class="px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5">
+          <i class="fa-solid fa-users-gear"></i> User Permissions & Downloads
+        </button>
+        <button onclick="switchAdminPanelTab('notices')" id="admtab-notices" class="px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5">
+          <i class="fa-solid fa-bullhorn"></i> Notices Manager
+        </button>
+        <button onclick="switchAdminPanelTab('audit')" id="admtab-audit" class="px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left"></i> Online & Audit History
+        </button>
+        <button onclick="switchAdminPanelTab('firebase')" id="admtab-firebase" class="px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5">
+          <i class="fa-solid fa-fire text-amber-400"></i> Firebase Live Sync
+        </button>
+      </div>
+
+      <!-- Panel Body -->
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-xs">
+        
+        <!-- TAB 1: User Approvals -->
+        <div id="admcontent-approvals" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-white text-sm">Registrations Pending Authorization</h4>
+            <span class="text-[11px] text-slate-400">Only approved users can access the portal.</span>
+          </div>
+          <div id="adminPanelApprovalsList" class="space-y-3">
+            <!-- Dynamically rendered pending cards -->
+          </div>
+        </div>
+
+        <!-- TAB 2: User Permissions & Downloads -->
+        <div id="admcontent-users" class="hidden space-y-5">
+          <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-white text-sm">Global Master Download Switch</h4>
+              <p class="text-slate-400 text-[11px] mt-0.5">If turned OFF, NO download buttons appear anywhere for viewers.</p>
+            </div>
+            <button onclick="toggleMasterDownloads()" id="adminControlPanelMasterDownloadBtn" class="px-5 py-2.5 rounded-xl font-extrabold text-xs transition border border-rose-500/40 bg-rose-500/20 text-rose-300">
+              Downloads: OFF
+            </button>
+          </div>
+
+          <div>
+            <h4 class="font-bold text-white mb-2 text-sm">User Download & Module Permissions</h4>
+            <div class="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
+                  <tr>
+                    <th class="py-2.5 px-3">User</th>
+                    <th class="py-2.5 px-3">Role & Status</th>
+                    <th class="py-2.5 px-3">Assigned Folders</th>
+                    <th class="py-2.5 px-3 text-right">Download Access</th>
+                  </tr>
+                </thead>
+                <tbody id="adminPanelUsersTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                  <!-- Rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: Notices Manager -->
+        <div id="admcontent-notices" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-white text-sm">Active Announcements on Home Page</h4>
+            <button onclick="openAddNoticeModal()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5">
+              <i class="fa-solid fa-plus text-[10px]"></i> Post New Notice
+            </button>
+          </div>
+          <div id="adminPanelNoticesList" class="space-y-3">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- TAB 4: Audit & Activity Log -->
+        <div id="admcontent-audit" class="hidden space-y-4">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-white text-sm">System Login & Activity History</h4>
+            <button onclick="clearAuditHistory()" class="text-rose-400 hover:underline text-xs">Clear Log</button>
+          </div>
+          <div class="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
+                <tr>
+                  <th class="py-2.5 px-3">User</th>
+                  <th class="py-2.5 px-3">Action</th>
+                  <th class="py-2.5 px-3">Details</th>
+                  <th class="py-2.5 px-3 text-right">Time</th>
+                </tr>
+              </thead>
+              <tbody id="adminPanelAuditTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 5: Firebase Live Cloud Sync -->
+        <div id="admcontent-firebase" class="hidden space-y-4">
+          <div class="p-4 bg-gradient-to-r from-amber-950/60 to-slate-950 rounded-2xl border border-amber-500/30 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-fire"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-white text-sm">Firebase Realtime Live Sync</h4>
+                <p class="text-slate-400 text-[11px]">Instant live sync across all user devices for sermons, files, approvals & notices.</p>
+              </div>
+            </div>
+            <div id="firebaseConnectionStatusBadge" class="px-3 py-1 rounded-xl font-bold text-xs bg-slate-800 text-slate-400 border border-slate-700">
+              ⚪ Local Mode (Offline)
+            </div>
+          </div>
+
+          <form onsubmit="saveFirebaseConfig(event)" class="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
+            <h5 class="font-bold text-white text-xs mb-1">Firebase Project Configuration</h5>
+            <p class="text-[11px] text-slate-400">Paste your Firebase web app config JSON or project parameters below:</p>
+            <textarea 
+              id="firebaseConfigInput" 
+              rows="6" 
+              placeholder='{ "apiKey": "...", "authDomain": "...", "databaseURL": "https://...", "projectId": "..." }' 
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl font-mono text-[11px] text-emerald-300 outline-none resize-none"
+            ></textarea>
+
+            <div class="flex items-center justify-between pt-2">
+              <button type="button" onclick="testFirebaseConnection()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-xl text-xs border border-slate-700">
+                Test Connection
+              </button>
+              <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow-md">
+                Save & Connect Firebase
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+  <!-- TOAST NOTIFICATION -->
   <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-16 opacity-0 transition-all duration-300 pointer-events-none">
     <div class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs font-semibold">
       <span id="toastMsg">Notification message</span>
