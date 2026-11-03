@@ -136,6 +136,50 @@ const BUILTIN_FIREBASE_CONFIG = {
 
 let FIREBASE_CONFIG = JSON.parse(localStorage.getItem('l_support_firebase_config') || 'null') || BUILTIN_FIREBASE_CONFIG;
 
+
+// Interactive Worship Schedule Storage
+let SCHEDULES_LIST = JSON.parse(localStorage.getItem('l_support_schedules') || 'null');
+if (!SCHEDULES_LIST || SCHEDULES_LIST.length === 0) {
+  SCHEDULES_LIST = [
+    {
+      id: 'sch_1',
+      title: 'Tuesday Evening Service',
+      category: 'Tuesday Service',
+      icon: '⛪',
+      date: '2026-11-04',
+      time: '07:30 PM',
+      notes: 'Third-Day Weekly Evening Worship. Please prepare hymn praise.',
+      author: 'Admin'
+    },
+    {
+      id: 'sch_2',
+      title: 'Holy Sabbath Morning Service',
+      category: 'Sabbath Worship',
+      icon: '🕊️',
+      date: '2026-11-07',
+      time: '10:00 AM',
+      notes: 'Fourth Commandment Holy Sabbath Morning Worship.',
+      author: 'Admin'
+    },
+    {
+      id: 'sch_3',
+      title: 'Holy Sabbath Afternoon Service',
+      category: 'Sabbath Worship',
+      icon: '📖',
+      date: '2026-11-07',
+      time: '03:00 PM',
+      notes: 'Fourth Commandment Holy Sabbath Afternoon Worship.',
+      author: 'Admin'
+    }
+  ];
+  localStorage.setItem('l_support_schedules', JSON.stringify(SCHEDULES_LIST));
+}
+
+let activeCalendarMonth = new Date().getMonth();
+let activeCalendarYear = new Date().getFullYear();
+let activeCalendarSelectedDate = null;
+let pendingNoticeAttachments = [];
+
 // State
 let activeView = 'home'; // 'resources' | 'myroom'
 let currentCategory = 'all';
@@ -355,7 +399,7 @@ function updateUserUI() {
   if (topRoomText) topRoomText.textContent = roomTitle;
   if (homeRoomBtnText) homeRoomBtnText.textContent = roomTitle;
   if (myRoomTitle) myRoomTitle.textContent = roomTitle;
-  if (homeUserName) homeUserName.textContent = CURRENT_USER.fullName || CURRENT_USER.userId;
+  const welcomeH1 = document.getElementById('homeWelcomeHeading'); if (welcomeH1) welcomeH1.innerHTML = 'Welcome to L Support! 👋';
 
   // Role Permissions: Admin vs Regular Viewers
   const isAdmin = CURRENT_USER.role === 'admin';
@@ -405,6 +449,7 @@ function openAuthModal() {
 }
 
 function closeAuthModal() {
+  if (!CURRENT_USER) return; // Cannot close on first visit without signing in!
   const modal = document.getElementById('authModal');
   const container = document.getElementById('authModalContainer');
   modal.classList.add('opacity-0', 'pointer-events-none');
@@ -2874,10 +2919,30 @@ function populateHomeFilterOptions() {
 }
 
 function getSortedNewArrivals(filterModule) {
-  let items = [...ALL_ITEMS];
+  const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  // Filter ONLY items added within the last 10 days
+  let items = ALL_ITEMS.filter(it => {
+    // If it has addedAt timestamp, check age; if base item, keep recent items within 10 days window
+    let added = it.addedAt;
+    if (!added) {
+      added = it.customAdded ? (now - 3600000) : (now - 3 * 24 * 60 * 60 * 1000);
+    }
+    return (now - added) <= TEN_DAYS_MS;
+  });
+
   if (filterModule && filterModule !== 'all') {
     items = items.filter(it => (it.modules && it.modules.includes(filterModule)) || it.tab === filterModule);
   }
+
+  // SORT: Newest date at the top, older dates at the bottom!
+  items.sort((a, b) => {
+    const timeA = a.addedAt || (now - 3 * 24 * 60 * 60 * 1000);
+    const timeB = b.addedAt || (now - 3 * 24 * 60 * 60 * 1000);
+    return timeB - timeA;
+  });
+
   return items;
 }
 
@@ -2936,14 +3001,43 @@ function renderHomeNotices() {
       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
       : 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300';
 
+    // Render attachments if any
+    let attachHtml = '';
+    if (n.attachments && n.attachments.length > 0) {
+      attachHtml = `
+        <div class="pt-2 border-t border-slate-800/80 space-y-1">
+          <div class="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+            <i class="fa-solid fa-paperclip text-rose-400"></i> Attached Files (${n.attachments.length})
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            ${n.attachments.map(att => {
+              const icon = att.type && att.type.includes('pdf') ? 'fa-file-pdf text-rose-400'
+                : att.type && att.type.includes('audio') ? 'fa-file-audio text-purple-400'
+                : att.type && att.type.includes('video') ? 'fa-file-video text-cyan-400'
+                : att.type && att.type.includes('image') ? 'fa-file-image text-emerald-400'
+                : 'fa-file-lines text-indigo-400';
+              return `
+                <a href="${att.url}" target="_blank" download="${att.name || 'document'}" class="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-[11px] text-slate-200 flex items-center gap-1.5 transition">
+                  <i class="fa-solid ${icon}"></i>
+                  <span class="truncate max-w-[150px]">${att.name || 'Attached File'}</span>
+                  <i class="fa-solid fa-arrow-down text-[9px] text-slate-400 ml-0.5"></i>
+                </a>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     return `
-      <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-1.5">
+      <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2 shadow-sm">
         <div class="flex items-center justify-between text-xs">
           <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${colorClasses}">${n.category}</span>
           <span class="text-slate-500 text-[10px] font-mono">${n.date}</span>
         </div>
         <h4 class="font-bold text-white text-xs">${n.title}</h4>
         <p class="text-slate-300 text-[11px] leading-relaxed whitespace-pre-line">${n.content}</p>
+        ${attachHtml}
       </div>
     `;
   }).join('');
@@ -3182,6 +3276,43 @@ function closeAddNoticeModal() {
   container.classList.add('scale-95');
 }
 
+
+function handleNoticeFileSelect(input) {
+  const container = document.getElementById('noticeSelectedFilesContainer');
+  if (!container || !input.files) return;
+
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      pendingNoticeAttachments.push({
+        name: file.name,
+        size: Math.round(file.size / 1024) + ' KB',
+        type: file.type || 'application/octet-stream',
+        url: e.target.result
+      });
+      renderNoticeAttachmentPills();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderNoticeAttachmentPills() {
+  const container = document.getElementById('noticeSelectedFilesContainer');
+  if (!container) return;
+  container.innerHTML = pendingNoticeAttachments.map((att, i) => `
+    <span class="px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-[10px] text-slate-300 flex items-center gap-1">
+      <i class="fa-solid fa-file text-rose-400 text-[9px]"></i>
+      <span class="truncate max-w-[120px]">${att.name}</span>
+      <button type="button" onclick="removeNoticeAttachment(${i})" class="text-slate-400 hover:text-rose-400 ml-1">×</button>
+    </span>
+  `).join('');
+}
+
+function removeNoticeAttachment(index) {
+  pendingNoticeAttachments.splice(index, 1);
+  renderNoticeAttachmentPills();
+}
+
 function handleSaveNotice(e) {
   e.preventDefault();
   const title = document.getElementById('noticeTitleInput').value.trim();
@@ -3189,15 +3320,31 @@ function handleSaveNotice(e) {
   const color = document.getElementById('noticeColorInput').value;
   const content = document.getElementById('noticeContentInput').value.trim();
 
+  const linkUrl = document.getElementById('noticeLinkInput') ? document.getElementById('noticeLinkInput').value.trim() : '';
+  const finalAttachments = [...pendingNoticeAttachments];
+  if (linkUrl) {
+    finalAttachments.push({
+      name: 'Linked Resource',
+      size: 'Cloud Link',
+      type: 'link',
+      url: linkUrl
+    });
+  }
+
   const newNotice = {
     id: 'not_' + Date.now(),
     title,
     category,
     color,
     content,
+    attachments: finalAttachments,
     date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     author: CURRENT_USER.fullName || 'Admin'
   };
+  pendingNoticeAttachments = [];
+  if (document.getElementById('noticeSelectedFilesContainer')) {
+    document.getElementById('noticeSelectedFilesContainer').innerHTML = '';
+  }
 
   NOTICES_LIST.unshift(newNotice);
   localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
@@ -3306,6 +3453,16 @@ function fbSync(path, data) {
 function setupRealtimeListeners() {
   if (!IS_FIREBASE_CONNECTED || !FIREBASE_DB) return;
 
+  // 0. Sync Schedules Live
+  FIREBASE_DB.ref('l_support/schedules').on('value', snap => {
+    const val = snap.val();
+    if (val && Array.isArray(val)) {
+      SCHEDULES_LIST = val;
+      localStorage.setItem('l_support_schedules', JSON.stringify(SCHEDULES_LIST));
+      renderHomeSchedule();
+    }
+  });
+
   // 1. Sync Notices Live
   FIREBASE_DB.ref('l_support/notices').on('value', snap => {
     const val = snap.val();
@@ -3364,4 +3521,248 @@ function setupRealtimeListeners() {
       renderHomeNewArrivals();
     }
   });
+}
+
+
+// ========================================================
+// INTERACTIVE SCHEDULE & CALENDAR LOGIC
+// ========================================================
+function renderHomeSchedule() {
+  const container = document.getElementById('homeScheduleContainer');
+  if (!container) return;
+
+  const isAdmin = CURRENT_USER && CURRENT_USER.role === 'admin';
+  const btnAdd = document.getElementById('btnAdminAddSchedule');
+  if (btnAdd) btnAdd.classList.toggle('hidden', !isAdmin);
+
+  // Month header & interactive calendar strip
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthStr = monthNames[activeCalendarMonth] + ' ' + activeCalendarYear;
+
+  // Filter events for active month or selected date
+  let events = [...SCHEDULES_LIST];
+  events.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  if (activeCalendarSelectedDate) {
+    events = events.filter(e => e.date === activeCalendarSelectedDate);
+  }
+
+  const calendarStripHtml = `
+    <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2 mb-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-white">${monthStr}</span>
+          ${activeCalendarSelectedDate ? `<button onclick="clearScheduleDateFilter()" class="text-[10px] text-sky-400 hover:underline">Show All</button>` : ''}
+        </div>
+        <div class="flex items-center gap-1">
+          <button onclick="changeCalendarMonth(-1)" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">‹</button>
+          <button onclick="changeCalendarMonth(1)" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">›</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400 font-bold">
+        <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+      </div>
+      <div class="grid grid-cols-7 gap-1" id="calendarDaysGrid">
+        ${generateCalendarDaysHtml()}
+      </div>
+    </div>
+  `;
+
+  let eventsListHtml = '';
+  if (events.length === 0) {
+    eventsListHtml = '<div class="py-6 text-center text-slate-500 text-xs">No services scheduled for this selection.</div>';
+  } else {
+    eventsListHtml = events.map(s => {
+      const isPast = s.date && new Date(s.date + 'T23:59:59') < new Date();
+      return `
+        <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between gap-3 shadow-sm hover:border-sky-500/30 transition">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-base flex-shrink-0">
+              ${s.icon || '⛪'}
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h4 class="font-extrabold text-white text-xs truncate">${s.title}</h4>
+                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-800 text-slate-300 border border-slate-700">${s.category || 'Service'}</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
+                <span><i class="fa-solid fa-calendar-day text-[10px] mr-1 text-slate-500"></i>${s.date}</span>
+                <span>•</span>
+                <span class="text-sky-300 font-mono font-semibold">${s.time}</span>
+              </div>
+              ${s.notes ? `<p class="text-[10px] text-slate-400 mt-1 line-clamp-1 italic">${s.notes}</p>` : ''}
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            ${isAdmin ? `
+              <button onclick="editScheduleEvent('${s.id}')" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition text-xs" title="Edit">
+                <i class="fa-solid fa-pen text-[10px]"></i>
+              </button>
+              <button onclick="deleteScheduleEvent('${s.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition text-xs" title="Delete">
+                <i class="fa-solid fa-trash-can text-[10px]"></i>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  container.innerHTML = calendarStripHtml + '<div class="space-y-2.5">' + eventsListHtml + '</div>';
+}
+
+function generateCalendarDaysHtml() {
+  const firstDay = new Date(activeCalendarYear, activeCalendarMonth, 1).getDay();
+  const totalDays = new Date(activeCalendarYear, activeCalendarMonth + 1, 0).getDate();
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  let html = '';
+  for (let i = 0; i < firstDay; i++) {
+    html += '<span class="py-1"></span>';
+  }
+
+  for (let d = 1; d <= totalDays; d++) {
+    const dStr = activeCalendarYear + '-' + String(activeCalendarMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const hasEvent = SCHEDULES_LIST.some(e => e.date === dStr);
+    const isToday = dStr === todayStr;
+    const isSelected = dStr === activeCalendarSelectedDate;
+
+    let cls = 'py-1 text-[11px] rounded-lg text-center font-bold cursor-pointer transition relative ';
+    if (isSelected) {
+      cls += 'bg-sky-600 text-white shadow-sm';
+    } else if (isToday) {
+      cls += 'bg-slate-800 text-amber-300 border border-amber-500/40';
+    } else if (hasEvent) {
+      cls += 'bg-slate-850 text-slate-200 hover:bg-slate-800 border border-slate-700/60';
+    } else {
+      cls += 'text-slate-400 hover:bg-slate-800/60';
+    }
+
+    html += `
+      <button type="button" onclick="selectCalendarDate('${dStr}')" class="${cls}">
+        ${d}
+        ${hasEvent && !isSelected ? '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-sky-400"></span>' : ''}
+      </button>
+    `;
+  }
+  return html;
+}
+
+function changeCalendarMonth(delta) {
+  activeCalendarMonth += delta;
+  if (activeCalendarMonth < 0) {
+    activeCalendarMonth = 11;
+    activeCalendarYear--;
+  } else if (activeCalendarMonth > 11) {
+    activeCalendarMonth = 0;
+    activeCalendarYear++;
+  }
+  renderHomeSchedule();
+}
+
+function selectCalendarDate(dateStr) {
+  if (activeCalendarSelectedDate === dateStr) {
+    activeCalendarSelectedDate = null;
+  } else {
+    activeCalendarSelectedDate = dateStr;
+  }
+  renderHomeSchedule();
+}
+
+function clearScheduleDateFilter() {
+  activeCalendarSelectedDate = null;
+  renderHomeSchedule();
+}
+
+function openAddScheduleModal() {
+  document.getElementById('editScheduleTargetId').value = '';
+  document.getElementById('scheduleModalTitle').textContent = 'Add Worship Event';
+  document.getElementById('schedTitleInput').value = '';
+  document.getElementById('schedDateInput').value = new Date().toISOString().split('T')[0];
+  document.getElementById('schedTimeInput').value = '07:30 PM';
+  document.getElementById('schedDescInput').value = '';
+  document.getElementById('schedIconInput').value = '⛪';
+
+  const modal = document.getElementById('addScheduleModal');
+  const container = document.getElementById('addScheduleModalContainer');
+  if (!modal || !container) return;
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeAddScheduleModal() {
+  const modal = document.getElementById('addScheduleModal');
+  const container = document.getElementById('addScheduleModalContainer');
+  if (!modal || !container) return;
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function handleSaveSchedule(e) {
+  e.preventDefault();
+  const targetId = document.getElementById('editScheduleTargetId').value;
+  const title = document.getElementById('schedTitleInput').value.trim();
+  const category = document.getElementById('schedTypeInput').value;
+  const icon = document.getElementById('schedIconInput').value.trim() || '⛪';
+  const date = document.getElementById('schedDateInput').value;
+  const time = document.getElementById('schedTimeInput').value.trim();
+  const notes = document.getElementById('schedDescInput').value.trim();
+
+  if (targetId) {
+    const idx = SCHEDULES_LIST.findIndex(s => s.id === targetId);
+    if (idx !== -1) {
+      SCHEDULES_LIST[idx] = { ...SCHEDULES_LIST[idx], title, category, icon, date, time, notes };
+    }
+    showToast('Event updated!');
+  } else {
+    const newEvent = {
+      id: 'sch_' + Date.now(),
+      title,
+      category,
+      icon,
+      date,
+      time,
+      notes,
+      author: CURRENT_USER.fullName || 'Admin'
+    };
+    SCHEDULES_LIST.push(newEvent);
+    showToast('Event added to schedule!');
+  }
+
+  localStorage.setItem('l_support_schedules', JSON.stringify(SCHEDULES_LIST));
+  fbSync('schedules', SCHEDULES_LIST);
+  closeAddScheduleModal();
+  renderHomeSchedule();
+}
+
+function editScheduleEvent(id) {
+  const item = SCHEDULES_LIST.find(s => s.id === id);
+  if (!item) return;
+
+  document.getElementById('editScheduleTargetId').value = item.id;
+  document.getElementById('scheduleModalTitle').textContent = 'Edit Worship Event';
+  document.getElementById('schedTitleInput').value = item.title;
+  document.getElementById('schedTypeInput').value = item.category || 'Tuesday Service';
+  document.getElementById('schedIconInput').value = item.icon || '⛪';
+  document.getElementById('schedDateInput').value = item.date;
+  document.getElementById('schedTimeInput').value = item.time;
+  document.getElementById('schedDescInput').value = item.notes || '';
+
+  const modal = document.getElementById('addScheduleModal');
+  const container = document.getElementById('addScheduleModalContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function deleteScheduleEvent(id) {
+  if (!confirm('Are you sure you want to remove this event from the schedule?')) return;
+  SCHEDULES_LIST = SCHEDULES_LIST.filter(s => s.id !== id);
+  localStorage.setItem('l_support_schedules', JSON.stringify(SCHEDULES_LIST));
+  fbSync('schedules', SCHEDULES_LIST);
+  renderHomeSchedule();
+  showToast('Event deleted from schedule.');
 }
