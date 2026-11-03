@@ -1,6 +1,10 @@
 /* ========================================================
-   WORSHIP LEADER HUB — ENTERPRISE ENGINE
+   WORSHIP LEADER HUB — ENTERPRISE ENGINE v3.2
    Features:
+   - Admin: surya11008 / Suri742766 / PIN 742766
+   - Eye Show/Hide Toggle on all password & PIN boxes
+   - Change Module & Topic directly on file + Multi-Select by Module/Topic
+   - Top & Sidebar Logout Buttons
    - Auth (Login, Register with Zion, Area, 6-digit PIN)
    - Online Users & Activity Audit Log
    - Strict Download Permission Controls (Master & Per-file)
@@ -15,20 +19,47 @@
 const APP_RAW_DATA = JSON.parse(document.getElementById('initial-app-data').textContent);
 const BASE_CATEGORIES = APP_RAW_DATA.categories;
 const BASE_ITEMS = APP_RAW_DATA.items;
-const DEFAULT_ADMIN = APP_RAW_DATA.defaultAdmin;
 
-// Seed initial users if not present
+// Master Admin User Credentials (🔥 అడ్మిన్ క్రెడెన్షియల్స్ సెట్ చేయబడ్డాయి)
+const DEFAULT_ADMIN = {
+  fullName: 'Surya Leader',
+  userId: 'surya11008',
+  password: 'Suri742766',
+  phone: '+91 9876543210',
+  gmail: 'surya.worship@gmail.com',
+  zion: 'Hyderabad Main Zion',
+  area: 'Zone 1 - Central',
+  pin: '742766',
+  role: 'admin',
+  assignedModules: ['all']
+};
+
+// Seed or update admin user in localStorage
 let ALL_USERS = JSON.parse(localStorage.getItem('wlh_users') || 'null');
 if (!ALL_USERS || ALL_USERS.length === 0) {
   ALL_USERS = [DEFAULT_ADMIN];
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+} else {
+  // Guarantee surya11008 has the updated password & PIN
+  const adminIdx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === 'surya11008');
+  if (adminIdx !== -1) {
+    ALL_USERS[adminIdx].password = 'Suri742766';
+    ALL_USERS[adminIdx].pin = '742766';
+    ALL_USERS[adminIdx].role = 'admin';
+  } else {
+    ALL_USERS.unshift(DEFAULT_ADMIN);
+  }
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
 }
 
 // Active session
 let CURRENT_USER = JSON.parse(localStorage.getItem('wlh_current_user') || 'null');
 if (!CURRENT_USER) {
-  // Auto-login default admin for seamless immediate access
   CURRENT_USER = DEFAULT_ADMIN;
+  localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
+} else if (CURRENT_USER.userId.toLowerCase() === 'surya11008') {
+  CURRENT_USER.password = 'Suri742766';
+  CURRENT_USER.pin = '742766';
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
 }
 
@@ -40,7 +71,7 @@ let customItems = JSON.parse(localStorage.getItem('wlh_custom_resources') || '[]
 let customModules = JSON.parse(localStorage.getItem('wlh_custom_modules') || '[]');
 let moduleEdits = JSON.parse(localStorage.getItem('wlh_module_edits') || '{}');
 let topicEdits = JSON.parse(localStorage.getItem('wlh_topic_edits') || '{}');
-let fileMetadata = JSON.parse(localStorage.getItem('wlh_file_metadata') || '{}'); // { [url]: { locked, hidden, color, allowDownload } }
+let fileMetadata = JSON.parse(localStorage.getItem('wlh_file_metadata') || '{}'); // { [url]: { locked, hidden, color, allowDownload, customTab, customGroup } }
 let pinnedUrls = new Set(JSON.parse(localStorage.getItem('wlh_pinned_urls') || '[]'));
 let auditLog = JSON.parse(localStorage.getItem('wlh_audit_log') || '[]');
 let suggestionsList = JSON.parse(localStorage.getItem('wlh_suggestions') || '[]');
@@ -66,7 +97,6 @@ function refreshDataModel() {
     const edit = moduleEdits[cat.id];
     let groups = [...(cat.groups || [])];
     if (topicEdits[cat.id]) {
-      // Add custom topics
       topicEdits[cat.id].forEach(t => {
         if (!groups.includes(t)) groups.push(t);
       });
@@ -85,13 +115,18 @@ function refreshDataModel() {
     CATEGORIES = CATEGORIES.filter(c => CURRENT_USER.assignedModules.includes(c.id));
   }
 
-  // Combine items
+  // Combine items and apply individual file metadata (such as customTab / customGroup)
   ALL_ITEMS = [...customItems, ...BASE_ITEMS].map(it => {
     const meta = fileMetadata[it.url] || {};
-    const catObj = CATEGORIES.find(c => c.id === it.tab);
+    const finalTab = meta.customTab || it.tab;
+    const finalGroup = meta.customGroup || it.group || 'General';
+    const catObj = CATEGORIES.find(c => c.id === finalTab);
+
     return {
       ...it,
-      categoryName: catObj ? catObj.name : (it.categoryName || it.tab),
+      tab: finalTab,
+      group: finalGroup,
+      categoryName: catObj ? catObj.name : (it.categoryName || finalTab),
       categoryIcon: catObj ? catObj.icon : (it.categoryIcon || '📄'),
       badge: catObj ? catObj.badge : (it.badge || 'bg-slate-800 text-slate-300 border-slate-700'),
       isLocked: !!meta.locked,
@@ -118,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderSubgroupTabs();
   renderRecords();
   updatePinnedBadge();
-  logActivity('Session Start', 'Logged in as ' + CURRENT_USER.fullName);
+  logActivity('Session Start', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
 
   // Keyboard shortcut (Esc)
   document.addEventListener('keydown', (e) => {
@@ -131,12 +166,32 @@ document.addEventListener('DOMContentLoaded', () => {
       closeMergeModal();
       closeMoveCopyModal();
       closePinVerifyModal();
+      closeEditFileModuleTopicModal();
       clearSelection();
     }
   });
 });
 
-// 3. LOGGING & AUDIT
+// 3. PASSWORD VISIBILITY TOGGLE (EYE BUTTON)
+function togglePasswordVisibility(inputId, eyeIconId) {
+  const input = document.getElementById(inputId);
+  const icon = document.getElementById(eyeIconId);
+  if (!input || !icon) return;
+
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.classList.remove('fa-eye');
+    icon.classList.add('fa-eye-slash');
+    icon.classList.add('text-indigo-400');
+  } else {
+    input.type = 'password';
+    icon.classList.remove('fa-eye-slash');
+    icon.classList.remove('text-indigo-400');
+    icon.classList.add('fa-eye');
+  }
+}
+
+// 4. LOGGING & AUDIT
 function logActivity(action, details) {
   if (!CURRENT_USER) return;
   const entry = {
@@ -154,7 +209,7 @@ function logActivity(action, details) {
   localStorage.setItem('wlh_audit_log', JSON.stringify(auditLog));
 }
 
-// 4. USER & PERMISSION MANAGEMENT
+// 5. USER & PERMISSION MANAGEMENT
 function updateUserUI() {
   if (!CURRENT_USER) return;
   document.getElementById('sidebarUserName').textContent = CURRENT_USER.fullName;
@@ -162,7 +217,7 @@ function updateUserUI() {
   document.getElementById('sidebarUserZion').textContent = (CURRENT_USER.zion || 'Main Zion') + ' • ' + (CURRENT_USER.area || 'Area');
   document.getElementById('sidebarUserBranch').textContent = CURRENT_USER.zion || 'Worship Leader Hub';
 
-  // Master download button only active/visible to Admin
+  // Master download button visible only to Admin
   const dlWrapper = document.getElementById('downloadToggleWrapper');
   if (CURRENT_USER.role === 'admin') {
     dlWrapper.classList.remove('hidden');
@@ -172,7 +227,8 @@ function updateUserUI() {
 }
 
 function handleLogout() {
-  logActivity('Logout', 'User signed out');
+  if (!confirm('Are you sure you want to log out of Worship Leader Hub?')) return;
+  logActivity('Logout', 'User logged out');
   localStorage.removeItem('wlh_current_user');
   CURRENT_USER = null;
   openAuthModal();
@@ -223,7 +279,12 @@ function handleLoginSubmit(e) {
   const pass = document.getElementById('loginPassword').value;
   const pin = document.getElementById('loginPin').value.trim();
 
-  const user = ALL_USERS.find(u => u.userId.toLowerCase() === uid.toLowerCase() && u.password === pass && u.pin === pin);
+  const user = ALL_USERS.find(u => 
+    u.userId.toLowerCase() === uid.toLowerCase() && 
+    u.password === pass && 
+    u.pin === pin
+  );
+
   if (!user) {
     alert('Invalid User ID, Password, or 6-digit PIN. Please verify your credentials.');
     return;
@@ -239,10 +300,14 @@ function handleLoginSubmit(e) {
   renderSubgroupTabs();
   renderRecords();
   showToast('Welcome back, ' + user.fullName + '!');
-  logActivity('Login', 'Successful login');
+  logActivity('Login', 'Successful login for ' + user.userId);
 }
 
 function quickDemoAdminLogin() {
+  document.getElementById('loginUserId').value = 'surya11008';
+  document.getElementById('loginPassword').value = 'Suri742766';
+  document.getElementById('loginPin').value = '742766';
+
   CURRENT_USER = DEFAULT_ADMIN;
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
   closeAuthModal();
@@ -252,8 +317,8 @@ function quickDemoAdminLogin() {
   renderSidebarCategories();
   renderSubgroupTabs();
   renderRecords();
-  showToast('Logged in as Surya (Admin)');
-  logActivity('Login', 'Fast Admin Demo Login');
+  showToast('Logged in as surya11008 (Admin)');
+  logActivity('Login', 'Fast Admin Login (surya11008)');
 }
 
 function handleRegisterSubmit(e) {
@@ -269,7 +334,7 @@ function handleRegisterSubmit(e) {
   const pin = document.getElementById('regPin').value.trim();
 
   if (pass !== passAgain) {
-    alert('Passwords do not match! Please check again.');
+    alert('Passwords do not match! Please verify both password fields.');
     return;
   }
   if (!/^\d{6}$/.test(pin)) {
@@ -277,7 +342,7 @@ function handleRegisterSubmit(e) {
     return;
   }
   if (ALL_USERS.some(u => u.userId.toLowerCase() === userId.toLowerCase())) {
-    alert('User ID already exists! Please choose another.');
+    alert('User ID already exists! Please pick a different ID.');
     return;
   }
 
@@ -306,11 +371,11 @@ function handleRegisterSubmit(e) {
   renderSidebarCategories();
   renderSubgroupTabs();
   renderRecords();
-  showToast('Account created! Welcome, ' + fullName);
-  logActivity('Register', 'New account created: ' + userId);
+  showToast('Account created successfully! Welcome, ' + fullName);
+  logActivity('Register', 'New user registered: ' + userId);
 }
 
-// 5. MASTER DOWNLOAD TOGGLE (STRICT ADMIN CONTROL)
+// 6. MASTER DOWNLOAD TOGGLE (STRICT ADMIN CONTROL)
 function toggleMasterDownloads() {
   if (CURRENT_USER.role !== 'admin') {
     showToast('Permission Denied: Only Admin can toggle downloads');
@@ -356,12 +421,11 @@ function updateTopDownloadBtn() {
   }
 }
 
-// 6. SIDE PANEL OPEN & CLOSE (COLLAPSIBLE SIDEBAR)
+// 7. SIDE PANEL OPEN & CLOSE (COLLAPSIBLE SIDEBAR)
 function toggleSidebar() {
   const sb = document.getElementById('mainSidebar');
   const overlay = document.getElementById('sidebarOverlay');
 
-  // Desktop collapse toggle
   if (window.innerWidth >= 768) {
     if (sb.classList.contains('md:w-72') || !sb.classList.contains('md:w-0')) {
       sb.classList.remove('md:w-72');
@@ -371,7 +435,6 @@ function toggleSidebar() {
       sb.classList.add('md:w-72');
     }
   } else {
-    // Mobile slide toggle
     if (sb.classList.contains('-translate-x-full')) {
       sb.classList.remove('-translate-x-full');
       overlay.classList.remove('hidden');
@@ -382,7 +445,7 @@ function toggleSidebar() {
   }
 }
 
-// 7. COUNTS & BADGES
+// 8. COUNTS & BADGES
 function updateTotalCounts() {
   document.getElementById('allCountBadge').textContent = ALL_ITEMS.length;
 }
@@ -397,7 +460,7 @@ function updatePinnedBadge() {
   }
 }
 
-// 8. SIDEBAR CATEGORIES RENDER
+// 9. SIDEBAR CATEGORIES RENDER
 function renderSidebarCategories() {
   const container = document.getElementById('dynamicSidebarCategories');
   container.innerHTML = CATEGORIES.map(cat => {
@@ -465,7 +528,6 @@ function selectCategory(catId) {
     trigger.classList.remove('hidden');
   }
 
-  // Close mobile sidebar if open
   if (window.innerWidth < 768) {
     const sb = document.getElementById('mainSidebar');
     if (!sb.classList.contains('-translate-x-full')) {
@@ -477,12 +539,12 @@ function selectCategory(catId) {
   renderRecords();
 }
 
-// 9. SUBGROUPS / TOPICS TABS
+// 10. SUBGROUPS / TOPICS TABS (WITH MULTI-SELECT BY TOPIC)
 function renderSubgroupTabs() {
   const container = document.getElementById('subgroupTabsContainer');
   if (currentCategory === 'all') {
     container.innerHTML = `
-      <span class="text-xs text-slate-400 italic px-2">Select a module on the left to browse and edit topics</span>
+      <span class="text-xs text-slate-400 italic px-2">Select a module on the left to browse, filter, or select by topics</span>
     `;
     return;
   }
@@ -518,6 +580,17 @@ function renderSubgroupTabs() {
           <span>${grp}</span>
           <span class="text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-400'}">${grpCount}</span>
         </button>
+
+        <!-- Multi-select all in this topic icon -->
+        <button 
+          onclick="selectTopicItems('${grp.replace(/'/g, "\\'")}', event)"
+          title="Select all ${grpCount} files in this topic"
+          class="px-1 text-[10px] text-slate-400 hover:text-emerald-300 opacity-0 group-hover/grp:opacity-100 transition"
+        >
+          <i class="fa-solid fa-square-check"></i>
+        </button>
+
+        <!-- Rename Topic pencil -->
         <button 
           onclick="renameTopic('${catObj.id}', '${grp.replace(/'/g, "\\'")}', event)"
           title="Rename this topic"
@@ -549,7 +622,6 @@ function filterSubgroup(grpName) {
   renderRecords();
 }
 
-// Quick rename topic
 function renameTopic(catId, oldTopic, e) {
   if (e) e.stopPropagation();
   const newTopic = prompt('Enter new name for topic "' + oldTopic + '":', oldTopic);
@@ -562,12 +634,11 @@ function renameTopic(catId, oldTopic, e) {
     if (idx !== -1) catObj.groups[idx] = finalName;
   }
 
-  // Update in topicEdits
   if (!topicEdits[catId]) topicEdits[catId] = [];
   topicEdits[catId] = (catObj.groups || []);
   localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
 
-  // Update all items belonging to oldTopic
+  // Update in items
   customItems.forEach(it => {
     if (it.tab === catId && it.group === oldTopic) it.group = finalName;
   });
@@ -602,81 +673,35 @@ function quickAddTopicToModule(catId) {
   logActivity('Topic Add', 'Added topic ' + tName + ' to ' + catId);
 }
 
-// 10. SEARCH & FILTERS
-function handleSearch(val) {
-  searchQuery = val.trim().toLowerCase();
-  const clearBtn = document.getElementById('clearSearchBtn');
-  if (searchQuery) {
-    clearBtn.classList.remove('hidden');
-  } else {
-    clearBtn.classList.add('hidden');
-  }
-  renderRecords();
-}
-
-function clearSearch() {
-  document.getElementById('searchInput').value = '';
-  searchQuery = '';
-  document.getElementById('clearSearchBtn').classList.add('hidden');
-  currentSubgroup = 'all';
-  renderSubgroupTabs();
-  renderRecords();
-}
-
-function setViewMode(mode) {
-  currentViewMode = mode;
-  const tableBtn = document.getElementById('viewModeTableBtn');
-  const gridBtn = document.getElementById('viewModeGridBtn');
-  const tableWrapper = document.getElementById('tableViewWrapper');
-  const gridWrapper = document.getElementById('gridViewWrapper');
-
-  if (mode === 'table') {
-    tableBtn.className = 'p-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-xs transition';
-    gridBtn.className = 'p-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
-    tableWrapper.classList.remove('hidden');
-    gridWrapper.classList.add('hidden');
-  } else {
-    gridBtn.className = 'p-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-xs transition';
-    tableBtn.className = 'p-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
-    tableWrapper.classList.add('hidden');
-    gridWrapper.classList.remove('hidden');
-  }
-  renderRecords();
-}
-
-function togglePinnedFilter() {
-  isPinnedOnly = !isPinnedOnly;
-  const btn = document.getElementById('pinnedFilterBtn');
-  if (isPinnedOnly) {
-    btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500 bg-amber-500/20 text-xs font-semibold text-amber-300 transition';
-    document.getElementById('breadcrumbCurrent').textContent = 'Saved Resources (Starred)';
-  } else {
-    btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition';
-    if (currentCategory === 'all') {
-      document.getElementById('breadcrumbCurrent').textContent = 'All Resources (' + ALL_ITEMS.length + ')';
-    } else {
-      const catObj = CATEGORIES.find(c => c.id === currentCategory);
-      document.getElementById('breadcrumbCurrent').textContent = catObj ? catObj.name : currentCategory;
-    }
-  }
-  renderRecords();
-}
-
-function togglePin(url, event) {
+// 11. MULTI-SELECT ACCORDING TO MODULE & TOPIC
+function selectTopicItems(topicName, event) {
   if (event) event.stopPropagation();
-  if (pinnedUrls.has(url)) {
-    pinnedUrls.delete(url);
-    showToast('Unstarred');
-  } else {
-    pinnedUrls.add(url);
-    showToast('Saved to Favorites ⭐');
-  }
-  localStorage.setItem('wlh_pinned_urls', JSON.stringify([...pinnedUrls]));
-  updatePinnedBadge();
-  renderRecords();
+  const matching = ALL_ITEMS.filter(it => it.tab === currentCategory && it.group === topicName);
+  matching.forEach(it => selectedItemUrls.add(it.url));
+  updateSelectionState();
+  showToast('Selected ' + matching.length + ' items in topic: ' + topicName);
 }
 
-// 11. MULTI-SELECT & BULK ACTIONS
+function selectCurrentTopicItems() {
+  if (currentSubgroup === 'all') {
+    selectCurrentModuleItems();
+    return;
+  }
+  selectTopicItems(currentSubgroup);
+}
+
+function selectCurrentModuleItems() {
+  let matching = [];
+  if (currentCategory === 'all') {
+    matching = getFilteredRecords();
+  } else {
+    matching = ALL_ITEMS.filter(it => it.tab === currentCategory);
+  }
+  matching.forEach(it => selectedItemUrls.add(it.url));
+  updateSelectionState();
+  showToast('Selected ' + matching.length + ' items in module');
+}
+
 function toggleItemSelect(url, event) {
   if (event) event.stopPropagation();
   if (selectedItemUrls.has(url)) {
@@ -716,7 +741,6 @@ function updateSelectionState() {
     toolbar.classList.add('translate-y-28', 'opacity-0', 'pointer-events-none');
   }
 
-  // Update check states in DOM without re-rendering everything
   document.querySelectorAll('.row-checkbox').forEach(cb => {
     cb.checked = selectedItemUrls.has(cb.dataset.url);
   });
@@ -745,7 +769,130 @@ function getFilteredRecords() {
   return filtered;
 }
 
-// BULK ACTIONS IMPLEMENTATIONS
+// 12. CHANGE MODULE & TOPIC DIRECTLY ON INDIVIDUAL FILE
+function openEditFileModuleTopicModal(url, event) {
+  if (event) event.stopPropagation();
+  const item = ALL_ITEMS.find(it => it.url === url);
+  if (!item) return;
+
+  document.getElementById('singleEditFileUrl').value = url;
+  document.getElementById('singleEditFileTitle').textContent = item.title;
+
+  const modSelect = document.getElementById('singleEditModuleSelect');
+  modSelect.innerHTML = CATEGORIES.map(c => `
+    <option value="${c.id}" ${c.id === item.tab ? 'selected' : ''}>${c.icon} ${c.name}</option>
+  `).join('');
+
+  onSingleEditModuleChange(item.group);
+
+  const modal = document.getElementById('editFileModuleTopicModal');
+  const container = document.getElementById('editFileModuleTopicContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeEditFileModuleTopicModal() {
+  const modal = document.getElementById('editFileModuleTopicModal');
+  const container = document.getElementById('editFileModuleTopicContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function onSingleEditModuleChange(selectedTopicToPreserve) {
+  const modId = document.getElementById('singleEditModuleSelect').value;
+  const catObj = CATEGORIES.find(c => c.id === modId);
+  const topicSelect = document.getElementById('singleEditTopicSelect');
+
+  let groups = (catObj && catObj.groups) ? catObj.groups : ['General'];
+  let opts = groups.map(g => `<option value="${g}">${g}</option>`);
+  opts.push('<option value="__CUSTOM_TOPIC__">➕ + Add New Topic...</option>');
+  topicSelect.innerHTML = opts.join('');
+
+  if (selectedTopicToPreserve && groups.includes(selectedTopicToPreserve)) {
+    topicSelect.value = selectedTopicToPreserve;
+    hideSingleEditCustomTopic();
+  } else {
+    topicSelect.selectedIndex = 0;
+    hideSingleEditCustomTopic();
+  }
+}
+
+function onSingleEditTopicSelectChange() {
+  const val = document.getElementById('singleEditTopicSelect').value;
+  if (val === '__CUSTOM_TOPIC__') {
+    showSingleEditCustomTopic();
+  } else {
+    hideSingleEditCustomTopic();
+  }
+}
+
+function toggleSingleEditCustomTopic() {
+  const wrapper = document.getElementById('singleEditCustomTopicWrapper');
+  if (wrapper.classList.contains('hidden')) {
+    showSingleEditCustomTopic();
+  } else {
+    hideSingleEditCustomTopic();
+  }
+}
+
+function showSingleEditCustomTopic() {
+  const wrapper = document.getElementById('singleEditCustomTopicWrapper');
+  wrapper.classList.remove('hidden');
+  document.getElementById('singleEditCustomTopicInput').focus();
+}
+
+function hideSingleEditCustomTopic() {
+  const wrapper = document.getElementById('singleEditCustomTopicWrapper');
+  wrapper.classList.add('hidden');
+  document.getElementById('singleEditCustomTopicInput').value = '';
+}
+
+function saveSingleFileModuleTopicChange(e) {
+  e.preventDefault();
+  const url = document.getElementById('singleEditFileUrl').value;
+  const newMod = document.getElementById('singleEditModuleSelect').value;
+  const topicSelectVal = document.getElementById('singleEditTopicSelect').value;
+  const customTopicVal = document.getElementById('singleEditCustomTopicInput').value.trim();
+
+  let finalTopic = customTopicVal || (topicSelectVal !== '__CUSTOM_TOPIC__' ? topicSelectVal : 'General');
+
+  // If custom topic, add to module
+  const catObj = CATEGORIES.find(c => c.id === newMod);
+  if (catObj && customTopicVal) {
+    if (!catObj.groups) catObj.groups = [];
+    if (!catObj.groups.includes(customTopicVal)) {
+      catObj.groups.push(customTopicVal);
+      if (!topicEdits[newMod]) topicEdits[newMod] = [];
+      topicEdits[newMod].push(customTopicVal);
+      localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
+    }
+  }
+
+  // Update in fileMetadata
+  if (!fileMetadata[url]) fileMetadata[url] = {};
+  fileMetadata[url].customTab = newMod;
+  fileMetadata[url].customGroup = finalTopic;
+  localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
+
+  // If it's a customItem, update there too
+  const customIt = customItems.find(it => it.url === url);
+  if (customIt) {
+    customIt.tab = newMod;
+    customIt.group = finalTopic;
+    localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
+  }
+
+  closeEditFileModuleTopicModal();
+  refreshDataModel();
+  renderSubgroupTabs();
+  renderRecords();
+  showToast('Updated file to module: ' + (catObj ? catObj.name : newMod) + ' • ' + finalTopic);
+  logActivity('File Reassigned', 'Moved file to ' + newMod + ' / ' + finalTopic);
+}
+
+// 13. BULK ACTIONS IMPLEMENTATIONS
 function bulkShare() {
   const urls = [...selectedItemUrls];
   if (urls.length === 0) return;
@@ -758,7 +905,7 @@ function bulkShare() {
 function bulkToggleLock() {
   const urls = [...selectedItemUrls];
   let anyUnlocked = urls.some(u => !fileMetadata[u] || !fileMetadata[u].locked);
-  const targetState = anyUnlocked; // if any unlocked, lock all
+  const targetState = anyUnlocked;
 
   urls.forEach(u => {
     if (!fileMetadata[u]) fileMetadata[u] = {};
@@ -821,12 +968,11 @@ function bulkOpenTabs() {
   showToast('Opened ' + Math.min(urls.length, 10) + ' tabs');
 }
 
-// 12. IN-APP POPUP PREVIEW WITH ZOOM & CUTE PLAYERS
+// 14. IN-APP POPUP PREVIEW WITH ZOOM & CUTE PLAYERS
 function openFilePreview(url) {
   const item = ALL_ITEMS.find(it => it.url === url);
   if (!item) return;
 
-  // Check if locked
   if (item.isLocked) {
     pendingUnlockUrl = url;
     openPinVerifyModal();
@@ -840,10 +986,9 @@ function openFilePreview(url) {
   document.getElementById('modalCategoryIcon').textContent = item.categoryIcon || '📄';
   document.getElementById('modalExternalLink').href = item.url;
 
-  // STRICT DOWNLOAD VISIBILITY:
-  // Show download button ONLY if DOWNLOADS_ENABLED is true AND item permits it!
+  // STRICT DOWNLOAD VISIBILITY
   const modalDlBtn = document.getElementById('modalDownloadBtn');
-  if (DOWNLOADS_ENABLED || (CURRENT_USER && CURRENT_USER.role === 'admin' && DOWNLOADS_ENABLED)) {
+  if (DOWNLOADS_ENABLED) {
     modalDlBtn.classList.remove('hidden');
     modalDlBtn.href = item.url;
   } else {
@@ -857,8 +1002,7 @@ function openFilePreview(url) {
 
   resetZoom();
 
-  // Cute Audio Player check (e.g. mp3 or New Song audio)
-  if (item.mediaType === 'audio' || url.endsWith('.mp3') || url.includes('drive.google.com') && item.tab === 'New Song') {
+  if (item.mediaType === 'audio' || url.endsWith('.mp3') || (url.includes('drive.google.com') && item.tab === 'New Song')) {
     iframeContainer.classList.add('hidden');
     loader.classList.add('hidden');
     audioView.classList.remove('hidden');
@@ -872,7 +1016,6 @@ function openFilePreview(url) {
     document.getElementById('previewIframe').src = item.previewUrl;
   }
 
-  // Open modal
   const modal = document.getElementById('filePreviewModal');
   const container = document.getElementById('previewModalContainer');
   modal.classList.remove('opacity-0', 'pointer-events-none');
@@ -910,7 +1053,6 @@ function copyCurrentModalLink() {
   }
 }
 
-// ZOOM CONTROLS
 function changeZoom(delta) {
   currentZoomScale = Math.max(0.5, Math.min(3.0, currentZoomScale + delta));
   applyZoom();
@@ -949,7 +1091,7 @@ function closePinVerifyModal() {
 
 function verifyPinAndProceed() {
   const pinEntered = document.getElementById('pinVerifyInput').value.trim();
-  if (pinEntered === CURRENT_USER.pin || pinEntered === DEFAULT_ADMIN.pin) {
+  if (pinEntered === CURRENT_USER.pin || pinEntered === '742766') {
     closePinVerifyModal();
     const url = pendingUnlockUrl;
     pendingUnlockUrl = null;
@@ -959,7 +1101,7 @@ function verifyPinAndProceed() {
   }
 }
 
-// 13. RECORD RENDERING (TABLE & GRID)
+// 15. RECORD RENDERING (TABLE & GRID WITH CHANGE MODULE & TOPIC BUTTONS)
 function renderRecords() {
   const items = getFilteredRecords();
   document.getElementById('recordCountLabel').textContent = items.length;
@@ -989,8 +1131,6 @@ function renderTableView(items) {
     const safeTitle = item.title.replace(/'/g, "\\'");
     const safeUrl = item.url.replace(/'/g, "\\'");
     const isTelugu = /[\u0C00-\u0C7F]/.test(item.title);
-
-    // Download button: ONLY shown if downloads are turned ON
     const showDownload = DOWNLOADS_ENABLED;
 
     return `
@@ -1034,19 +1174,28 @@ function renderTableView(items) {
           </div>
         </td>
 
-        <!-- Topic -->
+        <!-- Topic (Clickable to change) -->
         <td class="py-3 px-4">
-          <span class="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
-            ${item.group || 'General'}
-          </span>
+          <button 
+            onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+            class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:border-indigo-500 transition group/top"
+            title="Click to change topic"
+          >
+            <span>${item.group || 'General'}</span>
+            <i class="fa-solid fa-pen text-[9px] text-slate-500 group-hover/top:text-indigo-300"></i>
+          </button>
         </td>
 
-        <!-- Module Badge -->
+        <!-- Module Badge (Clickable to change) -->
         <td class="py-3 px-4">
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${item.badge}">
+          <button 
+            onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${item.badge} hover:ring-1 hover:ring-indigo-400 transition"
+            title="Click to change module"
+          >
             <span>${item.categoryIcon}</span>
             <span class="truncate">${item.categoryName}</span>
-          </span>
+          </button>
         </td>
 
         <!-- Actions -->
@@ -1061,6 +1210,15 @@ function renderTableView(items) {
             >
               <i class="fa-regular fa-eye"></i>
               <span>Preview</span>
+            </button>
+
+            <!-- Change Module & Topic button -->
+            <button 
+              onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+              class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-300 transition text-[11px] border border-slate-700"
+              title="Change Module & Topic"
+            >
+              <i class="fa-solid fa-folder-tree"></i>
             </button>
 
             <!-- Download Button (STRICT PERMISSION) -->
@@ -1121,7 +1279,6 @@ function renderGridView(items) {
     const safeTitle = item.title.replace(/'/g, "\\'");
     const safeUrl = item.url.replace(/'/g, "\\'");
     const isTelugu = /[\u0C00-\u0C7F]/.test(item.title);
-    const showDownload = DOWNLOADS_ENABLED;
 
     return `
       <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-lg hover:border-slate-700 transition flex flex-col justify-between group ${item.isLocked ? 'ring-1 ring-amber-500/40' : ''}">
@@ -1136,12 +1293,23 @@ function renderGridView(items) {
                 class="row-checkbox rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
                 ${isSelected ? 'checked' : ''}
               >
-              <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700 truncate">
-                ${item.group || 'General'}
-              </span>
+              <button 
+                onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+                class="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 truncate"
+                title="Change Topic"
+              >
+                ${item.group || 'General'} <i class="fa-solid fa-pen text-[8px] text-slate-500"></i>
+              </button>
             </div>
             
             <div class="flex items-center gap-1">
+              <button 
+                onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+                class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-400 hover:text-indigo-300 flex items-center justify-center text-xs transition"
+                title="Change Module & Topic"
+              >
+                <i class="fa-solid fa-folder-tree"></i>
+              </button>
               <button 
                 onclick="showSingleQR('${safeTitle}', '${safeUrl}')"
                 class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs transition"
@@ -1176,8 +1344,11 @@ function renderGridView(items) {
           </div>
 
           <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-4">
-            <span>${item.categoryIcon}</span>
-            <span class="truncate">${item.categoryName}</span>
+            <button onclick="openEditFileModuleTopicModal('${safeUrl}', event)" class="hover:text-indigo-300 flex items-center gap-1">
+              <span>${item.categoryIcon}</span>
+              <span class="truncate">${item.categoryName}</span>
+              <i class="fa-solid fa-pen text-[9px] text-slate-500"></i>
+            </button>
           </div>
         </div>
 
@@ -1205,7 +1376,7 @@ function renderGridView(items) {
   }).join('');
 }
 
-// 14. ADD NEW RESOURCE WITH AUTO-TOPIC SELECTION
+// 16. ADD NEW RESOURCE WITH AUTO-TOPIC SELECTION
 function populateAddResourceModules() {
   const select = document.getElementById('newResourceModule');
   if (!select) return;
@@ -1305,9 +1476,8 @@ function submitNewResource(e) {
 
   let topic = customTopicVal || (topicSelectVal !== '__NEW_TOPIC__' ? topicSelectVal : 'General');
   
-  // Save topic permanently if new
   const catObj = CATEGORIES.find(c => c.id === moduleId);
-  if (catObj) {
+  if (catObj && customTopicVal) {
     if (!catObj.groups) catObj.groups = [];
     if (!catObj.groups.includes(topic)) {
       catObj.groups.push(topic);
@@ -1317,7 +1487,6 @@ function submitNewResource(e) {
     }
   }
 
-  // Convert preview URL
   let previewUrl = url;
   if (previewUrl.indexOf('docs.google.com/document/d/') !== -1) {
     previewUrl = previewUrl.split('/edit')[0] + '/preview';
@@ -1352,7 +1521,7 @@ function submitNewResource(e) {
   logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
 }
 
-// 15. MODULE & TOPIC CUSTOMIZER (RENAME, EMOJI, EDIT TOPICS)
+// 17. MODULE CUSTOMIZER (RENAME, EMOJI, EDIT TOPICS)
 function openAddModuleModal() {
   document.getElementById('moduleModalTitle').textContent = 'Create New Module';
   document.getElementById('editModuleTargetId').value = '';
@@ -1423,7 +1592,6 @@ function submitModuleConfig(e) {
   }
 
   if (targetId) {
-    // EDIT EXISTING MODULE
     moduleEdits[targetId] = { name, icon };
     localStorage.setItem('wlh_module_edits', JSON.stringify(moduleEdits));
     if (parsedTopics.length > 0) {
@@ -1433,7 +1601,6 @@ function submitModuleConfig(e) {
     showToast('Module "' + name + '" updated!');
     logActivity('Module Edit', 'Updated module ' + targetId);
   } else {
-    // CREATE BRAND NEW CUSTOM MODULE
     const newId = 'mod_' + Date.now();
     const newModule = {
       id: newId,
@@ -1478,7 +1645,7 @@ function deleteCurrentTargetModule() {
   logActivity('Module Delete', 'Deleted custom module ' + targetId);
 }
 
-// 16. MOVE & COPY MODALS
+// 18. MOVE & COPY MODALS
 function openMoveModal() {
   openMoveCopyDialog('move');
 }
@@ -1528,17 +1695,13 @@ function executeMoveCopyAction() {
   const urls = [...selectedItemUrls];
   if (activeMoveCopyAction === 'move') {
     urls.forEach(u => {
-      const it = ALL_ITEMS.find(i => i.url === u);
-      if (it) {
-        it.tab = targetMod;
-        it.group = targetTopic;
-        it.categoryName = catObj ? catObj.name : targetMod;
-        it.categoryIcon = catObj ? catObj.icon : '📄';
-      }
+      if (!fileMetadata[u]) fileMetadata[u] = {};
+      fileMetadata[u].customTab = targetMod;
+      fileMetadata[u].customGroup = targetTopic;
     });
+    localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
     showToast('Moved ' + urls.length + ' items to ' + targetMod);
   } else {
-    // Copy
     urls.forEach(u => {
       const orig = ALL_ITEMS.find(i => i.url === u);
       if (orig) {
@@ -1563,7 +1726,7 @@ function executeMoveCopyAction() {
   renderRecords();
 }
 
-// 17. QR CODE GENERATOR
+// 19. QR CODE GENERATOR
 function showSingleQR(title, url) {
   openQRWithUrl(title, url);
 }
@@ -1608,7 +1771,7 @@ function closeQRModal() {
   container.classList.add('scale-95');
 }
 
-// 18. MERGE STUDY PACK
+// 20. MERGE STUDY PACK
 function openMergeModal() {
   const urls = [...selectedItemUrls];
   if (urls.length === 0) return;
@@ -1674,7 +1837,7 @@ function generateMergedStudyPack() {
   showToast('Consolidated Study Pack generated!');
 }
 
-// 19. COLOR TAGGING
+// 21. COLOR TAGGING
 function openColorTagModal() {
   const palette = document.getElementById('colorTagPalette');
   palette.classList.remove('hidden');
@@ -1695,7 +1858,7 @@ function applyColorTag(color) {
   showToast('Color tag applied to ' + urls.length + ' files');
 }
 
-// 20. SETTINGS MODAL & TABS
+// 22. SETTINGS MODAL & TABS
 function openSettingsModal(tab) {
   switchSettingsTab(tab || 'profile');
   loadSettingsFormData();
@@ -1751,8 +1914,7 @@ function saveUserProfile(e) {
   CURRENT_USER.phone = document.getElementById('settingPhone').value.trim();
   CURRENT_USER.gmail = document.getElementById('settingEmail').value.trim();
 
-  // Update in ALL_USERS list
-  const idx = ALL_USERS.findIndex(u => u.userId === CURRENT_USER.userId);
+  const idx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === CURRENT_USER.userId.toLowerCase());
   if (idx !== -1) ALL_USERS[idx] = CURRENT_USER;
 
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
@@ -1785,7 +1947,7 @@ function saveSecurityCredentials(e) {
     CURRENT_USER.pin = newPin;
   }
 
-  const idx = ALL_USERS.findIndex(u => u.userId === CURRENT_USER.userId);
+  const idx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === CURRENT_USER.userId.toLowerCase());
   if (idx !== -1) ALL_USERS[idx] = CURRENT_USER;
 
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
@@ -1796,7 +1958,6 @@ function saveSecurityCredentials(e) {
 }
 
 function renderAuditView() {
-  // Online users
   const onlineContainer = document.getElementById('activeOnlineUsersList');
   onlineContainer.innerHTML = `
     <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
@@ -1811,7 +1972,6 @@ function renderAuditView() {
     </div>
   `;
 
-  // History table
   const tbody = document.getElementById('auditHistoryTableBody');
   tbody.innerHTML = auditLog.slice(0, 50).map(entry => `
     <tr>
@@ -1859,7 +2019,7 @@ function updateUserModuleAssignment(userId, val) {
   }
 }
 
-// 21. ENQUIRIES & SUGGESTIONS
+// 23. ENQUIRIES & SUGGESTIONS
 function submitSuggestion(e) {
   e.preventDefault();
   const subject = document.getElementById('suggestionSubject').value.trim();
@@ -1901,7 +2061,7 @@ function renderSuggestionsView() {
   `).join('');
 }
 
-// 22. UTILITIES & TOAST
+// 24. UTILITIES & TOAST
 function showToast(msg) {
   const toast = document.getElementById('toast');
   const toastMsg = document.getElementById('toastMsg');
