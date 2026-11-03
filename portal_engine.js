@@ -123,7 +123,18 @@ const WORSHIP_SCHEDULE = [
 let FIREBASE_APP = null;
 let FIREBASE_DB = null;
 let IS_FIREBASE_CONNECTED = false;
-let FIREBASE_CONFIG = JSON.parse(localStorage.getItem('l_support_firebase_config') || 'null');
+const BUILTIN_FIREBASE_CONFIG = {
+  projectId: "lsupport-e390b",
+  appId: "1:618338073550:web:869ca8596b7ee3c85b099f",
+  databaseURL: "https://lsupport-e390b-default-rtdb.firebaseio.com",
+  storageBucket: "lsupport-e390b.firebasestorage.app",
+  apiKey: "AIzaSyAfgM6MA4HNz8AdhVoQ8A5GlWtAX0_wVJE",
+  authDomain: "lsupport-e390b.firebaseapp.com",
+  messagingSenderId: "618338073550",
+  measurementId: "G-HMC8LN2T7J"
+};
+
+let FIREBASE_CONFIG = JSON.parse(localStorage.getItem('l_support_firebase_config') || 'null') || BUILTIN_FIREBASE_CONFIG;
 
 // State
 let activeView = 'home'; // 'resources' | 'myroom'
@@ -3213,7 +3224,7 @@ function deleteNotice(id) {
 // ========================================================
 function initFirebase() {
   if (!window.firebase) return;
-  const config = FIREBASE_CONFIG;
+  const config = FIREBASE_CONFIG || BUILTIN_FIREBASE_CONFIG;
   if (!config || !config.apiKey || !config.databaseURL) {
     updateFirebaseStatusBadge(false);
     return;
