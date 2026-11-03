@@ -14,7 +14,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <!-- QRCode.js (Fast offline QR generation) -->
+  <!-- QRCode.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <script>
@@ -42,35 +42,27 @@
   </script>
 
   <style>
-    /* Custom scrollbars */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: #475569; }
-    
     .custom-scrollbar::-webkit-scrollbar { width: 5px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 
-    /* Transitions */
     .sidebar-transition {
       transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Cute audio visualizer animation */
     @keyframes waveBar {
       0%, 100% { height: 6px; }
       50% { height: 28px; }
     }
-    .wave-bar {
-      animation: waveBar 1.2s ease-in-out infinite;
-    }
+    .wave-bar { animation: waveBar 1.2s ease-in-out infinite; }
     .wave-bar:nth-child(2) { animation-delay: 0.15s; }
     .wave-bar:nth-child(3) { animation-delay: 0.3s; }
     .wave-bar:nth-child(4) { animation-delay: 0.45s; }
     .wave-bar:nth-child(5) { animation-delay: 0.2s; }
     .wave-bar:nth-child(6) { animation-delay: 0.35s; }
-    .wave-bar:nth-child(7) { animation-delay: 0.5s; }
-    .wave-bar:nth-child(8) { animation-delay: 0.25s; }
   </style>
 </head>
 <body class="h-full font-sans antialiased bg-slate-950 text-slate-100 flex overflow-hidden select-none">
@@ -97,7 +89,6 @@
         </div>
       </div>
       
-      <!-- Close / Collapse Button -->
       <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition" title="Collapse Sidebar">
         <i class="fa-solid fa-angles-left text-xs"></i>
       </button>
@@ -133,6 +124,26 @@
       </div>
     </div>
 
+    <!-- MY ROOM (🔥 నూతన My Room బటన్) -->
+    <div class="px-3.5 pb-2 flex-shrink-0">
+      <button 
+        onclick="switchToMyRoom()" 
+        id="btnMyRoomSidebar"
+        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition bg-gradient-to-r from-purple-900/60 to-indigo-900/60 hover:from-purple-800/80 hover:to-indigo-800/80 border border-purple-500/30 text-white shadow-md shadow-purple-900/20 group"
+      >
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-purple-500/30 text-purple-300 flex items-center justify-center text-sm group-hover:scale-110 transition">
+            <i class="fa-solid fa-book-bookmark"></i>
+          </div>
+          <div class="text-left">
+            <div class="leading-tight">My Room</div>
+            <div class="text-[10px] text-purple-300/80 font-normal">Sermon & Ministry Journal</div>
+          </div>
+        </div>
+        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/30" id="myRoomRecordsBadge">0</span>
+      </button>
+    </div>
+
     <!-- Modules Header with Actions -->
     <div class="px-4 pb-2 flex items-center justify-between flex-shrink-0">
       <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Modules</span>
@@ -152,7 +163,7 @@
     <nav class="flex-1 overflow-y-auto px-3 space-y-1 custom-scrollbar pb-6" id="sidebarCategoryList">
       <!-- 'All Resources' Option -->
       <button 
-        onclick="selectCategory('all')" 
+        onclick="switchToResourcesTab('all')" 
         id="cat-btn-all"
         class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition group bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
       >
@@ -211,11 +222,11 @@
         </div>
       </div>
 
-      <!-- Right Actions: Search, Download Toggle, Add Resource, Settings, LOGOUT -->
+      <!-- Right Actions: Search, My Room, Download Toggle, Add Resource, Settings, LOGOUT -->
       <div class="flex items-center gap-2 flex-shrink-0">
         
         <!-- Search Input -->
-        <div class="relative w-32 sm:w-48 md:w-60">
+        <div class="relative w-32 sm:w-44 md:w-56" id="searchBarWrapper">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
           <input 
             type="text" 
@@ -229,16 +240,27 @@
           </button>
         </div>
 
+        <!-- Top My Room Shortcut -->
+        <button 
+          onclick="switchToMyRoom()" 
+          id="btnMyRoomTop"
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-bold transition"
+          title="Open My Room (Ministry Journal)"
+        >
+          <i class="fa-solid fa-book-bookmark text-xs text-purple-400"></i>
+          <span>My Room</span>
+        </button>
+
         <!-- Master Download Permission Toggle (Admin Controlled) -->
         <div class="hidden sm:flex items-center" id="downloadToggleWrapper">
           <button 
-            onclick="toggleMasterDownloads()" 
+            onclick="openAdminManagementModal()" 
             id="masterDownloadBtn"
             class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
-            title="Toggle Download Permission (Strict Admin Control)"
+            title="Admin Management (Downloads & Folder Permissions)"
           >
-            <i class="fa-solid fa-lock text-[10px]" id="downloadLockIcon"></i>
-            <span id="downloadBtnText">Download: OFF</span>
+            <i class="fa-solid fa-shield-halved text-[10px]" id="downloadLockIcon"></i>
+            <span id="downloadBtnText">Downloads: OFF</span>
           </button>
         </div>
 
@@ -254,7 +276,7 @@
         </button>
 
         <!-- View Mode Toggle -->
-        <div class="hidden lg:flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
+        <div class="hidden lg:flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700" id="viewModeWrapper">
           <button id="viewModeTableBtn" onclick="setViewMode('table')" class="p-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-xs transition" title="Table View">
             <i class="fa-solid fa-list"></i>
           </button>
@@ -263,28 +285,16 @@
           </button>
         </div>
 
-        <!-- Pinned Filter Toggle Button -->
-        <button 
-          id="pinnedFilterBtn"
-          onclick="togglePinnedFilter()"
-          class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition"
-          title="View starred resources"
-        >
-          <i class="fa-regular fa-star text-amber-400"></i>
-          <span class="hidden xl:inline">Saved</span>
-          <span id="pinnedCountBadge" class="hidden ml-1 px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">0</span>
-        </button>
-
         <!-- Top Settings Button -->
         <button 
           onclick="openSettingsModal('profile')"
           class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700"
-          title="Settings, Password & PIN, Zion, Suggestions"
+          title="Settings & Admin"
         >
           <i class="fa-solid fa-gear text-sm"></i>
         </button>
 
-        <!-- PROMINENT TOP LOGOUT BUTTON (🔥 కోరిన విధంగా Logout బటన్) -->
+        <!-- PROMINENT TOP LOGOUT BUTTON -->
         <button 
           onclick="handleLogout()"
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 text-xs font-bold transition flex-shrink-0"
@@ -298,7 +308,7 @@
     </header>
 
     <!-- Subgroups & Topics Filter Bar with Multi-Select by Topic -->
-    <div class="bg-slate-900/90 border-b border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-shrink-0 overflow-x-auto custom-scrollbar">
+    <div id="subgroupStripWrapper" class="bg-slate-900/90 border-b border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-shrink-0 overflow-x-auto custom-scrollbar">
       <div class="flex items-center gap-1.5 flex-nowrap" id="subgroupTabsContainer">
         <!-- Rendered by renderSubgroupTabs() -->
       </div>
@@ -311,57 +321,141 @@
       </div>
     </div>
 
-    <!-- Active Content Area: Table / Grid -->
+    <!-- Active Content Area: Table / Grid OR My Room -->
     <div class="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar" id="contentScrollView">
       
-      <!-- TABLE VIEW -->
-      <div id="tableViewWrapper" class="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr class="bg-slate-950/70 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-                <th class="py-3 px-3 w-10 text-center">
-                  <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer" title="Select All Visible">
-                </th>
-                <th class="py-3 px-2 w-10 text-center"><i class="fa-regular fa-star text-slate-500"></i></th>
-                <th class="py-3 px-4">Resource Title</th>
-                <th class="py-3 px-4 w-44">
-                  <div class="flex items-center justify-between">
-                    <span>Topic / Group</span>
-                    <button onclick="selectCurrentTopicItems()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold" title="Select all items in current topic">Select Topic</button>
-                  </div>
-                </th>
-                <th class="py-3 px-4 w-40">
-                  <div class="flex items-center justify-between">
-                    <span>Module</span>
-                    <button onclick="selectCurrentModuleItems()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold" title="Select all items in current module">Select Module</button>
-                  </div>
-                </th>
-                <th class="py-3 px-4 w-64 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody" class="divide-y divide-slate-800/60 text-slate-200">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
+      <!-- ======================================================== -->
+      <!-- VIEW 1: REGULAR RESOURCES TABLE & GRID VIEW             -->
+      <!-- ======================================================== -->
+      <div id="resourcesViewContainer">
+        
+        <!-- TABLE VIEW -->
+        <div id="tableViewWrapper" class="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-950/70 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+                  <th class="py-3 px-3 w-10 text-center">
+                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer" title="Select All Visible">
+                  </th>
+                  <th class="py-3 px-2 w-10 text-center"><i class="fa-regular fa-star text-slate-500"></i></th>
+                  <th class="py-3 px-4">Resource Title</th>
+                  <th class="py-3 px-4 w-48">
+                    <div class="flex items-center justify-between">
+                      <span>Topic / Group</span>
+                      <button onclick="selectCurrentTopicItems()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold" title="Select all items in current topic">Select Topic</button>
+                    </div>
+                  </th>
+                  <th class="py-3 px-4 w-44">
+                    <div class="flex items-center justify-between">
+                      <span>Module</span>
+                      <button onclick="selectCurrentModuleItems()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold" title="Select all items in current module">Select Module</button>
+                    </div>
+                  </th>
+                  <th class="py-3 px-4 w-68 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody" class="divide-y divide-slate-800/60 text-slate-200">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        <!-- GRID VIEW -->
+        <div id="gridViewWrapper" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div id="noResults" class="hidden py-16 flex flex-col items-center justify-center text-center">
+          <div class="w-16 h-16 rounded-2xl bg-slate-800 text-indigo-400 flex items-center justify-center text-2xl mb-4 border border-slate-700">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </div>
+          <h4 class="text-base font-bold text-white mb-1">No matching resources found</h4>
+          <p class="text-xs text-slate-400 mb-4">Try different search keywords or reset active filters.</p>
+          <button onclick="clearSearch()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
+            Reset Filters
+          </button>
+        </div>
+
       </div>
 
-      <!-- GRID VIEW -->
-      <div id="gridViewWrapper" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <!-- Rendered dynamically -->
-      </div>
+      <!-- ======================================================== -->
+      <!-- VIEW 2: MY ROOM (MINISTRY JOURNAL & SERMON USAGE)       -->
+      <!-- ======================================================== -->
+      <div id="myRoomViewContainer" class="hidden space-y-6">
+        
+        <!-- Room Banner Header -->
+        <div class="bg-gradient-to-r from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-500/30 p-6 rounded-3xl shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-purple-300 flex items-center justify-center text-2xl shadow-lg shadow-purple-900/30">
+              <i class="fa-solid fa-book-bookmark"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-xl font-extrabold text-white" id="myRoomTitle">My Room</h2>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30">Personal Study Log</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1" id="myRoomSubtitle">Track your preached sermons, stories, service times, and spiritual realizations</p>
+            </div>
+          </div>
 
-      <!-- EMPTY STATE -->
-      <div id="noResults" class="hidden py-16 flex flex-col items-center justify-center text-center">
-        <div class="w-16 h-16 rounded-2xl bg-slate-800 text-indigo-400 flex items-center justify-center text-2xl mb-4 border border-slate-700">
-          <i class="fa-solid fa-magnifying-glass"></i>
+          <div class="flex items-center gap-3">
+            <!-- Admin User Room Selector (Admin can inspect any user's room) -->
+            <div id="adminRoomUserSelectorWrapper" class="hidden flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
+              <span class="text-[11px] font-bold text-slate-400">View Room:</span>
+              <select id="adminRoomUserSelect" onchange="onAdminRoomUserChange(this.value)" class="bg-transparent text-xs font-bold text-purple-300 outline-none">
+                <!-- Populated via JS -->
+              </select>
+            </div>
+
+            <!-- + Record Sermon Usage Button -->
+            <button 
+              onclick="openRecordUsageModal()"
+              class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-lg shadow-purple-600/30 flex items-center gap-2 flex-shrink-0"
+            >
+              <i class="fa-solid fa-plus"></i>
+              <span>Record Sermon Usage</span>
+            </button>
+          </div>
         </div>
-        <h4 class="text-base font-bold text-white mb-1">No matching resources found</h4>
-        <p class="text-xs text-slate-400 mb-4">Try different search keywords or reset active filters.</p>
-        <button onclick="clearSearch()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
-          Reset Filters
-        </button>
+
+        <!-- Room Statistics Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
+            <div class="text-[11px] font-bold text-slate-400 uppercase">Sermons (Used)</div>
+            <div class="text-2xl font-black text-white mt-1" id="statSermonsUsed">0</div>
+          </div>
+          <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
+            <div class="text-[11px] font-bold text-slate-400 uppercase">Stories Paired</div>
+            <div class="text-2xl font-black text-purple-300 mt-1" id="statStoriesUsed">0</div>
+          </div>
+          <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
+            <div class="text-[11px] font-bold text-slate-400 uppercase">Sabbath Services</div>
+            <div class="text-2xl font-black text-emerald-400 mt-1" id="statSabbathCount">0</div>
+          </div>
+          <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
+            <div class="text-[11px] font-bold text-slate-400 uppercase">Feast Services</div>
+            <div class="text-2xl font-black text-amber-400 mt-1" id="statFeastCount">0</div>
+          </div>
+        </div>
+
+        <!-- Saved Ministry Records Timeline -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-purple-400"></i>
+              <span>Sermon (Used) History & Notes</span>
+            </h3>
+            <span class="text-xs text-slate-400" id="roomRecordsCountLabel">0 entries</span>
+          </div>
+
+          <div id="roomRecordsList" class="space-y-3">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -380,9 +474,15 @@
         <div class="h-4 w-px bg-slate-700"></div>
 
         <!-- Change Module & Topic for all selected -->
-        <button onclick="openMoveModal()" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Change Module & Topic for selected files">
+        <button onclick="openMoveModal()" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Assign multiple Modules & Topics">
           <i class="fa-solid fa-folder-tree text-amber-400"></i>
-          <span>Change Module/Topic</span>
+          <span>Multi-Module/Topic</span>
+        </button>
+
+        <!-- Direct Download (if permitted) -->
+        <button onclick="bulkDownload()" id="bulkDownloadBtn" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Direct Download Selected">
+          <i class="fa-solid fa-download text-emerald-400"></i>
+          <span>Direct Download</span>
         </button>
 
         <!-- Share -->
@@ -403,24 +503,6 @@
           <span>Hide</span>
         </button>
 
-        <!-- Download (if permitted) -->
-        <button onclick="bulkDownload()" id="bulkDownloadBtn" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Download selected">
-          <i class="fa-solid fa-download text-emerald-400"></i>
-          <span>Download</span>
-        </button>
-
-        <!-- Duplicate Copy -->
-        <button onclick="openCopyModal()" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Duplicate to another Module">
-          <i class="fa-regular fa-copy text-teal-400"></i>
-          <span>Duplicate</span>
-        </button>
-
-        <!-- Open all in tabs -->
-        <button onclick="bulkOpenTabs()" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Open All in New Tabs">
-          <i class="fa-solid fa-arrow-up-right-from-square text-violet-400"></i>
-          <span>Open</span>
-        </button>
-
         <!-- Merge in One Study Pack -->
         <button onclick="openMergeModal()" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Merge into One Study Pack">
           <i class="fa-solid fa-layer-group text-fuchsia-400"></i>
@@ -431,12 +513,6 @@
         <button onclick="openQRModal()" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Generate QR Code">
           <i class="fa-solid fa-qrcode text-amber-300"></i>
           <span>QR</span>
-        </button>
-
-        <!-- Color Tag -->
-        <button onclick="openColorTagModal()" class="p-2 hover:bg-slate-800 rounded-xl text-slate-200 hover:text-white transition flex items-center gap-1.5" title="Change Color Tag">
-          <i class="fa-solid fa-palette text-pink-400"></i>
-          <span>Color</span>
         </button>
 
         <!-- Pin / Star -->
@@ -456,51 +532,251 @@
   </main>
 
   <!-- ======================================================== -->
-  <!-- MODAL: CHANGE MODULE & TOPIC ON SINGLE FILE              -->
+  <!-- MODAL: RECORD SERMON USAGE IN MY ROOM                   -->
   <!-- ======================================================== -->
-  <div id="editFileModuleTopicModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
-    <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 p-6" id="editFileModuleTopicContainer">
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-lg">
-          <i class="fa-solid fa-folder-tree"></i>
+  <div id="recordUsageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg border border-purple-500/40 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[92vh] flex flex-col" id="recordUsageModalContainer">
+      
+      <!-- Modal Header -->
+      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center text-base">
+            <i class="fa-solid fa-pen-nib"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Record Sermon (Used)</h3>
+            <p class="text-[11px] text-slate-400">Log ministry details into My Room journal</p>
+          </div>
         </div>
-        <div>
-          <h3 class="text-base font-bold text-white">Change Module & Topic</h3>
-          <p class="text-xs text-slate-400 truncate" id="singleEditFileTitle">File Title</p>
-        </div>
+        <button onclick="closeRecordUsageModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
 
-      <form onsubmit="saveSingleFileModuleTopicChange(event)" class="space-y-4">
-        <input type="hidden" id="singleEditFileUrl" value="">
+      <!-- Form Body -->
+      <form onsubmit="saveSermonUsageRecord(event)" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1 text-xs">
         
+        <!-- 1. Select Sermon File -->
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Target Module *</label>
-          <select id="singleEditModuleSelect" onchange="onSingleEditModuleChange()" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
-            <!-- Populated via JS -->
+          <label class="block font-bold text-slate-300 mb-1">1. Select Sermon (Preached / Studied) *</label>
+          <select id="usageSermonSelect" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <!-- Populated via JS with all Sermon Room files -->
           </select>
         </div>
 
+        <!-- 2. Select Story File -->
         <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-bold text-slate-300">Target Topic / Subgroup *</label>
-            <button type="button" onclick="toggleSingleEditCustomTopic()" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300">
+          <label class="block font-bold text-slate-300 mb-1">2. Select Story (Faith Story / CSB) *</label>
+          <select id="usageStorySelect" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <!-- Populated via JS with all Stories files -->
+          </select>
+        </div>
+
+        <!-- 3. Worship Occasion & 4. Time -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-300 mb-1">3. Worship Occasion *</label>
+            <select id="usageWorshipSelect" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+              <option value="Tuesday">Tuesday</option>
+              <option value="Sabbath" selected>Sabbath</option>
+              <option value="Passover">Passover</option>
+              <option value="Unleavened Bread">Unleavened Bread</option>
+              <option value="Resurrection">Resurrection</option>
+              <option value="Ascension">Ascension</option>
+              <option value="Pentecost">Pentecost</option>
+              <option value="Trumpet">Trumpet</option>
+              <option value="Atonement">Atonement</option>
+              <option value="Tabernacle">Tabernacle</option>
+              <option value="Father Birth Day">Father Birth Day</option>
+              <option value="Father Ascension Day">Father Ascension Day</option>
+              <option value="New Jerusalem Day">New Jerusalem Day</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-300 mb-1">4. Service Time *</label>
+            <select id="usageTimeSelect" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+              <option value="Morning">Morning</option>
+              <option value="Afternoon">Afternoon</option>
+              <option value="Evening">Evening</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Service Date -->
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">Service Date *</label>
+          <input type="date" id="usageDateInput" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+        </div>
+
+        <!-- 5. Realization / Note -->
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">5. Realization / Spiritual Notes *</label>
+          <textarea id="usageRealizationInput" rows="4" required placeholder="Write your spiritual realizations, congregation feedback, and lessons learned..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none resize-none"></textarea>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeRecordUsageModal()" class="px-4 py-2 bg-slate-800 text-slate-400 text-xs font-bold rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-600/30">
+            Save to My Room
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: USED HISTORY ON A FILE (WHO USED THIS FILE)      -->
+  <!-- ======================================================== -->
+  <div id="usedFileHistoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg border border-amber-500/40 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[85vh] flex flex-col" id="usedFileHistoryContainer">
+      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center text-base">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">File Usage History</h3>
+            <p class="text-[11px] text-slate-400 truncate max-w-xs" id="usedHistoryFileTitle">File Name</p>
+          </div>
+        </div>
+        <button onclick="closeFileUsageHistoryModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-3" id="usedHistoryRecordsContainer">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: MULTI-MODULE & TOPIC ASSIGNMENT FOR A FILE       -->
+  <!-- ======================================================== -->
+  <div id="editFileModuleTopicModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg border border-indigo-500/40 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[90vh] flex flex-col" id="editFileModuleTopicContainer">
+      
+      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center text-base">
+            <i class="fa-solid fa-folder-tree"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Assign Multiple Modules & Topics</h3>
+            <p class="text-[11px] text-slate-400 truncate max-w-xs" id="singleEditFileTitle">File Title</p>
+          </div>
+        </div>
+        <button onclick="closeEditFileModuleTopicModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="saveMultiModuleTopicAssignment(event)" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1 text-xs">
+        <input type="hidden" id="singleEditFileUrl" value="">
+
+        <!-- Modules Multi-Select Checkboxes -->
+        <div>
+          <label class="block font-bold text-slate-300 mb-1.5">Select Modules (This file will show in all selected modules) *</label>
+          <div class="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto bg-slate-950 p-3 rounded-2xl border border-slate-800" id="multiModulesCheckboxList">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+        <!-- Topics Multi-Select Checkboxes -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block font-bold text-slate-300">Select Topics / Subgroups *</label>
+            <button type="button" onclick="toggleMultiEditCustomTopic()" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300">
               + New Topic
             </button>
           </div>
-          <select id="singleEditTopicSelect" onchange="onSingleEditTopicSelectChange()" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+          <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto bg-slate-950 p-3 rounded-2xl border border-slate-800" id="multiTopicsCheckboxList">
             <!-- Populated via JS -->
-          </select>
-
-          <div id="singleEditCustomTopicWrapper" class="hidden mt-2">
-            <input type="text" id="singleEditCustomTopicInput" placeholder="Enter new custom topic name..." class="w-full px-3 py-2 bg-indigo-950/40 border border-indigo-500/50 rounded-xl text-xs text-white outline-none">
+          </div>
+          <div id="multiEditCustomTopicWrapper" class="hidden mt-2">
+            <input type="text" id="multiEditCustomTopicInput" placeholder="Enter new custom topic name..." class="w-full px-3 py-2 bg-indigo-950/40 border border-indigo-500/50 rounded-xl text-xs text-white outline-none">
           </div>
         </div>
 
         <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
           <button type="button" onclick="closeEditFileModuleTopicModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-xl">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl">Save Changes</button>
+          <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30">
+            Save Multi-Assignments
+          </button>
         </div>
       </form>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ADMIN MANAGEMENT (DOWNLOADS & PERMISSIONS PANEL)  -->
+  <!-- ======================================================== -->
+  <div id="adminManagementModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-3xl border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[92vh] flex flex-col" id="adminManagementContainer">
+      
+      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center justify-center text-base">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Admin Management Panel</h3>
+            <p class="text-[11px] text-slate-400">User download permissions, module security, and assignments</p>
+          </div>
+        </div>
+        <button onclick="closeAdminManagementModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-xs">
+        
+        <!-- Master Download Switch -->
+        <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <h4 class="font-bold text-white text-sm">Global Master Download Switch</h4>
+            <p class="text-slate-400 text-[11px] mt-0.5">Strict security control. If turned OFF, NO download buttons appear anywhere in the portal.</p>
+          </div>
+          <button onclick="toggleMasterDownloads()" id="adminModalMasterDownloadToggle" class="px-5 py-2.5 rounded-xl font-extrabold text-xs transition border border-rose-500/40 bg-rose-500/20 text-rose-300">
+            Downloads: OFF
+          </button>
+        </div>
+
+        <!-- Per-User Download & Module Permissions -->
+        <div>
+          <h4 class="font-bold text-white mb-2 text-sm">Registered Users Download & Folder Permissions</h4>
+          <p class="text-slate-400 text-[11px] mb-3">Control which leaders can download documents and which modules they can view.</p>
+          
+          <div class="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
+                <tr>
+                  <th class="py-2.5 px-3">User</th>
+                  <th class="py-2.5 px-3">Zion</th>
+                  <th class="py-2.5 px-3">Assigned Folders</th>
+                  <th class="py-2.5 px-3 text-right">Download Permission</th>
+                </tr>
+              </thead>
+              <tbody id="adminUserPermissionsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Folder/Module Download Permissions -->
+        <div>
+          <h4 class="font-bold text-white mb-2 text-sm">Module-Level Download Rules</h4>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="adminModuleRulesGrid">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 
@@ -510,7 +786,6 @@
   <div id="filePreviewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-2 sm:p-4">
     <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-6xl h-[94vh] flex flex-col overflow-hidden border border-slate-700 transform scale-95 transition-transform duration-300" id="previewModalContainer">
       
-      <!-- Modal Top Header -->
       <div class="h-14 sm:h-16 px-4 sm:px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between gap-3 flex-shrink-0">
         
         <div class="flex items-center gap-3 min-w-0">
@@ -526,10 +801,9 @@
           </div>
         </div>
 
-        <!-- Zoom Controls & Actions -->
+        <!-- Zoom Controls & Direct Download -->
         <div class="flex items-center gap-2 flex-shrink-0">
           
-          <!-- Zoom Controls for Documents/PDFs -->
           <div class="hidden sm:flex items-center bg-slate-800 border border-slate-700 rounded-xl p-1 gap-1">
             <button onclick="changeZoom(-0.1)" class="w-7 h-7 rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs" title="Zoom Out (-)">
               <i class="fa-solid fa-minus"></i>
@@ -543,17 +817,16 @@
             </button>
           </div>
 
-          <!-- Download Button (STRICT PERMISSION: Hidden if downloads disabled!) -->
-          <a 
+          <!-- DIRECT DOWNLOAD BUTTON (🔥 డౌన్‌లోడ్ బటన్ - నేరుగా ఫైల్ డౌన్‌లోడ్ అవుతుంది) -->
+          <button 
             id="modalDownloadBtn" 
-            href="#" 
-            download
-            class="hidden px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-            title="Download Document"
+            onclick="triggerCurrentModalDirectDownload()"
+            class="hidden px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
+            title="Direct Download File"
           >
             <i class="fa-solid fa-download"></i>
-            <span class="hidden md:inline">Download</span>
-          </a>
+            <span class="hidden md:inline">Direct Download</span>
+          </button>
 
           <!-- Copy Link -->
           <button 
@@ -565,7 +838,7 @@
             <span>Copy</span>
           </button>
 
-          <!-- Open in New Tab -->
+          <!-- External Tab -->
           <a 
             id="modalExternalLink" 
             href="#" 
@@ -592,17 +865,13 @@
 
       <!-- Preview Body Container -->
       <div class="flex-1 bg-slate-950 relative overflow-hidden flex flex-col items-center justify-center" id="previewBodyWrapper">
-        
-        <!-- Document Iframe Loader -->
         <div id="iframeLoader" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-10 transition-opacity">
           <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
           <p class="text-xs text-slate-400 font-semibold">Opening in-app preview securely...</p>
         </div>
 
-        <!-- Cute & Colourful Audio Player View -->
         <div id="cuteAudioPlayerView" class="hidden w-full max-w-lg p-6 flex flex-col items-center justify-center z-20">
           <div class="w-full rounded-3xl bg-gradient-to-br from-indigo-900/90 via-purple-900/80 to-slate-900 p-6 border border-purple-500/30 shadow-2xl relative overflow-hidden">
-            
             <div class="flex items-center justify-between mb-6">
               <span class="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5">
                 <i class="fa-solid fa-music"></i> Audio Player
@@ -613,7 +882,6 @@
                 <div class="w-1.5 bg-indigo-400 rounded-full wave-bar"></div>
                 <div class="w-1.5 bg-cyan-400 rounded-full wave-bar"></div>
                 <div class="w-1.5 bg-pink-400 rounded-full wave-bar"></div>
-                <div class="w-1.5 bg-purple-400 rounded-full wave-bar"></div>
               </div>
             </div>
 
@@ -634,7 +902,6 @@
           </div>
         </div>
 
-        <!-- Document / PDF Iframe View with Zoom Support -->
         <div id="iframeZoomContainer" class="w-full h-full relative overflow-auto flex items-center justify-center origin-top-left transition-transform duration-200">
           <iframe 
             id="previewIframe" 
@@ -645,27 +912,24 @@
             allowfullscreen
           ></iframe>
         </div>
-
       </div>
 
     </div>
   </div>
 
   <!-- ======================================================== -->
-  <!-- MODAL: ADD / EDIT RESOURCE                               -->
+  <!-- MODAL: ADD NEW RESOURCE                                  -->
   <!-- ======================================================== -->
   <div id="addResourceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
     <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300" id="addResourceModalContainer">
-      
-      <!-- Modal Header -->
       <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
             <i class="fa-solid fa-file-circle-plus"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-white" id="resourceModalHeading">Add New Resource</h3>
-            <p class="text-[11px] text-slate-400">Embed documents, drive files, or video/audio links</p>
+            <h3 class="text-base font-bold text-white">Add New Resource</h3>
+            <p class="text-[11px] text-slate-400">Embed documents, drive files, or media links</p>
           </div>
         </div>
         <button onclick="closeAddResourceModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
@@ -673,10 +937,7 @@
         </button>
       </div>
 
-      <!-- Form Body -->
       <form id="addResourceForm" onsubmit="submitNewResource(event)" class="p-6 space-y-4">
-        
-        <!-- Module Dropdown with Quick Add Module option -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold text-slate-300">Target Module *</label>
@@ -690,11 +951,9 @@
             onchange="onModuleChangeInForm()"
             class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
           >
-            <!-- Generated via JS -->
           </select>
         </div>
 
-        <!-- Automatic Topic Dropdown with '+ Add New Topic' option -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold text-slate-300">Topic / Subgroup *</label>
@@ -712,10 +971,8 @@
             onchange="onTopicSelectChange()"
             class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
           >
-            <!-- Populated dynamically via JS -->
           </select>
 
-          <!-- Custom Topic Input (Visible when '+ Add New Topic' is selected) -->
           <div id="customTopicInputWrapper" class="hidden mt-2">
             <input 
               type="text" 
@@ -723,11 +980,9 @@
               placeholder="Enter new topic name..."
               class="w-full px-3 py-2 bg-indigo-950/40 border border-indigo-500/50 focus:border-indigo-400 rounded-xl text-xs sm:text-sm text-white outline-none transition"
             >
-            <p class="text-[11px] text-slate-400 mt-1">This new topic will be permanently saved to this module.</p>
           </div>
         </div>
 
-        <!-- Resource Title -->
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Resource / File Title *</label>
           <input 
@@ -739,7 +994,6 @@
           >
         </div>
 
-        <!-- Resource URL -->
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">File or Link URL *</label>
           <input 
@@ -749,10 +1003,8 @@
             placeholder="https://docs.google.com/document/d/... or Drive Link"
             class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
           >
-          <p class="text-[11px] text-slate-400 mt-1">Google Docs, Drive PDFs, Videos, YouTube, or web links work automatically.</p>
         </div>
 
-        <!-- Modal Footer Actions -->
         <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2.5">
           <button 
             type="button" 
@@ -768,18 +1020,15 @@
             Save & Add Resource
           </button>
         </div>
-
       </form>
     </div>
   </div>
 
   <!-- ======================================================== -->
-  <!-- MODAL: ADD / EDIT MODULE (WITH RENAME & EMOJI CUSTOMIZER)-->
+  <!-- MODAL: ADD / EDIT MODULE                                 -->
   <!-- ======================================================== -->
   <div id="addModuleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
     <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300" id="addModuleModalContainer">
-      
-      <!-- Modal Header -->
       <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
@@ -795,11 +1044,8 @@
         </button>
       </div>
 
-      <!-- Form Body -->
       <form id="addModuleForm" onsubmit="submitModuleConfig(event)" class="p-6 space-y-4">
         <input type="hidden" id="editModuleTargetId" value="">
-
-        <!-- Module Name -->
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Module Name *</label>
           <input 
@@ -811,7 +1057,6 @@
           >
         </div>
 
-        <!-- Module Icon / Emoji -->
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Module Icon / Emoji *</label>
           <div class="flex items-center gap-2">
@@ -836,7 +1081,6 @@
           </div>
         </div>
 
-        <!-- Topics in Module -->
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Topics / Subgroups (comma-separated)</label>
           <textarea 
@@ -847,7 +1091,6 @@
           ></textarea>
         </div>
 
-        <!-- Modal Footer Actions -->
         <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
           <button 
             type="button" 
@@ -874,18 +1117,16 @@
             </button>
           </div>
         </div>
-
       </form>
     </div>
   </div>
 
   <!-- ======================================================== -->
-  <!-- MODAL: TOP SETTINGS & USER PROFILE & ADMIN CONTROLS     -->
+  <!-- MODAL: TOP SETTINGS & USER PROFILE                       -->
   <!-- ======================================================== -->
   <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
     <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="settingsModalContainer">
       
-      <!-- Settings Header with Tabs -->
       <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
@@ -901,16 +1142,13 @@
         </button>
       </div>
 
-      <!-- Settings Navigation Tabs -->
       <div class="flex items-center gap-2 px-6 pt-3 border-b border-slate-800 bg-slate-950/40 text-xs font-bold overflow-x-auto flex-shrink-0">
         <button onclick="switchSettingsTab('profile')" id="stab-profile" class="px-3 py-2 border-b-2 border-indigo-500 text-indigo-400">Profile & Zion</button>
         <button onclick="switchSettingsTab('security')" id="stab-security" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-white">Password & PIN</button>
-        <button onclick="switchSettingsTab('permissions')" id="stab-permissions" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-white">Admin Permissions</button>
         <button onclick="switchSettingsTab('audit')" id="stab-audit" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-white">Online & History</button>
         <button onclick="switchSettingsTab('suggestion')" id="stab-suggestion" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-white">Enquiries</button>
       </div>
 
-      <!-- Settings Body Scrollable -->
       <div class="p-6 flex-1 overflow-y-auto custom-scrollbar text-xs">
         
         <!-- TAB 1: Profile & Zion -->
@@ -950,7 +1188,7 @@
         <div id="tabContent-security" class="hidden space-y-4">
           <form onsubmit="saveSecurityCredentials(event)" class="space-y-4">
             <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300">
-              <i class="fa-solid fa-shield-halved mr-1"></i> Personal 6-Digit PIN is required for unlocking restricted files and administrative settings.
+              <i class="fa-solid fa-shield-halved mr-1"></i> Personal 6-Digit PIN is required for unlocking restricted files.
             </div>
             
             <div class="grid grid-cols-2 gap-3">
@@ -977,12 +1215,11 @@
             <div>
               <label class="block font-bold text-slate-300 mb-1">New 6-Digit Personal PIN</label>
               <div class="relative max-w-xs">
-                <input type="password" id="settingNewPin" maxlength="6" pattern="[0-9]{6}" placeholder="e.g. 742766" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none tracking-widest text-center text-lg font-bold">
+                <input type="password" id="settingNewPin" maxlength="6" pattern="[0-9]{6}" placeholder="742766" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none tracking-widest text-center text-lg font-bold">
                 <button type="button" onclick="togglePasswordVisibility('settingNewPin', 'eyeSettingPin')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
                   <i id="eyeSettingPin" class="fa-solid fa-eye text-xs"></i>
                 </button>
               </div>
-              <p class="text-[11px] text-slate-400 mt-1">Must be exactly 6 digits (numbers only).</p>
             </div>
 
             <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition">
@@ -991,28 +1228,7 @@
           </form>
         </div>
 
-        <!-- TAB 3: Admin Permissions & User Assignments -->
-        <div id="tabContent-permissions" class="hidden space-y-4">
-          <div class="p-4 bg-slate-800/80 rounded-2xl border border-slate-700 flex items-center justify-between">
-            <div>
-              <div class="font-bold text-white text-sm">Global File Download Permission</div>
-              <p class="text-slate-400 text-[11px] mt-0.5">When disabled, NO user can download documents or see download links anywhere.</p>
-            </div>
-            <button onclick="toggleMasterDownloads()" id="settingMasterDownloadToggle" class="px-4 py-2 rounded-xl font-extrabold text-xs transition border border-rose-500/40 bg-rose-500/20 text-rose-300">
-              Downloads: OFF
-            </button>
-          </div>
-
-          <div class="pt-2">
-            <h4 class="font-bold text-white mb-2">Registered User Module Assignments</h4>
-            <p class="text-slate-400 text-[11px] mb-3">Assign specific modules to users so they only see authorized folders.</p>
-            <div id="userAssignmentsList" class="space-y-2">
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 4: Online Users & Audit History Log -->
+        <!-- TAB 3: Online Users & Audit History Log -->
         <div id="tabContent-audit" class="hidden space-y-4">
           <div>
             <h4 class="font-bold text-white mb-2 flex items-center gap-2">
@@ -1020,7 +1236,6 @@
               Currently Active Users
             </h4>
             <div id="activeOnlineUsersList" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <!-- Rendered via JS -->
             </div>
           </div>
 
@@ -1040,14 +1255,13 @@
                   </tr>
                 </thead>
                 <tbody id="auditHistoryTableBody" class="divide-y divide-slate-800/60 text-slate-300">
-                  <!-- Rendered via JS -->
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        <!-- TAB 5: Enquiry & Suggestion Box -->
+        <!-- TAB 4: Enquiry & Suggestion Box -->
         <div id="tabContent-suggestion" class="hidden space-y-4">
           <form onsubmit="submitSuggestion(event)" class="space-y-3">
             <div class="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-indigo-300">
@@ -1055,7 +1269,7 @@
             </div>
             <div>
               <label class="block font-bold text-slate-300 mb-1">Topic / Subject</label>
-              <input type="text" id="suggestionSubject" required placeholder="e.g. Song request for upcoming Sabbath" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none">
+              <input type="text" id="suggestionSubject" required placeholder="Question or suggestion title" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none">
             </div>
             <div>
               <label class="block font-bold text-slate-300 mb-1">Message / Detail</label>
@@ -1066,11 +1280,9 @@
             </button>
           </form>
 
-          <!-- Admin view of received suggestions -->
           <div id="adminSuggestionsBox" class="pt-4 border-t border-slate-800">
             <h4 class="font-bold text-white mb-2">Received Suggestions & Enquiries</h4>
             <div id="receivedSuggestionsList" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-              <!-- Rendered via JS -->
             </div>
           </div>
         </div>
@@ -1092,7 +1304,6 @@
       <p class="text-xs text-slate-400 mb-4 truncate" id="qrResourceTitle">Scan on mobile to open instant preview</p>
       
       <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-4" id="qrcodeCanvasContainer">
-        <!-- Rendered by QRCode.js -->
       </div>
 
       <div class="flex items-center justify-center gap-2">
@@ -1124,7 +1335,6 @@
           <input type="text" id="mergePackTitle" value="Consolidated Worship Study Pack" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
         </div>
         <div class="max-h-40 overflow-y-auto bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs space-y-1.5" id="mergeSelectedListPreview">
-          <!-- Populated via JS -->
         </div>
       </div>
 
@@ -1132,38 +1342,6 @@
         <button onclick="closeMergeModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-xl">Cancel</button>
         <button onclick="generateMergedStudyPack()" class="px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold rounded-xl shadow-sm">
           Create & Open Pack
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ======================================================== -->
-  <!-- MODAL: MOVE / COPY ITEMS                                 -->
-  <!-- ======================================================== -->
-  <div id="moveCopyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
-    <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 p-6" id="moveCopyModalContainer">
-      <h3 class="text-base font-bold text-white mb-1" id="moveCopyModalTitle">Move Resources</h3>
-      <p class="text-xs text-slate-400 mb-4">Choose destination module and topic</p>
-
-      <div class="space-y-3 mb-5">
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Destination Module *</label>
-          <select id="moveTargetModule" onchange="onMoveModuleChange()" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
-            <!-- Populated via JS -->
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Destination Topic *</label>
-          <select id="moveTargetTopic" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
-            <!-- Populated via JS -->
-          </select>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-2">
-        <button onclick="closeMoveCopyModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-xl">Cancel</button>
-        <button onclick="executeMoveCopyAction()" id="executeMoveCopyBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl">
-          Apply Move
         </button>
       </div>
     </div>
@@ -1226,17 +1404,17 @@
         </button>
       </div>
 
-      <!-- SIGN IN FORM WITH EYE TOGGLE BUTTONS -->
+      <!-- SIGN IN FORM (NO 1-CLICK DEMO BUTTON) -->
       <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-3.5">
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1">User ID *</label>
-          <input type="text" id="loginUserId" required placeholder="surya11008" class="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
+          <input type="text" id="loginUserId" required placeholder="User ID" class="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1">Password *</label>
           <div class="relative">
-            <input type="password" id="loginPassword" required placeholder="Enter Password" class="w-full pl-3.5 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
+            <input type="password" id="loginPassword" required placeholder="Password" class="w-full pl-3.5 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
             <button type="button" onclick="togglePasswordVisibility('loginPassword', 'eyeLoginPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1" title="Show/Hide Password">
               <i id="eyeLoginPassword" class="fa-solid fa-eye text-xs"></i>
             </button>
@@ -1256,29 +1434,24 @@
         <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-indigo-600/30 mt-2">
           Sign In to Portal
         </button>
-
-        <!-- Quick 1-Click Fast Login Button -->
-        <button type="button" onclick="quickDemoAdminLogin()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-indigo-400 font-bold text-xs rounded-xl transition border border-slate-700 flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-bolt"></i> 1-Click Fast Login (surya11008 Admin)
-        </button>
       </form>
 
-      <!-- REGISTER FORM (CREATE ID & PASSWORD WITH EYE TOGGLE) -->
+      <!-- REGISTER FORM (CLEAN PLACEHOLDERS - NO 'EXAMPLE' WORDS) -->
       <form id="registerForm" onsubmit="handleRegisterSubmit(event)" class="hidden space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
         <div>
           <label class="block text-[11px] font-bold text-slate-300 mb-1">Full Name *</label>
-          <input type="text" id="regFullName" required placeholder="Your Full Name" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+          <input type="text" id="regFullName" required placeholder="Full Name" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
         </div>
         <div>
           <label class="block text-[11px] font-bold text-slate-300 mb-1">User ID *</label>
-          <input type="text" id="regUserId" required placeholder="Choose unique User ID" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+          <input type="text" id="regUserId" required placeholder="User ID" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
         </div>
         
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-bold text-slate-300 mb-1">Password *</label>
             <div class="relative">
-              <input type="password" id="regPassword" required placeholder="Min 6 chars" class="w-full pl-3 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+              <input type="password" id="regPassword" required placeholder="Password" class="w-full pl-3 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
               <button type="button" onclick="togglePasswordVisibility('regPassword', 'eyeRegPassword')" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
                 <i id="eyeRegPassword" class="fa-solid fa-eye text-xs"></i>
               </button>
@@ -1287,7 +1460,7 @@
           <div>
             <label class="block text-[11px] font-bold text-slate-300 mb-1">Password Again *</label>
             <div class="relative">
-              <input type="password" id="regPasswordAgain" required placeholder="Re-enter password" class="w-full pl-3 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+              <input type="password" id="regPasswordAgain" required placeholder="Confirm Password" class="w-full pl-3 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
               <button type="button" onclick="togglePasswordVisibility('regPasswordAgain', 'eyeRegPasswordAgain')" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
                 <i id="eyeRegPasswordAgain" class="fa-solid fa-eye text-xs"></i>
               </button>
@@ -1298,27 +1471,27 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-bold text-slate-300 mb-1">Phone Number *</label>
-            <input type="tel" id="regPhone" required placeholder="+91..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <input type="tel" id="regPhone" required placeholder="Phone Number" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
           </div>
           <div>
             <label class="block text-[11px] font-bold text-slate-300 mb-1">Gmail *</label>
-            <input type="email" id="regGmail" required placeholder="example@gmail.com" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <input type="email" id="regGmail" required placeholder="Gmail Address" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
           </div>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-bold text-slate-300 mb-1">Zion (Church) *</label>
-            <input type="text" id="regZion" required placeholder="e.g. Hyderabad Zion" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <input type="text" id="regZion" required placeholder="Zion Church Name" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
           </div>
           <div>
             <label class="block text-[11px] font-bold text-slate-300 mb-1">Area / Zone *</label>
-            <input type="text" id="regArea" required placeholder="e.g. South Zone" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <input type="text" id="regArea" required placeholder="Area / Zone" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
           </div>
         </div>
         <div>
           <label class="block text-[11px] font-bold text-slate-300 mb-1">Personal PIN (6 Digits) *</label>
           <div class="relative">
-            <input type="password" id="regPin" required maxlength="6" pattern="[0-9]{6}" placeholder="6-digit numbers only" class="w-full pl-3 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-xl text-center text-sm tracking-widest text-white outline-none font-bold">
+            <input type="password" id="regPin" required maxlength="6" pattern="[0-9]{6}" placeholder="6-digit PIN" class="w-full pl-3 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-xl text-center text-sm tracking-widest text-white outline-none font-bold">
             <button type="button" onclick="togglePasswordVisibility('regPin', 'eyeRegPin')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
               <i id="eyeRegPin" class="fa-solid fa-eye text-xs"></i>
             </button>
@@ -1338,18 +1511,6 @@
     <div class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 text-xs font-semibold">
       <span id="toastMsg">Notification message</span>
     </div>
-  </div>
-
-  <!-- Color Tag Palette Popup -->
-  <div id="colorTagPalette" class="hidden fixed z-50 bg-slate-900 border border-slate-700 p-2 rounded-2xl shadow-2xl flex items-center gap-2">
-    <button onclick="applyColorTag('#ef4444')" class="w-6 h-6 rounded-full bg-rose-500 hover:scale-110 transition"></button>
-    <button onclick="applyColorTag('#f97316')" class="w-6 h-6 rounded-full bg-orange-500 hover:scale-110 transition"></button>
-    <button onclick="applyColorTag('#eab308')" class="w-6 h-6 rounded-full bg-yellow-500 hover:scale-110 transition"></button>
-    <button onclick="applyColorTag('#10b981')" class="w-6 h-6 rounded-full bg-emerald-500 hover:scale-110 transition"></button>
-    <button onclick="applyColorTag('#06b6d4')" class="w-6 h-6 rounded-full bg-cyan-500 hover:scale-110 transition"></button>
-    <button onclick="applyColorTag('#6366f1')" class="w-6 h-6 rounded-full bg-indigo-500 hover:scale-110 transition"></button>
-    <button onclick="applyColorTag('#a855f7')" class="w-6 h-6 rounded-full bg-purple-500 hover:scale-110 transition"></button>
-    <button onclick="applyColorTag('')" class="w-6 h-6 rounded-full bg-slate-700 hover:scale-110 transition text-[10px] text-slate-300 flex items-center justify-center">✕</button>
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
