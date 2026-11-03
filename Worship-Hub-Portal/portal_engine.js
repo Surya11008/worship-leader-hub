@@ -37,7 +37,7 @@ const DEFAULT_ADMIN = {
 let ALL_USERS = JSON.parse(localStorage.getItem('wlh_users') || 'null');
 if (!ALL_USERS || ALL_USERS.length === 0) {
   ALL_USERS = [DEFAULT_ADMIN];
-  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS)); fbSync('users', ALL_USERS);
 } else {
   const adminIdx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === 'surya11008');
   if (adminIdx !== -1) {
@@ -84,8 +84,49 @@ let auditLog = JSON.parse(localStorage.getItem('wlh_audit_log') || '[]');
 let suggestionsList = JSON.parse(localStorage.getItem('wlh_suggestions') || '[]');
 let myRoomRecords = JSON.parse(localStorage.getItem('wlh_my_room_records') || '[]');
 
+
+// Notices storage
+let NOTICES_LIST = JSON.parse(localStorage.getItem('l_support_notices') || 'null');
+if (!NOTICES_LIST || NOTICES_LIST.length === 0) {
+  NOTICES_LIST = [
+    {
+      id: 'not_1',
+      title: 'Welcome to L Support Central Portal',
+      category: 'Important',
+      color: 'indigo',
+      content: 'Welcome to the updated ministry portal. You can now access all sermons, faith stories, and church media from your unified dashboard.',
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      author: 'Admin'
+    },
+    {
+      id: 'not_2',
+      title: 'Sermon & Story Preaching Logs',
+      category: 'Worship Update',
+      color: 'amber',
+      content: 'Please remember to log your preached sermons and paired faith stories in your personal Room after every service to maintain accurate ministry realization journals.',
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      author: 'Admin'
+    }
+  ];
+  localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
+}
+
+// Worship schedule standard list
+const WORSHIP_SCHEDULE = [
+  { day: 'Tuesday Service', time: '07:30 PM (Evening)', badge: 'Weekly', desc: 'Weekly Tuesday Third-Day Evening Service', icon: '⛪', color: 'indigo' },
+  { day: 'Sabbath Day (Morning)', time: '10:00 AM', badge: 'Weekly', desc: 'Fourth Commandment - Holy Sabbath Morning Worship', icon: '🕊️', color: 'purple' },
+  { day: 'Sabbath Day (Afternoon)', time: '03:00 PM', badge: 'Weekly', desc: 'Fourth Commandment - Holy Sabbath Afternoon Worship', icon: '📖', color: 'purple' },
+  { day: 'Feasts of God', time: 'According to Sacred Calendar', badge: 'Annual Feasts', desc: 'Passover, Unleavened Bread, Resurrection, Pentecost, Trumpets, Atonement, Tabernacles', icon: '🎺', color: 'amber' }
+];
+
+// Firebase Connection State
+let FIREBASE_APP = null;
+let FIREBASE_DB = null;
+let IS_FIREBASE_CONNECTED = false;
+let FIREBASE_CONFIG = JSON.parse(localStorage.getItem('l_support_firebase_config') || 'null');
+
 // State
-let activeView = 'resources'; // 'resources' | 'myroom'
+let activeView = 'home'; // 'resources' | 'myroom'
 let currentCategory = 'all';
 let currentSubgroup = 'all';
 let currentViewMode = 'table';
@@ -100,6 +141,17 @@ let adminRoomSelectedUser = 'all'; // for My Room admin view
 // Combined categories & items
 let CATEGORIES = [];
 let ALL_ITEMS = [];
+
+
+function getDynamicRoomName(user) {
+  const u = user || CURRENT_USER;
+  if (!u) return 'Room';
+  if (u.role === 'admin') {
+    return 'Admin Room';
+  }
+  const name = u.fullName || u.userId || 'User';
+  return name + ' Room';
+}
 
 function refreshDataModel() {
   CATEGORIES = [...BASE_CATEGORIES, ...customModules].map(cat => {
@@ -169,6 +221,9 @@ document.addEventListener('DOMContentLoaded', () => {
   updatePinnedBadge();
   updateMyRoomBadge();
 
+  // Initialize Firebase Realtime Cloud Sync
+  initFirebase();
+
   if (!CURRENT_USER) {
     openAuthModal();
   } else {
@@ -176,8 +231,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLocked = localStorage.getItem('l_support_screen_locked') === 'true';
     if (isLocked) {
       showAppPinLock();
-    } else if (CURRENT_USER.role === 'admin') {
-      setTimeout(() => checkPendingApprovals(), 500);
+    } else {
+      switchView('home');
+      if (CURRENT_USER.role === 'admin') {
+        setTimeout(() => checkPendingApprovals(), 500);
+      }
     }
   }
 
@@ -274,16 +332,47 @@ function updateUserUI() {
   document.getElementById('sidebarUserZion').textContent = zionAreaText || 'L Support Member';
   document.getElementById('sidebarUserBranch').textContent = CURRENT_USER.zion || 'L Support';
 
+  // Dynamic Room Labels (e.g. Admin Room, David Room, Peter Room)
+  const roomTitle = getDynamicRoomName();
+  const sidebarRoomText = document.getElementById('sidebarRoomBtnText');
+  const topRoomText = document.getElementById('topRoomBtnText');
+  const homeRoomBtnText = document.getElementById('homeRoomBtnText');
+  const myRoomTitle = document.getElementById('myRoomTitle');
+  const homeUserName = document.getElementById('homeUserName');
+
+  if (sidebarRoomText) sidebarRoomText.textContent = roomTitle;
+  if (topRoomText) topRoomText.textContent = roomTitle;
+  if (homeRoomBtnText) homeRoomBtnText.textContent = roomTitle;
+  if (myRoomTitle) myRoomTitle.textContent = roomTitle;
+  if (homeUserName) homeUserName.textContent = CURRENT_USER.fullName || CURRENT_USER.userId;
+
+  // Role Permissions: Admin vs Regular Viewers
+  const isAdmin = CURRENT_USER.role === 'admin';
   const dlWrapper = document.getElementById('downloadToggleWrapper');
   const approvalTopBtn = document.getElementById('adminApprovalsTopBtn');
+  const topAdminPanelBtn = document.getElementById('topAdminPanelBtn');
+  const btnAdminAddNotice = document.getElementById('btnAdminAddNotice');
+  const moduleEditTrigger = document.getElementById('moduleEditTrigger');
+  const addResourceBtn = document.querySelector('button[onclick="openAddResourceModal()"]');
+  const addModuleBtn = document.querySelector('button[onclick="openAddModuleModal()"]');
 
-  if (CURRENT_USER.role === 'admin') {
+  if (isAdmin) {
     if (dlWrapper) dlWrapper.classList.remove('hidden');
     if (approvalTopBtn) approvalTopBtn.classList.remove('hidden');
+    if (topAdminPanelBtn) topAdminPanelBtn.classList.remove('hidden');
+    if (btnAdminAddNotice) btnAdminAddNotice.classList.remove('hidden');
+    if (moduleEditTrigger) moduleEditTrigger.classList.remove('hidden');
+    if (addResourceBtn) addResourceBtn.classList.remove('hidden');
+    if (addModuleBtn) addModuleBtn.classList.remove('hidden');
     updateApprovalCountBadge();
   } else {
     if (dlWrapper) dlWrapper.classList.add('hidden');
     if (approvalTopBtn) approvalTopBtn.classList.add('hidden');
+    if (topAdminPanelBtn) topAdminPanelBtn.classList.add('hidden');
+    if (btnAdminAddNotice) btnAdminAddNotice.classList.add('hidden');
+    if (moduleEditTrigger) moduleEditTrigger.classList.add('hidden');
+    if (addResourceBtn) addResourceBtn.classList.add('hidden');
+    if (addModuleBtn) addModuleBtn.classList.add('hidden');
   }
 }
 
@@ -509,46 +598,63 @@ function updateMyRoomBadge() {
   if (badge) badge.textContent = userRecords.length;
 }
 
+
+// ========================================================
+// UNIFIED VIEW SWITCHER (HOME / RESOURCES / USER ROOM)
+// ========================================================
+function switchView(viewName, targetCategory) {
+  activeView = viewName;
+  const homeView = document.getElementById('homeViewContainer');
+  const resourcesView = document.getElementById('resourcesViewContainer');
+  const myRoomView = document.getElementById('myRoomViewContainer');
+  const subgroupStrip = document.getElementById('subgroupStripWrapper');
+
+  if (homeView) homeView.classList.toggle('hidden', viewName !== 'home');
+  if (resourcesView) resourcesView.classList.toggle('hidden', viewName !== 'resources');
+  if (myRoomView) myRoomView.classList.toggle('hidden', viewName !== 'myroom');
+  if (subgroupStrip) subgroupStrip.classList.toggle('hidden', viewName !== 'resources');
+
+  // Update button active styles
+  const btnHome = document.getElementById('btnHomeSidebar');
+  const btnHomeTop = document.getElementById('btnHomeTop');
+  const btnRoom = document.getElementById('btnMyRoomSidebar');
+  const btnRoomTop = document.getElementById('btnMyRoomTop');
+
+  if (btnHome) btnHome.className = viewName === 'home' 
+    ? 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-indigo-600 text-white shadow-md' 
+    : 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-slate-800 hover:bg-slate-750 border border-slate-700/80 text-white shadow-sm';
+  if (btnHomeTop) btnHomeTop.className = viewName === 'home'
+    ? 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-500 bg-indigo-600 text-white text-xs font-bold transition'
+    : 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition';
+
+  if (btnRoom) btnRoom.className = viewName === 'myroom'
+    ? 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-purple-600 text-white shadow-md'
+    : 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-gradient-to-r from-purple-950/70 to-indigo-950/70 hover:from-purple-900/80 hover:to-indigo-900/80 border border-purple-500/30 text-white shadow-sm';
+  if (btnRoomTop) btnRoomTop.className = viewName === 'myroom'
+    ? 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500 bg-purple-600 text-white text-xs font-bold transition'
+    : 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-bold transition';
+
+  if (viewName === 'home') {
+    renderHomePage();
+  } else if (viewName === 'resources') {
+    if (targetCategory) currentCategory = targetCategory;
+    renderRecords();
+  } else if (viewName === 'myroom') {
+    renderMyRoomTimeline();
+  }
+}
+
 function switchToMyRoom() {
-  activeView = 'myroom';
-  document.getElementById('resourcesViewContainer').classList.add('hidden');
-  document.getElementById('subgroupStripWrapper').classList.add('hidden');
-  document.getElementById('myRoomViewContainer').classList.remove('hidden');
-
-  document.getElementById('breadcrumbCurrent').textContent = 'My Room (Sermon Usage & Journal)';
-
-  // Update button styles
-  const btnSidebar = document.getElementById('btnMyRoomSidebar');
-  if (btnSidebar) btnSidebar.classList.add('ring-2', 'ring-purple-400');
-
-  // If admin, show user selector
-  const adminSelector = document.getElementById('adminRoomUserSelectorWrapper');
-  if (CURRENT_USER && CURRENT_USER.role === 'admin') {
-    adminSelector.classList.remove('hidden');
-    populateAdminRoomUserSelect();
-  } else {
-    adminSelector.classList.add('hidden');
-  }
-
-  // Close mobile sidebar if open
-  if (window.innerWidth < 768) {
-    const sb = document.getElementById('mainSidebar');
-    if (!sb.classList.contains('-translate-x-full')) toggleSidebar();
-  }
-
-  renderMyRoomView();
+  switchView('myroom');
 }
 
 function switchToResourcesTab(catId) {
-  activeView = 'resources';
-  document.getElementById('myRoomViewContainer').classList.add('hidden');
-  document.getElementById('resourcesViewContainer').classList.remove('hidden');
-  document.getElementById('subgroupStripWrapper').classList.remove('hidden');
-
-  const btnSidebar = document.getElementById('btnMyRoomSidebar');
-  if (btnSidebar) btnSidebar.classList.remove('ring-2', 'ring-purple-400');
-
-  selectCategory(catId || 'all');
+  currentCategory = catId || 'all';
+  currentSubgroup = 'all';
+  switchView('resources');
+  renderSidebarCategories();
+  renderSubgroupTabs();
+  renderRecords();
 }
 
 function populateAdminRoomUserSelect() {
@@ -744,7 +850,7 @@ function saveSermonUsageRecord(e) {
   };
 
   myRoomRecords.unshift(newRecord);
-  localStorage.setItem('wlh_my_room_records', JSON.stringify(myRoomRecords));
+  localStorage.setItem('wlh_my_room_records', JSON.stringify(myRoomRecords)); fbSync('my_room_records', myRoomRecords);
 
   closeRecordUsageModal();
   updateMyRoomBadge();
@@ -1016,7 +1122,7 @@ function toggleMasterDownloads() {
   }
 
   DOWNLOADS_ENABLED = !DOWNLOADS_ENABLED;
-  localStorage.setItem('wlh_downloads_enabled', JSON.stringify(DOWNLOADS_ENABLED));
+  localStorage.setItem('wlh_downloads_enabled', JSON.stringify(DOWNLOADS_ENABLED)); fbSync('downloads_enabled', DOWNLOADS_ENABLED);
   updateTopDownloadBtn();
   renderRecords();
   
@@ -1790,7 +1896,7 @@ function submitNewResource(e) {
   };
 
   customItems.unshift(newItem);
-  localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
+  localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); fbSync('custom_resources', customItems);
 
   closeAddResourceModal();
   refreshDataModel();
@@ -2441,7 +2547,7 @@ function saveUserProfile(e) {
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
 
   updateUserUI();
-  showToast('Profile & Zion details updated!');
+  showToast('Profile updated!'); updateUserUI(); if(activeView==='home') renderHomePage();
 }
 
 function saveSecurityCredentials(e) {
@@ -2735,4 +2841,516 @@ function rejectUser(userId) {
   showToast('User ' + user.userId + ' registration rejected.');
   logActivity('User Rejected', 'Admin rejected user ' + user.userId);
   renderPendingUsersList();
+}
+
+
+// ========================================================
+// HOME PAGE RENDERING (NEW ARRIVALS, NOTICES, SCHEDULE)
+// ========================================================
+function renderHomePage() {
+  renderHomeNewArrivals();
+  renderHomeNotices();
+  renderHomeSchedule();
+  populateHomeFilterOptions();
+}
+
+function populateHomeFilterOptions() {
+  const sel1 = document.getElementById('homeNewArrivalsFilter');
+  const sel2 = document.getElementById('modalNewArrivalsFilter');
+  const optionsHtml = '<option value="all">All Modules</option>' + CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+  if (sel1) sel1.innerHTML = optionsHtml;
+  if (sel2) sel2.innerHTML = optionsHtml;
+}
+
+function getSortedNewArrivals(filterModule) {
+  let items = [...ALL_ITEMS];
+  if (filterModule && filterModule !== 'all') {
+    items = items.filter(it => (it.modules && it.modules.includes(filterModule)) || it.tab === filterModule);
+  }
+  return items;
+}
+
+function renderHomeNewArrivals(filterModule) {
+  const container = document.getElementById('homeNewArrivalsGrid');
+  if (!container) return;
+  const items = getSortedNewArrivals(filterModule).slice(0, 8);
+
+  if (items.length === 0) {
+    container.innerHTML = '<div class="col-span-full py-8 text-center text-slate-500 text-xs">No resources in this module.</div>';
+    return;
+  }
+
+  container.innerHTML = items.map(it => {
+    return `
+      <div onclick="openFilePreview('${it.url}')" class="p-3.5 bg-slate-950/80 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/40 rounded-2xl transition cursor-pointer flex flex-col justify-between group shadow-sm">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${it.badge || 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'} flex items-center gap-1">
+              <span>${it.categoryIcon || '📄'}</span>
+              <span>${it.categoryName || it.tab}</span>
+            </span>
+            <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-widest">NEW</span>
+          </div>
+          <h4 class="font-extrabold text-white text-xs group-hover:text-indigo-300 transition line-clamp-2 leading-tight mb-1.5">${it.title}</h4>
+          <p class="text-[10px] text-slate-400 font-medium truncate">${it.group || 'General'}</p>
+        </div>
+        <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-indigo-400 font-bold mt-2">
+          <span>Open File</span>
+          <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterHomeNewArrivals(moduleId) {
+  renderHomeNewArrivals(moduleId);
+}
+
+function renderHomeNotices() {
+  const container = document.getElementById('homeNoticesContainer');
+  if (!container) return;
+
+  if (NOTICES_LIST.length === 0) {
+    container.innerHTML = '<div class="py-8 text-center text-slate-500 text-xs">No active announcements.</div>';
+    return;
+  }
+
+  container.innerHTML = NOTICES_LIST.map(n => {
+    const colorClasses = n.color === 'rose' 
+      ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' 
+      : n.color === 'amber' 
+      ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+      : n.color === 'emerald'
+      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+      : 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300';
+
+    return `
+      <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${colorClasses}">${n.category}</span>
+          <span class="text-slate-500 text-[10px] font-mono">${n.date}</span>
+        </div>
+        <h4 class="font-bold text-white text-xs">${n.title}</h4>
+        <p class="text-slate-300 text-[11px] leading-relaxed whitespace-pre-line">${n.content}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderHomeSchedule() {
+  const container = document.getElementById('homeScheduleContainer');
+  if (!container) return;
+
+  container.innerHTML = WORSHIP_SCHEDULE.map(s => `
+    <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-base flex-shrink-0">
+          ${s.icon}
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h4 class="font-extrabold text-white text-xs">${s.day}</h4>
+            <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-800 text-slate-300 border border-slate-700">${s.badge}</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-0.5">${s.desc}</p>
+        </div>
+      </div>
+      <span class="text-xs font-mono font-bold text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-500/20 flex-shrink-0">${s.time}</span>
+    </div>
+  `).join('');
+}
+
+// New Arrivals Modal
+function openNewArrivalsModal() {
+  renderModalNewArrivals('all');
+  const modal = document.getElementById('newArrivalsModal');
+  const container = document.getElementById('newArrivalsModalContainer');
+  if (!modal || !container) return;
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeNewArrivalsModal() {
+  const modal = document.getElementById('newArrivalsModal');
+  const container = document.getElementById('newArrivalsModalContainer');
+  if (!modal || !container) return;
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function filterModalNewArrivals(moduleId) {
+  renderModalNewArrivals(moduleId);
+}
+
+function renderModalNewArrivals(filterModule) {
+  const container = document.getElementById('modalNewArrivalsList');
+  if (!container) return;
+  const items = getSortedNewArrivals(filterModule);
+
+  container.innerHTML = items.map(it => `
+    <div onclick="closeNewArrivalsModal(); openFilePreview('${it.url}')" class="p-3 bg-slate-950 rounded-xl border border-slate-800 hover:border-indigo-500/40 transition cursor-pointer flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-sm flex-shrink-0">${it.categoryIcon || '📄'}</span>
+        <div class="min-w-0">
+          <div class="font-bold text-white text-xs truncate">${it.title}</div>
+          <div class="text-[10px] text-slate-400">${it.categoryName || it.tab} • ${it.group || 'General'}</div>
+        </div>
+      </div>
+      <button class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition flex-shrink-0">
+        Open
+      </button>
+    </div>
+  `).join('');
+}
+
+
+// ========================================================
+// DEDICATED ADMIN CONTROL PANEL LOGIC
+// ========================================================
+function openAdminControlPanel(tab) {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') {
+    alert('Access restricted to Admin only.');
+    return;
+  }
+  switchAdminPanelTab(tab || 'approvals');
+  const modal = document.getElementById('adminControlPanelModal');
+  const container = document.getElementById('adminControlPanelContainer');
+  if (!modal || !container) return;
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeAdminControlPanel() {
+  const modal = document.getElementById('adminControlPanelModal');
+  const container = document.getElementById('adminControlPanelContainer');
+  if (!modal || !container) return;
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function switchAdminPanelTab(tab) {
+  const tabs = ['approvals', 'users', 'notices', 'audit', 'firebase'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('admtab-' + t);
+    const content = document.getElementById('admcontent-' + t);
+    if (!btn || !content) return;
+    if (t === tab) {
+      btn.className = 'px-3.5 py-2 border-b-2 border-amber-500 text-amber-400 flex items-center gap-1.5 font-bold';
+      content.classList.remove('hidden');
+    } else {
+      btn.className = 'px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5';
+      content.classList.add('hidden');
+    }
+  });
+
+  if (tab === 'approvals') renderAdminPanelApprovals();
+  if (tab === 'users') renderAdminPanelUsers();
+  if (tab === 'notices') renderAdminPanelNotices();
+  if (tab === 'audit') renderAdminPanelAudit();
+  if (tab === 'firebase') loadFirebasePanelData();
+}
+
+function renderAdminPanelApprovals() {
+  const container = document.getElementById('adminPanelApprovalsList');
+  if (!container) return;
+  const pending = ALL_USERS.filter(u => u.status === 'pending');
+  updateApprovalCountBadge();
+
+  if (pending.length === 0) {
+    container.innerHTML = '<div class="py-8 text-center text-slate-500 text-xs">No registrations pending approval.</div>';
+    return;
+  }
+
+  container.innerHTML = pending.map(u => `
+    <div class="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-white text-sm">${u.fullName}</span>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">ID: ${u.userId}</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Pending</span>
+        </div>
+        <div class="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5">
+          ${u.gmail ? `<span><i class="fa-solid fa-envelope text-[10px] mr-1"></i>${u.gmail}</span>` : ''}
+          ${u.phone ? `<span><i class="fa-solid fa-phone text-[10px] mr-1"></i>${u.phone}</span>` : ''}
+          ${u.zion ? `<span><i class="fa-solid fa-church text-[10px] mr-1"></i>${u.zion}</span>` : ''}
+          ${u.area ? `<span><i class="fa-solid fa-location-dot text-[10px] mr-1"></i>${u.area}</span>` : ''}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button onclick="approveUser('${u.userId}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+          Approve
+        </button>
+        <button onclick="rejectUser('${u.userId}')" class="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs rounded-xl border border-rose-500/30 transition">
+          Reject
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAdminPanelUsers() {
+  const tbody = document.getElementById('adminPanelUsersTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = ALL_USERS.map(u => `
+    <tr class="hover:bg-slate-900/50">
+      <td class="py-2.5 px-3">
+        <div class="font-bold text-white">${u.fullName}</div>
+        <div class="text-[10px] text-slate-400 font-mono">${u.userId}</div>
+      </td>
+      <td class="py-2.5 px-3">
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'admin' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-800 text-slate-400'}">${u.role}</span>
+        <span class="ml-1 text-[10px] text-emerald-400 font-semibold">${u.status || 'approved'}</span>
+      </td>
+      <td class="py-2.5 px-3 text-[11px] text-slate-400">
+        ${u.role === 'admin' ? 'All Modules' : (u.assignedModules && u.assignedModules.includes('all') ? 'All Modules' : (u.assignedModules || []).join(', '))}
+      </td>
+      <td class="py-2.5 px-3 text-right">
+        ${u.role === 'admin' ? '<span class="text-emerald-400 font-bold text-[11px]">Unlimited</span>' : `
+          <button onclick="toggleUserDownload('${u.userId}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${u.canDownload ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}">
+            ${u.canDownload ? 'Allowed' : 'Denied'}
+          </button>
+        `}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderAdminPanelNotices() {
+  const container = document.getElementById('adminPanelNoticesList');
+  if (!container) return;
+  container.innerHTML = NOTICES_LIST.map((n, i) => `
+    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-white text-xs">${n.title}</span>
+          <span class="text-[10px] px-2 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-bold">${n.category}</span>
+        </div>
+        <p class="text-slate-400 text-[11px] mt-1 line-clamp-1">${n.content}</p>
+      </div>
+      <button onclick="deleteNotice('${n.id || i}')" class="p-1.5 text-slate-500 hover:text-rose-400 transition" title="Delete notice">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+function renderAdminPanelAudit() {
+  const tbody = document.getElementById('adminPanelAuditTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = auditLog.slice(0, 50).map(e => `
+    <tr>
+      <td class="py-2 px-3 font-bold text-white">${e.userName}</td>
+      <td class="py-2 px-3 text-indigo-300">${e.action}</td>
+      <td class="py-2 px-3 text-slate-400">${e.details}</td>
+      <td class="py-2 px-3 text-right text-slate-500 font-mono">${e.time}</td>
+    </tr>
+  `).join('');
+}
+
+// Post Notice Form
+function openAddNoticeModal() {
+  const modal = document.getElementById('addNoticeModal');
+  const container = document.getElementById('addNoticeModalContainer');
+  if (!modal || !container) return;
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeAddNoticeModal() {
+  const modal = document.getElementById('addNoticeModal');
+  const container = document.getElementById('addNoticeModalContainer');
+  if (!modal || !container) return;
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function handleSaveNotice(e) {
+  e.preventDefault();
+  const title = document.getElementById('noticeTitleInput').value.trim();
+  const category = document.getElementById('noticeCategoryInput').value;
+  const color = document.getElementById('noticeColorInput').value;
+  const content = document.getElementById('noticeContentInput').value.trim();
+
+  const newNotice = {
+    id: 'not_' + Date.now(),
+    title,
+    category,
+    color,
+    content,
+    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    author: CURRENT_USER.fullName || 'Admin'
+  };
+
+  NOTICES_LIST.unshift(newNotice);
+  localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
+  fbSync('notices', NOTICES_LIST);
+  closeAddNoticeModal();
+  renderHomeNotices();
+  renderAdminPanelNotices();
+  showToast('Notice published successfully!');
+}
+
+function deleteNotice(id) {
+  if (!confirm('Are you sure you want to delete this notice?')) return;
+  NOTICES_LIST = NOTICES_LIST.filter(n => n.id !== id);
+  localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
+  fbSync('notices', NOTICES_LIST);
+  renderHomeNotices();
+  renderAdminPanelNotices();
+  showToast('Notice deleted.');
+}
+
+
+// ========================================================
+// FIREBASE REALTIME CLOUD SYNCHRONIZATION ENGINE
+// ========================================================
+function initFirebase() {
+  if (!window.firebase) return;
+  const config = FIREBASE_CONFIG;
+  if (!config || !config.apiKey || !config.databaseURL) {
+    updateFirebaseStatusBadge(false);
+    return;
+  }
+
+  try {
+    if (!firebase.apps.length) {
+      FIREBASE_APP = firebase.initializeApp(config);
+    } else {
+      FIREBASE_APP = firebase.app();
+    }
+    FIREBASE_DB = firebase.database();
+    IS_FIREBASE_CONNECTED = true;
+    updateFirebaseStatusBadge(true);
+    setupRealtimeListeners();
+    console.log('🔥 Firebase Realtime Cloud Connected!');
+  } catch (err) {
+    console.error('Firebase connection error:', err);
+    updateFirebaseStatusBadge(false);
+  }
+}
+
+function updateFirebaseStatusBadge(connected) {
+  const badge = document.getElementById('firebaseConnectionStatusBadge');
+  if (!badge) return;
+  if (connected) {
+    badge.className = 'px-3 py-1 rounded-xl font-bold text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5';
+    badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 🟢 Live Cloud Sync Active';
+  } else {
+    badge.className = 'px-3 py-1 rounded-xl font-bold text-xs bg-slate-800 text-slate-400 border border-slate-700';
+    badge.innerHTML = '⚪ Local Storage Mode (Offline)';
+  }
+}
+
+function loadFirebasePanelData() {
+  const input = document.getElementById('firebaseConfigInput');
+  if (input && FIREBASE_CONFIG) {
+    input.value = JSON.stringify(FIREBASE_CONFIG, null, 2);
+  }
+  updateFirebaseStatusBadge(IS_FIREBASE_CONNECTED);
+}
+
+function saveFirebaseConfig(e) {
+  e.preventDefault();
+  const raw = document.getElementById('firebaseConfigInput').value.trim();
+  try {
+    const config = JSON.parse(raw);
+    FIREBASE_CONFIG = config;
+    localStorage.setItem('l_support_firebase_config', JSON.stringify(config));
+    initFirebase();
+    showToast('Firebase configuration saved!');
+  } catch (err) {
+    alert('Invalid JSON! Please verify your Firebase config object.');
+  }
+}
+
+function testFirebaseConnection() {
+  if (IS_FIREBASE_CONNECTED && FIREBASE_DB) {
+    FIREBASE_DB.ref('.info/connected').once('value').then(snap => {
+      if (snap.val() === true) {
+        alert('✅ Firebase Connection Successful! Live cloud sync is active.');
+      } else {
+        alert('⚠️ Firebase initialized, waiting for server connection.');
+      }
+    });
+  } else {
+    alert('Firebase is not yet connected. Please check your configuration and Database URL.');
+  }
+}
+
+function fbSync(path, data) {
+  if (IS_FIREBASE_CONNECTED && FIREBASE_DB) {
+    FIREBASE_DB.ref('l_support/' + path).set(data).catch(err => {
+      console.warn('Firebase sync write error for', path, err);
+    });
+  }
+}
+
+function setupRealtimeListeners() {
+  if (!IS_FIREBASE_CONNECTED || !FIREBASE_DB) return;
+
+  // 1. Sync Notices Live
+  FIREBASE_DB.ref('l_support/notices').on('value', snap => {
+    const val = snap.val();
+    if (val && Array.isArray(val)) {
+      NOTICES_LIST = val;
+      localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
+      renderHomeNotices();
+      renderAdminPanelNotices();
+    }
+  });
+
+  // 2. Sync Sermon Used Records Live
+  FIREBASE_DB.ref('l_support/my_room_records').on('value', snap => {
+    const val = snap.val();
+    if (val && Array.isArray(val)) {
+      myRoomRecords = val;
+      localStorage.setItem('wlh_my_room_records', JSON.stringify(myRoomRecords));
+      updateMyRoomBadge();
+      if (activeView === 'myroom') renderMyRoomTimeline();
+    }
+  });
+
+  // 3. Sync User Registrations & Approvals Live
+  FIREBASE_DB.ref('l_support/users').on('value', snap => {
+    const val = snap.val();
+    if (val && Array.isArray(val)) {
+      ALL_USERS = val;
+      localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+      updateApprovalCountBadge();
+      if (CURRENT_USER && CURRENT_USER.role === 'admin') {
+        renderAdminPanelApprovals();
+        renderAdminPanelUsers();
+      }
+    }
+  });
+
+  // 4. Sync Downloads Permission Live
+  FIREBASE_DB.ref('l_support/downloads_enabled').on('value', snap => {
+    const val = snap.val();
+    if (typeof val === 'boolean') {
+      DOWNLOADS_ENABLED = val;
+      localStorage.setItem('wlh_downloads_enabled', JSON.stringify(val));
+      updateTopDownloadBtn();
+      renderRecords();
+    }
+  });
+
+  // 5. Sync Custom Resources Live
+  FIREBASE_DB.ref('l_support/custom_resources').on('value', snap => {
+    const val = snap.val();
+    if (val && Array.isArray(val)) {
+      customItems = val;
+      localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
+      refreshDataModel();
+      renderRecords();
+      renderHomeNewArrivals();
+    }
+  });
 }
