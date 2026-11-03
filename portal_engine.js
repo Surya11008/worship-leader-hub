@@ -1,18 +1,15 @@
 /* ========================================================
-   WORSHIP LEADER HUB — ENTERPRISE ENGINE v3.2
+   WORSHIP LEADER HUB — ENTERPRISE ENGINE v3.5
    Features:
-   - Admin: surya11008 / Suri742766 / PIN 742766
-   - Eye Show/Hide Toggle on all password & PIN boxes
-   - Change Module & Topic directly on file + Multi-Select by Module/Topic
-   - Top & Sidebar Logout Buttons
-   - Auth (Login, Register with Zion, Area, 6-digit PIN)
-   - Online Users & Activity Audit Log
-   - Strict Download Permission Controls (Master & Per-file)
-   - Multi-Select & Bulk Toolbar (Share, Lock, Hide, Move, Copy, QR, Merge, Color, Pin)
-   - Module & Topic Customizer (Rename, Emoji, Add/Remove Topics)
-   - In-App Popup Preview with Zoom In/Out & Cute Audio Player
-   - Side Panel Open/Close Toggle
-   - Settings Modal (Profile, Zion, PIN change, Enquiry/Suggestions)
+   - Admin: surya11008 / Suri742766 / PIN 742766 (No 1-click button)
+   - Clean Register Form (No 'Example' placeholders)
+   - Multi-Module & Multi-Topic File Assignment (Appears in multiple rooms)
+   - My Room (Personal Ministry & Sermon Usage Journal)
+   - Used File Badge & Full Usage History Modal
+   - Direct File Download (Direct PDF/Drive Download without Docs Editor)
+   - Admin Management Panel (Per-user & Per-folder Download Permissions)
+   - Password Eye Show/Hide Toggle
+   - Top & Sidebar Logout
 ======================================================== */
 
 // 1. DATA INITIALIZATION
@@ -20,7 +17,7 @@ const APP_RAW_DATA = JSON.parse(document.getElementById('initial-app-data').text
 const BASE_CATEGORIES = APP_RAW_DATA.categories;
 const BASE_ITEMS = APP_RAW_DATA.items;
 
-// Master Admin User Credentials (🔥 అడ్మిన్ క్రెడెన్షియల్స్ సెట్ చేయబడ్డాయి)
+// Master Admin User
 const DEFAULT_ADMIN = {
   fullName: 'Surya Leader',
   userId: 'surya11008',
@@ -31,7 +28,8 @@ const DEFAULT_ADMIN = {
   area: 'Zone 1 - Central',
   pin: '742766',
   role: 'admin',
-  assignedModules: ['all']
+  assignedModules: ['all'],
+  canDownload: true
 };
 
 // Seed or update admin user in localStorage
@@ -40,12 +38,12 @@ if (!ALL_USERS || ALL_USERS.length === 0) {
   ALL_USERS = [DEFAULT_ADMIN];
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
 } else {
-  // Guarantee surya11008 has the updated password & PIN
   const adminIdx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === 'surya11008');
   if (adminIdx !== -1) {
     ALL_USERS[adminIdx].password = 'Suri742766';
     ALL_USERS[adminIdx].pin = '742766';
     ALL_USERS[adminIdx].role = 'admin';
+    ALL_USERS[adminIdx].canDownload = true;
   } else {
     ALL_USERS.unshift(DEFAULT_ADMIN);
   }
@@ -60,23 +58,27 @@ if (!CURRENT_USER) {
 } else if (CURRENT_USER.userId.toLowerCase() === 'surya11008') {
   CURRENT_USER.password = 'Suri742766';
   CURRENT_USER.pin = '742766';
+  CURRENT_USER.canDownload = true;
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
 }
 
-// Global master download switch (STRICT CONTROL: Default is OFF as requested)
+// Global master download switch (STRICT CONTROL)
 let DOWNLOADS_ENABLED = JSON.parse(localStorage.getItem('wlh_downloads_enabled') || 'false');
+let MODULE_DOWNLOAD_RULES = JSON.parse(localStorage.getItem('wlh_module_download_rules') || '{}');
 
 // Custom storage
 let customItems = JSON.parse(localStorage.getItem('wlh_custom_resources') || '[]');
 let customModules = JSON.parse(localStorage.getItem('wlh_custom_modules') || '[]');
 let moduleEdits = JSON.parse(localStorage.getItem('wlh_module_edits') || '{}');
 let topicEdits = JSON.parse(localStorage.getItem('wlh_topic_edits') || '{}');
-let fileMetadata = JSON.parse(localStorage.getItem('wlh_file_metadata') || '{}'); // { [url]: { locked, hidden, color, allowDownload, customTab, customGroup } }
+let fileMetadata = JSON.parse(localStorage.getItem('wlh_file_metadata') || '{}');
 let pinnedUrls = new Set(JSON.parse(localStorage.getItem('wlh_pinned_urls') || '[]'));
 let auditLog = JSON.parse(localStorage.getItem('wlh_audit_log') || '[]');
 let suggestionsList = JSON.parse(localStorage.getItem('wlh_suggestions') || '[]');
+let myRoomRecords = JSON.parse(localStorage.getItem('wlh_my_room_records') || '[]');
 
 // State
+let activeView = 'resources'; // 'resources' | 'myroom'
 let currentCategory = 'all';
 let currentSubgroup = 'all';
 let currentViewMode = 'table';
@@ -86,13 +88,13 @@ let selectedItemUrls = new Set();
 let currentActiveModalUrl = null;
 let currentZoomScale = 1.0;
 let pendingUnlockUrl = null;
+let adminRoomSelectedUser = 'all'; // for My Room admin view
 
 // Combined categories & items
 let CATEGORIES = [];
 let ALL_ITEMS = [];
 
 function refreshDataModel() {
-  // Combine base categories with custom modules and apply renames/emojis
   CATEGORIES = [...BASE_CATEGORIES, ...customModules].map(cat => {
     const edit = moduleEdits[cat.id];
     let groups = [...(cat.groups || [])];
@@ -115,20 +117,26 @@ function refreshDataModel() {
     CATEGORIES = CATEGORIES.filter(c => CURRENT_USER.assignedModules.includes(c.id));
   }
 
-  // Combine items and apply individual file metadata (such as customTab / customGroup)
+  // Combine items and apply multi-module & multi-topic metadata
   ALL_ITEMS = [...customItems, ...BASE_ITEMS].map(it => {
     const meta = fileMetadata[it.url] || {};
-    const finalTab = meta.customTab || it.tab;
-    const finalGroup = meta.customGroup || it.group || 'General';
-    const catObj = CATEGORIES.find(c => c.id === finalTab);
+    
+    // Multi-modules list (e.g. ['Sermon', 'Watv'])
+    let modulesList = meta.modules || (meta.customTab ? [meta.customTab] : [it.tab]);
+    // Multi-topics list (e.g. ['WS_TE', 'Passover'])
+    let topicsList = meta.topics || (meta.customGroup ? [meta.customGroup] : [it.group || 'General']);
+
+    const primaryCat = CATEGORIES.find(c => modulesList.includes(c.id)) || CATEGORIES[0];
 
     return {
       ...it,
-      tab: finalTab,
-      group: finalGroup,
-      categoryName: catObj ? catObj.name : (it.categoryName || finalTab),
-      categoryIcon: catObj ? catObj.icon : (it.categoryIcon || '📄'),
-      badge: catObj ? catObj.badge : (it.badge || 'bg-slate-800 text-slate-300 border-slate-700'),
+      tab: primaryCat ? primaryCat.id : it.tab,
+      group: topicsList[0] || it.group || 'General',
+      modules: modulesList,
+      topics: topicsList,
+      categoryName: primaryCat ? primaryCat.name : (it.categoryName || it.tab),
+      categoryIcon: primaryCat ? primaryCat.icon : (it.categoryIcon || '📄'),
+      badge: primaryCat ? primaryCat.badge : (it.badge || 'bg-slate-800 text-slate-300 border-slate-700'),
       isLocked: !!meta.locked,
       isHidden: !!meta.hidden,
       customColor: meta.color || '',
@@ -136,7 +144,6 @@ function refreshDataModel() {
     };
   });
 
-  // Filter out hidden files for non-admins
   if (CURRENT_USER && CURRENT_USER.role !== 'admin') {
     ALL_ITEMS = ALL_ITEMS.filter(it => !it.isHidden);
   }
@@ -153,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderSubgroupTabs();
   renderRecords();
   updatePinnedBadge();
+  updateMyRoomBadge();
   logActivity('Session Start', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
 
   // Keyboard shortcut (Esc)
@@ -167,12 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
       closeMoveCopyModal();
       closePinVerifyModal();
       closeEditFileModuleTopicModal();
+      closeRecordUsageModal();
+      closeFileUsageHistoryModal();
+      closeAdminManagementModal();
       clearSelection();
     }
   });
 });
 
-// 3. PASSWORD VISIBILITY TOGGLE (EYE BUTTON)
+// 3. EYE TOGGLE BUTTON (SHOW / HIDE PASSWORD & PIN)
 function togglePasswordVisibility(inputId, eyeIconId) {
   const input = document.getElementById(inputId);
   const icon = document.getElementById(eyeIconId);
@@ -209,7 +220,7 @@ function logActivity(action, details) {
   localStorage.setItem('wlh_audit_log', JSON.stringify(auditLog));
 }
 
-// 5. USER & PERMISSION MANAGEMENT
+// 5. USER & AUTHENTICATION (NO 1-CLICK BUTTON)
 function updateUserUI() {
   if (!CURRENT_USER) return;
   document.getElementById('sidebarUserName').textContent = CURRENT_USER.fullName;
@@ -217,7 +228,6 @@ function updateUserUI() {
   document.getElementById('sidebarUserZion').textContent = (CURRENT_USER.zion || 'Main Zion') + ' • ' + (CURRENT_USER.area || 'Area');
   document.getElementById('sidebarUserBranch').textContent = CURRENT_USER.zion || 'Worship Leader Hub';
 
-  // Master download button visible only to Admin
   const dlWrapper = document.getElementById('downloadToggleWrapper');
   if (CURRENT_USER.role === 'admin') {
     dlWrapper.classList.remove('hidden');
@@ -228,7 +238,7 @@ function updateUserUI() {
 
 function handleLogout() {
   if (!confirm('Are you sure you want to log out of Worship Leader Hub?')) return;
-  logActivity('Logout', 'User logged out');
+  logActivity('Logout', 'User signed out');
   localStorage.removeItem('wlh_current_user');
   CURRENT_USER = null;
   openAuthModal();
@@ -299,26 +309,9 @@ function handleLoginSubmit(e) {
   renderSidebarCategories();
   renderSubgroupTabs();
   renderRecords();
+  updateMyRoomBadge();
   showToast('Welcome back, ' + user.fullName + '!');
   logActivity('Login', 'Successful login for ' + user.userId);
-}
-
-function quickDemoAdminLogin() {
-  document.getElementById('loginUserId').value = 'surya11008';
-  document.getElementById('loginPassword').value = 'Suri742766';
-  document.getElementById('loginPin').value = '742766';
-
-  CURRENT_USER = DEFAULT_ADMIN;
-  localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
-  closeAuthModal();
-  refreshDataModel();
-  updateUserUI();
-  updateTotalCounts();
-  renderSidebarCategories();
-  renderSubgroupTabs();
-  renderRecords();
-  showToast('Logged in as surya11008 (Admin)');
-  logActivity('Login', 'Fast Admin Login (surya11008)');
 }
 
 function handleRegisterSubmit(e) {
@@ -334,7 +327,7 @@ function handleRegisterSubmit(e) {
   const pin = document.getElementById('regPin').value.trim();
 
   if (pass !== passAgain) {
-    alert('Passwords do not match! Please verify both password fields.');
+    alert('Passwords do not match! Please check again.');
     return;
   }
   if (!/^\d{6}$/.test(pin)) {
@@ -342,7 +335,7 @@ function handleRegisterSubmit(e) {
     return;
   }
   if (ALL_USERS.some(u => u.userId.toLowerCase() === userId.toLowerCase())) {
-    alert('User ID already exists! Please pick a different ID.');
+    alert('User ID already exists! Please choose another.');
     return;
   }
 
@@ -356,7 +349,8 @@ function handleRegisterSubmit(e) {
     area,
     pin,
     role: 'member',
-    assignedModules: ['all']
+    assignedModules: ['all'],
+    canDownload: false // by default regular users must be granted permission
   };
 
   ALL_USERS.push(newUser);
@@ -371,11 +365,587 @@ function handleRegisterSubmit(e) {
   renderSidebarCategories();
   renderSubgroupTabs();
   renderRecords();
-  showToast('Account created successfully! Welcome, ' + fullName);
+  updateMyRoomBadge();
+  showToast('Account created! Welcome, ' + fullName);
   logActivity('Register', 'New user registered: ' + userId);
 }
 
-// 6. MASTER DOWNLOAD TOGGLE (STRICT ADMIN CONTROL)
+// 6. DIRECT FILE DOWNLOAD (DIRECT PDF/DRIVE WITHOUT DOCS EDITOR)
+function getDirectDownloadUrl(url) {
+  if (!url) return '';
+  // Google Docs -> Direct PDF export
+  if (url.includes('docs.google.com/document/d/')) {
+    const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://docs.google.com/document/d/${match[1]}/export?format=pdf`;
+    }
+  }
+  // Google Drive -> Direct file download
+  if (url.includes('drive.google.com/file/d/')) {
+    const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    }
+  }
+  // Google Sheets -> Direct XLSX export
+  if (url.includes('docs.google.com/spreadsheets/d/')) {
+    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=xlsx`;
+    }
+  }
+  return url;
+}
+
+function checkUserCanDownload(item) {
+  if (!DOWNLOADS_ENABLED) return false;
+  if (!CURRENT_USER) return false;
+  if (CURRENT_USER.role === 'admin') return true;
+  if (CURRENT_USER.canDownload === false) return false;
+
+  // Check module level rule if any
+  if (item && item.tab && MODULE_DOWNLOAD_RULES[item.tab] === false) {
+    return false;
+  }
+  return true;
+}
+
+function triggerDirectDownload(url, title, event) {
+  if (event) event.stopPropagation();
+  const item = ALL_ITEMS.find(it => it.url === url);
+  if (!checkUserCanDownload(item)) {
+    showToast('Download permission is not enabled for your account.');
+    return;
+  }
+
+  const directUrl = getDirectDownloadUrl(url);
+  const a = document.createElement('a');
+  a.href = directUrl;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.download = (title ? title.replace(/[^a-zA-Z0-9_\-\s]/g, '') : 'download') + '.pdf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  showToast('📥 Direct download initiated: ' + title);
+  logActivity('Direct Download', 'Downloaded ' + title);
+}
+
+function triggerCurrentModalDirectDownload() {
+  if (currentActiveModalUrl) {
+    const item = ALL_ITEMS.find(it => it.url === currentActiveModalUrl);
+    triggerDirectDownload(currentActiveModalUrl, item ? item.title : 'document');
+  }
+}
+
+// 7. MY ROOM (PERSONAL MINISTRY & SERMON USAGE JOURNAL)
+function updateMyRoomBadge() {
+  const userRecords = getFilteredRoomRecords();
+  const badge = document.getElementById('myRoomRecordsBadge');
+  if (badge) badge.textContent = userRecords.length;
+}
+
+function switchToMyRoom() {
+  activeView = 'myroom';
+  document.getElementById('resourcesViewContainer').classList.add('hidden');
+  document.getElementById('subgroupStripWrapper').classList.add('hidden');
+  document.getElementById('myRoomViewContainer').classList.remove('hidden');
+
+  document.getElementById('breadcrumbCurrent').textContent = 'My Room (Sermon Usage & Journal)';
+
+  // Update button styles
+  const btnSidebar = document.getElementById('btnMyRoomSidebar');
+  if (btnSidebar) btnSidebar.classList.add('ring-2', 'ring-purple-400');
+
+  // If admin, show user selector
+  const adminSelector = document.getElementById('adminRoomUserSelectorWrapper');
+  if (CURRENT_USER && CURRENT_USER.role === 'admin') {
+    adminSelector.classList.remove('hidden');
+    populateAdminRoomUserSelect();
+  } else {
+    adminSelector.classList.add('hidden');
+  }
+
+  // Close mobile sidebar if open
+  if (window.innerWidth < 768) {
+    const sb = document.getElementById('mainSidebar');
+    if (!sb.classList.contains('-translate-x-full')) toggleSidebar();
+  }
+
+  renderMyRoomView();
+}
+
+function switchToResourcesTab(catId) {
+  activeView = 'resources';
+  document.getElementById('myRoomViewContainer').classList.add('hidden');
+  document.getElementById('resourcesViewContainer').classList.remove('hidden');
+  document.getElementById('subgroupStripWrapper').classList.remove('hidden');
+
+  const btnSidebar = document.getElementById('btnMyRoomSidebar');
+  if (btnSidebar) btnSidebar.classList.remove('ring-2', 'ring-purple-400');
+
+  selectCategory(catId || 'all');
+}
+
+function populateAdminRoomUserSelect() {
+  const sel = document.getElementById('adminRoomUserSelect');
+  let opts = '<option value="all">All Users Combined</option>';
+  opts += `<option value="${CURRENT_USER.userId}">My Room (${CURRENT_USER.fullName})</option>`;
+  ALL_USERS.forEach(u => {
+    if (u.userId !== CURRENT_USER.userId) {
+      opts += `<option value="${u.userId}">${u.fullName} (${u.zion})</option>`;
+    }
+  });
+  sel.innerHTML = opts;
+  sel.value = adminRoomSelectedUser;
+}
+
+function onAdminRoomUserChange(val) {
+  adminRoomSelectedUser = val;
+  renderMyRoomView();
+}
+
+function getFilteredRoomRecords() {
+  if (CURRENT_USER.role === 'admin') {
+    if (adminRoomSelectedUser === 'all') return myRoomRecords;
+    return myRoomRecords.filter(r => r.userId.toLowerCase() === adminRoomSelectedUser.toLowerCase());
+  }
+  return myRoomRecords.filter(r => r.userId.toLowerCase() === CURRENT_USER.userId.toLowerCase());
+}
+
+function renderMyRoomView() {
+  const records = getFilteredRoomRecords();
+  
+  // Calculate stats
+  document.getElementById('statSermonsUsed').textContent = records.length;
+  document.getElementById('statStoriesUsed').textContent = records.filter(r => r.storyTitle && r.storyTitle !== 'None').length;
+  document.getElementById('statSabbathCount').textContent = records.filter(r => r.worship === 'Sabbath').length;
+  document.getElementById('statFeastCount').textContent = records.filter(r => r.worship !== 'Sabbath' && r.worship !== 'Tuesday' && r.worship !== 'Other').length;
+  document.getElementById('roomRecordsCountLabel').textContent = records.length + ' entries';
+
+  const list = document.getElementById('roomRecordsList');
+  if (records.length === 0) {
+    list.innerHTML = `
+      <div class="py-12 bg-slate-900 border border-slate-800 rounded-3xl text-center">
+        <div class="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center mx-auto mb-3 text-xl">
+          <i class="fa-solid fa-book-open"></i>
+        </div>
+        <h4 class="font-bold text-white text-sm mb-1">No Sermon Records Yet</h4>
+        <p class="text-xs text-slate-400 mb-4">Click below to record your first preached sermon, story, and spiritual notes.</p>
+        <button onclick="openRecordUsageModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-600/30">
+          + Record Sermon Usage
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = records.map(rec => {
+    const safeSermonUrl = (rec.sermonUrl || '').replace(/'/g, "\\'");
+    const safeStoryUrl = (rec.storyUrl || '').replace(/'/g, "\\'");
+
+    return `
+      <div class="p-5 bg-slate-900/90 rounded-3xl border border-slate-800 hover:border-purple-500/40 transition shadow-lg space-y-3">
+        
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              ${rec.worship}
+            </span>
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+              <i class="fa-regular fa-clock text-[10px] mr-1"></i> ${rec.time}
+            </span>
+            <span class="text-xs text-slate-400 font-mono">
+              <i class="fa-regular fa-calendar text-[10px] mr-1"></i> ${rec.date}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-slate-400">By: <strong class="text-white">${rec.userName}</strong> (${rec.userZion})</span>
+            ${(CURRENT_USER.role === 'admin' || rec.userId === CURRENT_USER.userId) ? `
+              <button onclick="deleteMyRoomRecord('${rec.id}', event)" class="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition text-xs" title="Delete entry">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Sermon & Story Pair -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1">
+                <i class="fa-solid fa-book-bible"></i> Preached Sermon
+              </div>
+              <div class="font-bold text-white text-xs truncate mt-0.5">${rec.sermonTitle}</div>
+            </div>
+            ${rec.sermonUrl ? `
+              <button onclick="openFilePreview('${safeSermonUrl}')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition flex-shrink-0">
+                Preview
+              </button>
+            ` : ''}
+          </div>
+
+          <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                <i class="fa-solid fa-scroll"></i> Paired Story
+              </div>
+              <div class="font-bold text-white text-xs truncate mt-0.5">${rec.storyTitle || 'None'}</div>
+            </div>
+            ${(rec.storyUrl && rec.storyTitle !== 'None') ? `
+              <button onclick="openFilePreview('${safeStoryUrl}')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[11px] font-bold transition flex-shrink-0">
+                Preview
+              </button>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Realization / Note -->
+        <div class="p-3.5 bg-slate-950/60 rounded-2xl border border-slate-800/80 text-xs text-slate-300 whitespace-pre-wrap">
+          <div class="text-[10px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-lightbulb text-amber-400"></i> Spiritual Realization / Congregation Notes:
+          </div>
+          ${rec.realization}
+        </div>
+
+      </div>
+    `;
+  }).join('');
+}
+
+function openRecordUsageModal() {
+  const sermonSelect = document.getElementById('usageSermonSelect');
+  const storySelect = document.getElementById('usageStorySelect');
+
+  // Filter all sermon files
+  const sermonFiles = ALL_ITEMS.filter(it => it.tab === 'Sermon' || it.modules.includes('Sermon'));
+  sermonSelect.innerHTML = (sermonFiles.length > 0 ? sermonFiles : ALL_ITEMS).map(it => `
+    <option value="${it.url}">${it.title}</option>
+  `).join('');
+
+  // Filter all story files
+  const storyFiles = ALL_ITEMS.filter(it => it.tab === 'Stories' || it.modules.includes('Stories'));
+  let storyOpts = '<option value="">None (No story paired)</option>';
+  storyFiles.forEach(it => {
+    storyOpts += `<option value="${it.url}">${it.title}</option>`;
+  });
+  storySelect.innerHTML = storyOpts;
+
+  // Date default to today
+  document.getElementById('usageDateInput').value = new Date().toISOString().split('T')[0];
+
+  const modal = document.getElementById('recordUsageModal');
+  const container = document.getElementById('recordUsageModalContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeRecordUsageModal() {
+  const modal = document.getElementById('recordUsageModal');
+  const container = document.getElementById('recordUsageModalContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function saveSermonUsageRecord(e) {
+  e.preventDefault();
+  const sermonUrl = document.getElementById('usageSermonSelect').value;
+  const storyUrl = document.getElementById('usageStorySelect').value;
+  const worship = document.getElementById('usageWorshipSelect').value;
+  const time = document.getElementById('usageTimeSelect').value;
+  const date = document.getElementById('usageDateInput').value;
+  const realization = document.getElementById('usageRealizationInput').value.trim();
+
+  const sermonItem = ALL_ITEMS.find(it => it.url === sermonUrl);
+  const storyItem = ALL_ITEMS.find(it => it.url === storyUrl);
+
+  const newRecord = {
+    id: 'room_' + Date.now(),
+    userId: CURRENT_USER.userId,
+    userName: CURRENT_USER.fullName,
+    userZion: CURRENT_USER.zion || 'Main Zion',
+    userArea: CURRENT_USER.area || 'General',
+    sermonTitle: sermonItem ? sermonItem.title : 'Sermon',
+    sermonUrl: sermonUrl,
+    storyTitle: storyItem ? storyItem.title : 'None',
+    storyUrl: storyUrl,
+    worship,
+    time,
+    date,
+    realization,
+    createdAt: new Date().toISOString()
+  };
+
+  myRoomRecords.unshift(newRecord);
+  localStorage.setItem('wlh_my_room_records', JSON.stringify(myRoomRecords));
+
+  closeRecordUsageModal();
+  updateMyRoomBadge();
+  if (activeView === 'myroom') {
+    renderMyRoomView();
+  }
+  renderRecords();
+  showToast('✨ Sermon usage recorded in My Room!');
+  logActivity('My Room', 'Recorded sermon: ' + newRecord.sermonTitle);
+}
+
+function deleteMyRoomRecord(recordId, e) {
+  if (e) e.stopPropagation();
+  if (!confirm('Are you sure you want to delete this ministry journal record?')) return;
+  myRoomRecords = myRoomRecords.filter(r => r.id !== recordId);
+  localStorage.setItem('wlh_my_room_records', JSON.stringify(myRoomRecords));
+  updateMyRoomBadge();
+  renderMyRoomView();
+  renderRecords();
+  showToast('Record deleted');
+}
+
+// 8. USED BADGE & HISTORY MODAL ON FILES
+function openFileUsageHistoryModal(url, e) {
+  if (e) e.stopPropagation();
+  const item = ALL_ITEMS.find(it => it.url === url);
+  const usages = myRoomRecords.filter(r => r.sermonUrl === url || r.storyUrl === url);
+
+  document.getElementById('usedHistoryFileTitle').textContent = item ? item.title : 'File Usage History';
+  const container = document.getElementById('usedHistoryRecordsContainer');
+
+  if (usages.length === 0) {
+    container.innerHTML = '<p class="text-slate-400 text-xs italic">No leaders have logged usage for this file yet.</p>';
+  } else {
+    container.innerHTML = usages.map(u => `
+      <div class="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 space-y-1.5 text-xs">
+        <div class="flex items-center justify-between text-[11px]">
+          <span class="font-bold text-amber-300"><i class="fa-solid fa-user-tie mr-1"></i> ${u.userName} (${u.userZion})</span>
+          <span class="text-slate-400 font-mono">${u.date} • ${u.time}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px] border border-purple-500/30">${u.worship}</span>
+          ${u.storyTitle && u.storyTitle !== 'None' ? `<span class="text-[11px] text-slate-300">Paired with: <strong>${u.storyTitle}</strong></span>` : ''}
+        </div>
+        <p class="text-slate-300 text-[11px] bg-slate-900/60 p-2 rounded-xl border border-slate-800 mt-1 italic">"${u.realization}"</p>
+      </div>
+    `).join('');
+  }
+
+  const modal = document.getElementById('usedFileHistoryModal');
+  const box = document.getElementById('usedFileHistoryContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  box.classList.remove('scale-95');
+  box.classList.add('scale-100');
+}
+
+function closeFileUsageHistoryModal() {
+  const modal = document.getElementById('usedFileHistoryModal');
+  const box = document.getElementById('usedFileHistoryContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  box.classList.remove('scale-100');
+  box.classList.add('scale-95');
+}
+
+// 9. MULTI-MODULE & MULTI-TOPIC ASSIGNMENT MODAL
+function openEditFileModuleTopicModal(url, e) {
+  if (e) e.stopPropagation();
+  const item = ALL_ITEMS.find(it => it.url === url);
+  if (!item) return;
+
+  document.getElementById('singleEditFileUrl').value = url;
+  document.getElementById('singleEditFileTitle').textContent = item.title;
+
+  // Multi-Modules Checkboxes
+  const modContainer = document.getElementById('multiModulesCheckboxList');
+  modContainer.innerHTML = CATEGORIES.map(c => {
+    const isChecked = item.modules.includes(c.id);
+    return `
+      <label class="flex items-center gap-2 p-1.5 hover:bg-slate-800 rounded-lg cursor-pointer text-slate-200">
+        <input type="checkbox" name="moduleChoice" value="${c.id}" ${isChecked ? 'checked' : ''} class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+        <span class="truncate">${c.icon} ${c.name}</span>
+      </label>
+    `;
+  }).join('');
+
+  // Multi-Topics Checkboxes across all categories
+  const allKnownTopics = new Set();
+  CATEGORIES.forEach(c => (c.groups || []).forEach(g => allKnownTopics.add(g)));
+  item.topics.forEach(t => allKnownTopics.add(t));
+
+  const topicContainer = document.getElementById('multiTopicsCheckboxList');
+  topicContainer.innerHTML = [...allKnownTopics].map(tp => {
+    const isChecked = item.topics.includes(tp);
+    return `
+      <label class="flex items-center gap-2 p-1.5 hover:bg-slate-800 rounded-lg cursor-pointer text-slate-200">
+        <input type="checkbox" name="topicChoice" value="${tp}" ${isChecked ? 'checked' : ''} class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+        <span class="truncate">${tp}</span>
+      </label>
+    `;
+  }).join('');
+
+  const modal = document.getElementById('editFileModuleTopicModal');
+  const container = document.getElementById('editFileModuleTopicContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeEditFileModuleTopicModal() {
+  const modal = document.getElementById('editFileModuleTopicModal');
+  const container = document.getElementById('editFileModuleTopicContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+  hideMultiEditCustomTopic();
+}
+
+function toggleMultiEditCustomTopic() {
+  const wrap = document.getElementById('multiEditCustomTopicWrapper');
+  if (wrap.classList.contains('hidden')) {
+    wrap.classList.remove('hidden');
+    document.getElementById('multiEditCustomTopicInput').focus();
+  } else {
+    wrap.classList.add('hidden');
+  }
+}
+
+function hideMultiEditCustomTopic() {
+  const wrap = document.getElementById('multiEditCustomTopicWrapper');
+  wrap.classList.add('hidden');
+  document.getElementById('multiEditCustomTopicInput').value = '';
+}
+
+function saveMultiModuleTopicAssignment(e) {
+  e.preventDefault();
+  const url = document.getElementById('singleEditFileUrl').value;
+  const modBoxes = document.querySelectorAll('input[name="moduleChoice"]:checked');
+  const topBoxes = document.querySelectorAll('input[name="topicChoice"]:checked');
+  const customTopic = document.getElementById('multiEditCustomTopicInput').value.trim();
+
+  let selectedModules = [...modBoxes].map(b => b.value);
+  if (selectedModules.length === 0) selectedModules = ['all'];
+
+  let selectedTopics = [...topBoxes].map(b => b.value);
+  if (customTopic) {
+    selectedTopics.push(customTopic);
+    // add to primary module
+    const primary = selectedModules[0];
+    if (primary && primary !== 'all') {
+      if (!topicEdits[primary]) topicEdits[primary] = [];
+      topicEdits[primary].push(customTopic);
+      localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
+    }
+  }
+  if (selectedTopics.length === 0) selectedTopics = ['General'];
+
+  if (!fileMetadata[url]) fileMetadata[url] = {};
+  fileMetadata[url].modules = selectedModules;
+  fileMetadata[url].topics = selectedTopics;
+  localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
+
+  closeEditFileModuleTopicModal();
+  refreshDataModel();
+  renderSubgroupTabs();
+  renderRecords();
+  showToast('Updated file to ' + selectedModules.length + ' modules & ' + selectedTopics.length + ' topics!');
+  logActivity('File Multi-Assigned', 'Assigned file to: ' + selectedModules.join(', '));
+}
+
+// 10. ADMIN MANAGEMENT MODAL (PERMISSIONS & DOWNLOADS PANEL)
+function openAdminManagementModal() {
+  if (CURRENT_USER.role !== 'admin') {
+    showToast('Permission Denied: Admin only');
+    return;
+  }
+
+  // Master switch
+  const masterBtn = document.getElementById('adminModalMasterDownloadToggle');
+  masterBtn.textContent = DOWNLOADS_ENABLED ? 'Downloads: ON' : 'Downloads: OFF';
+  masterBtn.className = DOWNLOADS_ENABLED 
+    ? 'px-5 py-2.5 rounded-xl font-extrabold text-xs transition border border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+    : 'px-5 py-2.5 rounded-xl font-extrabold text-xs transition border border-rose-500/40 bg-rose-500/20 text-rose-300';
+
+  // Users table
+  const tbody = document.getElementById('adminUserPermissionsTableBody');
+  tbody.innerHTML = ALL_USERS.map(u => {
+    const isDlAllowed = u.role === 'admin' ? true : (u.canDownload !== false);
+    return `
+      <tr>
+        <td class="py-2.5 px-3 font-bold text-white">${u.fullName} (${u.userId})</td>
+        <td class="py-2.5 px-3 text-slate-400">${u.zion}</td>
+        <td class="py-2.5 px-3">
+          <select onchange="updateUserModuleAssignment('${u.userId}', this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2 py-1 rounded-lg outline-none">
+            <option value="all" ${(u.assignedModules || []).includes('all') ? 'selected' : ''}>All Folders</option>
+            ${CATEGORIES.map(c => `
+              <option value="${c.id}" ${(u.assignedModules || []).includes(c.id) ? 'selected' : ''}>Only ${c.name}</option>
+            `).join('')}
+          </select>
+        </td>
+        <td class="py-2.5 px-3 text-right">
+          <button 
+            onclick="toggleUserDownloadPermission('${u.userId}')"
+            class="px-3 py-1 rounded-lg font-bold text-xs transition border ${
+              isDlAllowed 
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+            }"
+          >
+            ${isDlAllowed ? 'Download ON' : 'Download OFF'}
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Module rules grid
+  const modGrid = document.getElementById('adminModuleRulesGrid');
+  modGrid.innerHTML = CATEGORIES.map(c => {
+    const isAllowed = MODULE_DOWNLOAD_RULES[c.id] !== false;
+    return `
+      <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
+        <span class="truncate font-semibold text-slate-200">${c.icon} ${c.name}</span>
+        <button 
+          onclick="toggleModuleDownloadRule('${c.id}')"
+          class="px-2 py-0.5 rounded text-[10px] font-bold border ${isAllowed ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border-rose-500/30'}"
+        >
+          ${isAllowed ? 'Allowed' : 'Blocked'}
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  const modal = document.getElementById('adminManagementModal');
+  const container = document.getElementById('adminManagementContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeAdminManagementModal() {
+  const modal = document.getElementById('adminManagementModal');
+  const container = document.getElementById('adminManagementContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function toggleUserDownloadPermission(userId) {
+  const user = ALL_USERS.find(u => u.userId === userId);
+  if (user) {
+    user.canDownload = !(user.canDownload !== false);
+    localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+    openAdminManagementModal(); // refresh
+    showToast('Download permission updated for ' + user.fullName);
+  }
+}
+
+function toggleModuleDownloadRule(moduleId) {
+  MODULE_DOWNLOAD_RULES[moduleId] = !(MODULE_DOWNLOAD_RULES[moduleId] !== false);
+  localStorage.setItem('wlh_module_download_rules', JSON.stringify(MODULE_DOWNLOAD_RULES));
+  openAdminManagementModal();
+  showToast('Module download rule updated');
+}
+
 function toggleMasterDownloads() {
   if (CURRENT_USER.role !== 'admin') {
     showToast('Permission Denied: Only Admin can toggle downloads');
@@ -388,11 +958,15 @@ function toggleMasterDownloads() {
   renderRecords();
   
   if (DOWNLOADS_ENABLED) {
-    showToast('Downloads ENABLED for permitted files');
-    logActivity('Download Permission', 'Downloads enabled globally');
+    showToast('Global downloads ENABLED');
+    logActivity('Downloads', 'Enabled globally');
   } else {
-    showToast('Downloads DISABLED strictly');
-    logActivity('Download Permission', 'Downloads disabled globally');
+    showToast('Global downloads DISABLED strictly');
+    logActivity('Downloads', 'Disabled globally');
+  }
+
+  if (!document.getElementById('adminManagementModal').classList.contains('pointer-events-none')) {
+    openAdminManagementModal();
   }
 }
 
@@ -400,28 +974,19 @@ function updateTopDownloadBtn() {
   const btn = document.getElementById('masterDownloadBtn');
   const txt = document.getElementById('downloadBtnText');
   const icon = document.getElementById('downloadLockIcon');
-  const settingBtn = document.getElementById('settingMasterDownloadToggle');
 
   if (DOWNLOADS_ENABLED) {
     btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition border border-emerald-500/40 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30';
     icon.className = 'fa-solid fa-download text-[10px]';
     txt.textContent = 'Downloads: ON';
-    if (settingBtn) {
-      settingBtn.className = 'px-4 py-2 rounded-xl font-extrabold text-xs transition border border-emerald-500/40 bg-emerald-500/20 text-emerald-300';
-      settingBtn.textContent = 'Downloads: ON';
-    }
   } else {
     btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20';
     icon.className = 'fa-solid fa-lock text-[10px]';
     txt.textContent = 'Downloads: OFF';
-    if (settingBtn) {
-      settingBtn.className = 'px-4 py-2 rounded-xl font-extrabold text-xs transition border border-rose-500/40 bg-rose-500/20 text-rose-300';
-      settingBtn.textContent = 'Downloads: OFF';
-    }
   }
 }
 
-// 7. SIDE PANEL OPEN & CLOSE (COLLAPSIBLE SIDEBAR)
+// 11. SIDEBAR TOGGLE & RECORD COUNTS
 function toggleSidebar() {
   const sb = document.getElementById('mainSidebar');
   const overlay = document.getElementById('sidebarOverlay');
@@ -445,32 +1010,29 @@ function toggleSidebar() {
   }
 }
 
-// 8. COUNTS & BADGES
 function updateTotalCounts() {
   document.getElementById('allCountBadge').textContent = ALL_ITEMS.length;
 }
 
 function updatePinnedBadge() {
   const badge = document.getElementById('pinnedCountBadge');
+  if (!badge) return;
   badge.textContent = pinnedUrls.size;
-  if (pinnedUrls.size > 0) {
-    badge.classList.remove('hidden');
-  } else {
-    badge.classList.add('hidden');
-  }
+  if (pinnedUrls.size > 0) badge.classList.remove('hidden');
+  else badge.classList.add('hidden');
 }
 
-// 9. SIDEBAR CATEGORIES RENDER
+// 12. SIDEBAR CATEGORIES RENDER
 function renderSidebarCategories() {
   const container = document.getElementById('dynamicSidebarCategories');
   container.innerHTML = CATEGORIES.map(cat => {
-    const catCount = ALL_ITEMS.filter(it => it.tab === cat.id).length;
-    const isActive = (currentCategory === cat.id && !isPinnedOnly);
+    const catCount = ALL_ITEMS.filter(it => it.modules.includes(cat.id) || it.tab === cat.id).length;
+    const isActive = (activeView === 'resources' && currentCategory === cat.id && !isPinnedOnly);
 
     return `
       <div class="relative group">
         <button 
-          onclick="selectCategory('${cat.id}')" 
+          onclick="switchToResourcesTab('${cat.id}')" 
           id="cat-btn-${cat.id}"
           class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
             isActive 
@@ -489,7 +1051,6 @@ function renderSidebarCategories() {
           </div>
         </button>
 
-        <!-- Edit Module Pencil Icon -->
         <button 
           onclick="openEditModuleModal('${cat.id}', event)" 
           title="Edit module name, emoji, or topics"
@@ -528,39 +1089,28 @@ function selectCategory(catId) {
     trigger.classList.remove('hidden');
   }
 
-  if (window.innerWidth < 768) {
-    const sb = document.getElementById('mainSidebar');
-    if (!sb.classList.contains('-translate-x-full')) {
-      toggleSidebar();
-    }
-  }
-
   renderSubgroupTabs();
   renderRecords();
 }
 
-// 10. SUBGROUPS / TOPICS TABS (WITH MULTI-SELECT BY TOPIC)
+// 13. SUBGROUPS / TOPICS TABS
 function renderSubgroupTabs() {
   const container = document.getElementById('subgroupTabsContainer');
   if (currentCategory === 'all') {
-    container.innerHTML = `
-      <span class="text-xs text-slate-400 italic px-2">Select a module on the left to browse, filter, or select by topics</span>
-    `;
+    container.innerHTML = `<span class="text-xs text-slate-400 italic px-2">Select a module on the left to filter by specific topics</span>`;
     return;
   }
 
   const catObj = CATEGORIES.find(c => c.id === currentCategory);
   if (!catObj) return;
 
-  const catItems = ALL_ITEMS.filter(it => it.tab === currentCategory);
+  const catItems = ALL_ITEMS.filter(it => it.modules.includes(currentCategory) || it.tab === currentCategory);
 
   let html = `
     <button 
       onclick="filterSubgroup('all')"
       class="px-3 py-1 rounded-xl text-xs font-bold transition flex-shrink-0 ${
-        currentSubgroup === 'all' 
-          ? 'bg-indigo-600 text-white shadow-xs' 
-          : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+        currentSubgroup === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
       }"
     >
       All (${catItems.length})
@@ -568,7 +1118,7 @@ function renderSubgroupTabs() {
   `;
 
   (catObj.groups || []).forEach(grp => {
-    const grpCount = catItems.filter(it => it.group === grp).length;
+    const grpCount = catItems.filter(it => it.topics.includes(grp) || it.group === grp).length;
     const isActive = (currentSubgroup === grp);
 
     html += `
@@ -581,16 +1131,14 @@ function renderSubgroupTabs() {
           <span class="text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-400'}">${grpCount}</span>
         </button>
 
-        <!-- Multi-select all in this topic icon -->
         <button 
           onclick="selectTopicItems('${grp.replace(/'/g, "\\'")}', event)"
-          title="Select all ${grpCount} files in this topic"
+          title="Select all files in this topic"
           class="px-1 text-[10px] text-slate-400 hover:text-emerald-300 opacity-0 group-hover/grp:opacity-100 transition"
         >
           <i class="fa-solid fa-square-check"></i>
         </button>
 
-        <!-- Rename Topic pencil -->
         <button 
           onclick="renameTopic('${catObj.id}', '${grp.replace(/'/g, "\\'")}', event)"
           title="Rename this topic"
@@ -602,12 +1150,10 @@ function renderSubgroupTabs() {
     `;
   });
 
-  // + Add Topic button
   html += `
     <button 
       onclick="quickAddTopicToModule('${catObj.id}')"
       class="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1 flex-shrink-0 border border-slate-700"
-      title="Add topic to this module"
     >
       <i class="fa-solid fa-plus text-[10px]"></i> Topic
     </button>
@@ -638,17 +1184,10 @@ function renameTopic(catId, oldTopic, e) {
   topicEdits[catId] = (catObj.groups || []);
   localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
 
-  // Update in items
-  customItems.forEach(it => {
-    if (it.tab === catId && it.group === oldTopic) it.group = finalName;
-  });
-  localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
-
   refreshDataModel();
   renderSubgroupTabs();
   renderRecords();
   showToast('Topic renamed to "' + finalName + '"');
-  logActivity('Topic Edit', 'Renamed topic ' + oldTopic + ' to ' + finalName);
 }
 
 function quickAddTopicToModule(catId) {
@@ -670,16 +1209,15 @@ function quickAddTopicToModule(catId) {
   refreshDataModel();
   renderSubgroupTabs();
   showToast('Added topic "' + tName + '"');
-  logActivity('Topic Add', 'Added topic ' + tName + ' to ' + catId);
 }
 
-// 11. MULTI-SELECT ACCORDING TO MODULE & TOPIC
+// 14. MULTI-SELECT BY TOPIC & MODULE
 function selectTopicItems(topicName, event) {
   if (event) event.stopPropagation();
-  const matching = ALL_ITEMS.filter(it => it.tab === currentCategory && it.group === topicName);
+  const matching = ALL_ITEMS.filter(it => (it.modules.includes(currentCategory) || it.tab === currentCategory) && (it.topics.includes(topicName) || it.group === topicName));
   matching.forEach(it => selectedItemUrls.add(it.url));
   updateSelectionState();
-  showToast('Selected ' + matching.length + ' items in topic: ' + topicName);
+  showToast('Selected ' + matching.length + ' files in topic: ' + topicName);
 }
 
 function selectCurrentTopicItems() {
@@ -695,30 +1233,24 @@ function selectCurrentModuleItems() {
   if (currentCategory === 'all') {
     matching = getFilteredRecords();
   } else {
-    matching = ALL_ITEMS.filter(it => it.tab === currentCategory);
+    matching = ALL_ITEMS.filter(it => it.modules.includes(currentCategory) || it.tab === currentCategory);
   }
   matching.forEach(it => selectedItemUrls.add(it.url));
   updateSelectionState();
-  showToast('Selected ' + matching.length + ' items in module');
+  showToast('Selected ' + matching.length + ' files in module');
 }
 
 function toggleItemSelect(url, event) {
   if (event) event.stopPropagation();
-  if (selectedItemUrls.has(url)) {
-    selectedItemUrls.delete(url);
-  } else {
-    selectedItemUrls.add(url);
-  }
+  if (selectedItemUrls.has(url)) selectedItemUrls.delete(url);
+  else selectedItemUrls.add(url);
   updateSelectionState();
 }
 
 function toggleSelectAll(checked) {
   const visible = getFilteredRecords();
-  if (checked) {
-    visible.forEach(it => selectedItemUrls.add(it.url));
-  } else {
-    selectedItemUrls.clear();
-  }
+  if (checked) visible.forEach(it => selectedItemUrls.add(it.url));
+  else selectedItemUrls.clear();
   updateSelectionState();
 }
 
@@ -752,223 +1284,770 @@ function getFilteredRecords() {
     filtered = filtered.filter(it => pinnedUrls.has(it.url));
   } else {
     if (currentCategory !== 'all') {
-      filtered = filtered.filter(it => it.tab === currentCategory);
+      filtered = filtered.filter(it => it.modules.includes(currentCategory) || it.tab === currentCategory);
     }
     if (currentSubgroup !== 'all') {
-      filtered = filtered.filter(it => it.group === currentSubgroup);
+      filtered = filtered.filter(it => it.topics.includes(currentSubgroup) || it.group === currentSubgroup);
     }
   }
   if (searchQuery) {
     filtered = filtered.filter(it => 
       it.title.toLowerCase().includes(searchQuery) ||
-      (it.group && it.group.toLowerCase().includes(searchQuery)) ||
-      (it.tab && it.tab.toLowerCase().includes(searchQuery)) ||
+      (it.topics && it.topics.some(t => t.toLowerCase().includes(searchQuery))) ||
+      (it.modules && it.modules.some(m => m.toLowerCase().includes(searchQuery))) ||
       (it.categoryName && it.categoryName.toLowerCase().includes(searchQuery))
     );
   }
   return filtered;
 }
 
-// 12. CHANGE MODULE & TOPIC DIRECTLY ON INDIVIDUAL FILE
-function openEditFileModuleTopicModal(url, event) {
-  if (event) event.stopPropagation();
-  const item = ALL_ITEMS.find(it => it.url === url);
-  if (!item) return;
+// 15. RECORD RENDERING (WITH "USED" BADGE & DIRECT DOWNLOAD)
+function renderRecords() {
+  const items = getFilteredRecords();
+  document.getElementById('recordCountLabel').textContent = items.length;
+  const noResults = document.getElementById('noResults');
 
-  document.getElementById('singleEditFileUrl').value = url;
-  document.getElementById('singleEditFileTitle').textContent = item.title;
+  if (items.length === 0) {
+    noResults.classList.remove('hidden');
+    document.getElementById('tableBody').innerHTML = '';
+    document.getElementById('gridViewWrapper').innerHTML = '';
+    return;
+  }
+  noResults.classList.add('hidden');
 
-  const modSelect = document.getElementById('singleEditModuleSelect');
-  modSelect.innerHTML = CATEGORIES.map(c => `
-    <option value="${c.id}" ${c.id === item.tab ? 'selected' : ''}>${c.icon} ${c.name}</option>
+  if (currentViewMode === 'table') {
+    renderTableView(items);
+  } else {
+    renderGridView(items);
+  }
+  updateSelectionState();
+}
+
+function renderTableView(items) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = items.map(item => {
+    const isPinned = pinnedUrls.has(item.url);
+    const isSelected = selectedItemUrls.has(item.url);
+    const safeTitle = item.title.replace(/'/g, "\\'");
+    const safeUrl = item.url.replace(/'/g, "\\'");
+    const isTelugu = /[\u0C00-\u0C7F]/.test(item.title);
+
+    // Used count check
+    const usedCount = myRoomRecords.filter(r => r.sermonUrl === item.url || r.storyUrl === item.url).length;
+
+    // Direct download check
+    const showDownload = checkUserCanDownload(item);
+
+    return `
+      <tr class="hover:bg-slate-800/50 transition group ${item.isLocked ? 'bg-amber-950/10' : ''} ${item.isHidden ? 'opacity-60' : ''}">
+        
+        <!-- Checkbox -->
+        <td class="py-3 px-3 text-center">
+          <input 
+            type="checkbox" 
+            data-url="${safeUrl}" 
+            onchange="toggleItemSelect('${safeUrl}', event)" 
+            class="row-checkbox rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
+            ${isSelected ? 'checked' : ''}
+          >
+        </td>
+
+        <!-- Star Pin -->
+        <td class="py-3 px-2 text-center">
+          <button 
+            onclick="togglePin('${safeUrl}', event)"
+            class="transition ${isPinned ? 'text-amber-400 scale-110' : 'text-slate-600 hover:text-amber-400'}"
+            title="${isPinned ? 'Unpin' : 'Star favorite'}"
+          >
+            <i class="${isPinned ? 'fa-solid fa-star' : 'fa-regular fa-star'}"></i>
+          </button>
+        </td>
+
+        <!-- Title & Used Badge -->
+        <td class="py-3 px-4 font-semibold text-white">
+          <div class="flex items-center gap-2 flex-wrap">
+            ${item.customColor ? `<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${item.customColor}"></span>` : ''}
+            ${item.isLocked ? '<i class="fa-solid fa-lock text-amber-400 text-xs" title="PIN Protected"></i>' : ''}
+            ${item.isHidden ? '<i class="fa-solid fa-eye-slash text-rose-400 text-xs" title="Hidden from members"></i>' : ''}
+            ${item.isCustom ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold px-1.5 py-0.5 rounded border border-emerald-500/30">NEW</span>' : ''}
+            
+            <!-- USED BADGE (🔥 కోరిన విధంగా Used బ్యాడ్జ్) -->
+            ${usedCount > 0 ? `
+              <button 
+                onclick="openFileUsageHistoryModal('${safeUrl}', event)" 
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition shadow-xs"
+                title="View who used this file in My Room"
+              >
+                <i class="fa-solid fa-clock-rotate-left text-[9px]"></i>
+                <span>Used (${usedCount})</span>
+              </button>
+            ` : ''}
+
+            <span 
+              onclick="openFilePreview('${safeUrl}')"
+              class="cursor-pointer hover:text-indigo-400 transition font-medium ${isTelugu ? 'font-telugu' : ''}"
+            >
+              ${item.title}
+            </span>
+          </div>
+        </td>
+
+        <!-- Topic Pills (Supports multiple topics) -->
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-1 flex-wrap">
+            ${item.topics.map(tp => `
+              <button 
+                onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:border-indigo-500 transition"
+                title="Click to edit topics/modules"
+              >
+                <span>${tp}</span>
+              </button>
+            `).join('')}
+          </div>
+        </td>
+
+        <!-- Module Badges (Supports multiple modules) -->
+        <td class="py-3 px-4">
+          <div class="flex items-center gap-1 flex-wrap">
+            ${item.modules.map(modId => {
+              const catObj = CATEGORIES.find(c => c.id === modId);
+              return `
+                <button 
+                  onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${catObj ? catObj.badge : 'bg-slate-800 text-slate-300 border-slate-700'} hover:ring-1 hover:ring-indigo-400 transition"
+                  title="Click to edit modules"
+                >
+                  <span>${catObj ? catObj.icon : '📁'}</span>
+                  <span>${catObj ? catObj.name.split(' ')[0] : modId}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </td>
+
+        <!-- Actions -->
+        <td class="py-3 px-4 text-right">
+          <div class="flex items-center justify-end gap-1.5">
+            
+            <!-- Open In-App Preview -->
+            <button 
+              onclick="openFilePreview('${safeUrl}')"
+              class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] transition flex items-center gap-1 shadow-sm"
+              title="Open inside portal"
+            >
+              <i class="fa-regular fa-eye"></i>
+              <span>Preview</span>
+            </button>
+
+            <!-- DIRECT DOWNLOAD BUTTON (🔥 నేరుగా డౌన్‌లోడ్ అయ్యేలా) -->
+            ${showDownload ? `
+              <button 
+                onclick="triggerDirectDownload('${safeUrl}', '${safeTitle}', event)"
+                class="p-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 transition text-[11px]"
+                title="Direct Download File"
+              >
+                <i class="fa-solid fa-download"></i>
+              </button>
+            ` : ''}
+
+            <!-- Multi-Module & Topic edit button -->
+            <button 
+              onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+              class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-300 transition text-[11px] border border-slate-700"
+              title="Assign Multiple Modules & Topics"
+            >
+              <i class="fa-solid fa-folder-tree"></i>
+            </button>
+
+            <!-- External Tab -->
+            <a 
+              href="${item.url}" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-[11px] border border-slate-700"
+              title="Open in external browser tab"
+            >
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+
+            <!-- Copy Link -->
+            <button 
+              onclick="copyResourceUrl('${safeUrl}', '${safeTitle}', event)"
+              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-[11px] border border-slate-700"
+              title="Copy link"
+            >
+              <i class="fa-regular fa-copy"></i>
+            </button>
+
+          </div>
+        </td>
+
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderGridView(items) {
+  const container = document.getElementById('gridViewWrapper');
+  container.innerHTML = items.map(item => {
+    const isPinned = pinnedUrls.has(item.url);
+    const isSelected = selectedItemUrls.has(item.url);
+    const safeTitle = item.title.replace(/'/g, "\\'");
+    const safeUrl = item.url.replace(/'/g, "\\'");
+    const isTelugu = /[\u0C00-\u0C7F]/.test(item.title);
+    const usedCount = myRoomRecords.filter(r => r.sermonUrl === item.url || r.storyUrl === item.url).length;
+    const showDownload = checkUserCanDownload(item);
+
+    return `
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-lg hover:border-slate-700 transition flex flex-col justify-between group ${item.isLocked ? 'ring-1 ring-amber-500/40' : ''}">
+        
+        <div>
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="flex items-center gap-1.5">
+              <input 
+                type="checkbox" 
+                data-url="${safeUrl}" 
+                onchange="toggleItemSelect('${safeUrl}', event)" 
+                class="row-checkbox rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
+                ${isSelected ? 'checked' : ''}
+              >
+              <button 
+                onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+                class="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 truncate"
+              >
+                ${item.group || 'General'} <i class="fa-solid fa-pen text-[8px] text-slate-500"></i>
+              </button>
+            </div>
+            
+            <div class="flex items-center gap-1">
+              ${usedCount > 0 ? `
+                <button 
+                  onclick="openFileUsageHistoryModal('${safeUrl}', event)" 
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                  title="Used History"
+                >
+                  Used (${usedCount})
+                </button>
+              ` : ''}
+              <button 
+                onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
+                class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-400 hover:text-indigo-300 flex items-center justify-center text-xs transition"
+                title="Change Modules & Topics"
+              >
+                <i class="fa-solid fa-folder-tree"></i>
+              </button>
+              <button 
+                onclick="togglePin('${safeUrl}', event)"
+                class="w-7 h-7 rounded-lg transition flex items-center justify-center text-xs ${isPinned ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500 hover:text-amber-400'}"
+                title="Star"
+              >
+                <i class="${isPinned ? 'fa-solid fa-star' : 'fa-regular fa-star'}"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 mb-1.5">
+            ${item.customColor ? `<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${item.customColor}"></span>` : ''}
+            ${item.isLocked ? '<i class="fa-solid fa-lock text-amber-400 text-xs"></i>' : ''}
+            ${item.isCustom ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold px-1.5 py-0.2 rounded border border-emerald-500/30">NEW</span>' : ''}
+            <h4 class="text-sm font-bold text-white group-hover:text-indigo-400 transition line-clamp-2 ${isTelugu ? 'font-telugu' : ''}">
+              ${item.title}
+            </h4>
+          </div>
+
+          <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-4 flex-wrap">
+            ${item.modules.map(modId => {
+              const catObj = CATEGORIES.find(c => c.id === modId);
+              return `<span>${catObj ? catObj.icon : '📁'} ${catObj ? catObj.name.split(' ')[0] : modId}</span>`;
+            }).join(' • ')}
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+          <button 
+            onclick="openFilePreview('${safeUrl}')"
+            class="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <i class="fa-regular fa-eye"></i>
+            <span>Preview</span>
+          </button>
+
+          ${showDownload ? `
+            <button 
+              onclick="triggerDirectDownload('${safeUrl}', '${safeTitle}', event)"
+              class="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <i class="fa-solid fa-download"></i>
+              <span>Download</span>
+            </button>
+          ` : `
+            <a 
+              href="${item.url}" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-1.5 border border-slate-700"
+            >
+              <span>External</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>
+          `}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 16. POPULATE & ADD RESOURCE
+function populateAddResourceModules() {
+  const select = document.getElementById('newResourceModule');
+  if (!select) return;
+  select.innerHTML = CATEGORIES.map(cat => `
+    <option value="${cat.id}">${cat.icon} ${cat.name}</option>
   `).join('');
+}
 
-  onSingleEditModuleChange(item.group);
+function openAddResourceModal() {
+  populateAddResourceModules();
+  if (currentCategory !== 'all') {
+    document.getElementById('newResourceModule').value = currentCategory;
+  }
+  onModuleChangeInForm();
 
-  const modal = document.getElementById('editFileModuleTopicModal');
-  const container = document.getElementById('editFileModuleTopicContainer');
+  const modal = document.getElementById('addResourceModal');
+  const container = document.getElementById('addResourceModalContainer');
   modal.classList.remove('opacity-0', 'pointer-events-none');
   container.classList.remove('scale-95');
   container.classList.add('scale-100');
 }
 
-function closeEditFileModuleTopicModal() {
-  const modal = document.getElementById('editFileModuleTopicModal');
-  const container = document.getElementById('editFileModuleTopicContainer');
+function closeAddResourceModal() {
+  const modal = document.getElementById('addResourceModal');
+  const container = document.getElementById('addResourceModalContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+  document.getElementById('addResourceForm').reset();
+  hideCustomTopicInput();
+}
+
+function onModuleChangeInForm() {
+  const selectedModuleId = document.getElementById('newResourceModule').value;
+  const catObj = CATEGORIES.find(c => c.id === selectedModuleId);
+  const topicSelect = document.getElementById('newResourceTopicSelect');
+
+  let options = ['<option value="">-- Select Existing Topic --</option>'];
+  if (catObj && catObj.groups && catObj.groups.length > 0) {
+    catObj.groups.forEach(grp => {
+      options.push(`<option value="${grp}">${grp}</option>`);
+    });
+  }
+  options.push('<option value="__NEW_TOPIC__">➕ + Add New Topic...</option>');
+  topicSelect.innerHTML = options.join('');
+
+  if (currentSubgroup !== 'all' && catObj && catObj.groups && catObj.groups.includes(currentSubgroup)) {
+    topicSelect.value = currentSubgroup;
+    hideCustomTopicInput();
+  } else if (catObj && catObj.groups && catObj.groups.length > 0) {
+    topicSelect.selectedIndex = 1;
+    hideCustomTopicInput();
+  } else {
+    showCustomTopicInput();
+  }
+}
+
+function onTopicSelectChange() {
+  const select = document.getElementById('newResourceTopicSelect');
+  if (select.value === '__NEW_TOPIC__') showCustomTopicInput();
+  else hideCustomTopicInput();
+}
+
+function toggleCustomTopicInput() {
+  const wrapper = document.getElementById('customTopicInputWrapper');
+  if (wrapper.classList.contains('hidden')) showCustomTopicInput();
+  else hideCustomTopicInput();
+}
+
+function showCustomTopicInput() {
+  const wrapper = document.getElementById('customTopicInputWrapper');
+  const input = document.getElementById('newResourceCustomTopic');
+  wrapper.classList.remove('hidden');
+  input.focus();
+}
+
+function hideCustomTopicInput() {
+  const wrapper = document.getElementById('customTopicInputWrapper');
+  const input = document.getElementById('newResourceCustomTopic');
+  wrapper.classList.add('hidden');
+  input.value = '';
+}
+
+function submitNewResource(e) {
+  e.preventDefault();
+  const moduleId = document.getElementById('newResourceModule').value;
+  const topicSelectVal = document.getElementById('newResourceTopicSelect').value;
+  const customTopicVal = document.getElementById('newResourceCustomTopic').value.trim();
+  const title = document.getElementById('newResourceTitle').value.trim();
+  const url = document.getElementById('newResourceUrl').value.trim();
+
+  let topic = customTopicVal || (topicSelectVal !== '__NEW_TOPIC__' ? topicSelectVal : 'General');
+  
+  const catObj = CATEGORIES.find(c => c.id === moduleId);
+  if (catObj && customTopicVal) {
+    if (!catObj.groups) catObj.groups = [];
+    if (!catObj.groups.includes(topic)) {
+      catObj.groups.push(topic);
+      if (!topicEdits[moduleId]) topicEdits[moduleId] = [];
+      topicEdits[moduleId].push(topic);
+      localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
+    }
+  }
+
+  let previewUrl = url;
+  if (previewUrl.indexOf('docs.google.com/document/d/') !== -1) {
+    previewUrl = previewUrl.split('/edit')[0] + '/preview';
+  } else if (previewUrl.indexOf('drive.google.com/file/d/') !== -1) {
+    previewUrl = previewUrl.split('/view')[0] + '/preview';
+  }
+
+  const newItem = {
+    title,
+    url,
+    previewUrl,
+    group: topic,
+    tab: moduleId,
+    modules: [moduleId],
+    topics: [topic],
+    categoryName: catObj ? catObj.name : moduleId,
+    categoryIcon: catObj ? catObj.icon : '📄',
+    badge: catObj ? catObj.badge : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    btn: catObj ? catObj.btn : 'bg-emerald-600 hover:bg-emerald-500',
+    isCustom: true,
+    id: 'custom_' + Date.now()
+  };
+
+  customItems.unshift(newItem);
+  localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
+
+  closeAddResourceModal();
+  refreshDataModel();
+  updateTotalCounts();
+  renderSidebarCategories();
+  renderSubgroupTabs();
+  renderRecords();
+  showToast('✨ Resource added: ' + title);
+  logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
+}
+
+// 17. MODULE CUSTOMIZER
+function openAddModuleModal() {
+  document.getElementById('moduleModalTitle').textContent = 'Create New Module';
+  document.getElementById('editModuleTargetId').value = '';
+  document.getElementById('newModuleName').value = '';
+  document.getElementById('newModuleIcon').value = '📁';
+  document.getElementById('newModuleTopics').value = '';
+  document.getElementById('deleteModuleBtn').classList.add('hidden');
+
+  const modal = document.getElementById('addModuleModal');
+  const container = document.getElementById('addModuleModalContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function openEditCurrentModuleModal() {
+  if (currentCategory === 'all') return;
+  openEditModuleModal(currentCategory);
+}
+
+function openEditModuleModal(catId, event) {
+  if (event) event.stopPropagation();
+  const catObj = CATEGORIES.find(c => c.id === catId);
+  if (!catObj) return;
+
+  document.getElementById('moduleModalTitle').textContent = 'Edit Module: ' + catObj.name;
+  document.getElementById('editModuleTargetId').value = catId;
+  document.getElementById('newModuleName').value = catObj.name;
+  document.getElementById('newModuleIcon').value = catObj.icon;
+  document.getElementById('newModuleTopics').value = (catObj.groups || []).join(', ');
+
+  const delBtn = document.getElementById('deleteModuleBtn');
+  if (catObj.isCustom) delBtn.classList.remove('hidden');
+  else delBtn.classList.add('hidden');
+
+  const modal = document.getElementById('addModuleModal');
+  const container = document.getElementById('addModuleModalContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeAddModuleModal() {
+  const modal = document.getElementById('addModuleModal');
+  const container = document.getElementById('addModuleModalContainer');
   modal.classList.add('opacity-0', 'pointer-events-none');
   container.classList.remove('scale-100');
   container.classList.add('scale-95');
 }
 
-function onSingleEditModuleChange(selectedTopicToPreserve) {
-  const modId = document.getElementById('singleEditModuleSelect').value;
-  const catObj = CATEGORIES.find(c => c.id === modId);
-  const topicSelect = document.getElementById('singleEditTopicSelect');
-
-  let groups = (catObj && catObj.groups) ? catObj.groups : ['General'];
-  let opts = groups.map(g => `<option value="${g}">${g}</option>`);
-  opts.push('<option value="__CUSTOM_TOPIC__">➕ + Add New Topic...</option>');
-  topicSelect.innerHTML = opts.join('');
-
-  if (selectedTopicToPreserve && groups.includes(selectedTopicToPreserve)) {
-    topicSelect.value = selectedTopicToPreserve;
-    hideSingleEditCustomTopic();
-  } else {
-    topicSelect.selectedIndex = 0;
-    hideSingleEditCustomTopic();
-  }
+function selectEmoji(emoji) {
+  document.getElementById('newModuleIcon').value = emoji;
 }
 
-function onSingleEditTopicSelectChange() {
-  const val = document.getElementById('singleEditTopicSelect').value;
-  if (val === '__CUSTOM_TOPIC__') {
-    showSingleEditCustomTopic();
-  } else {
-    hideSingleEditCustomTopic();
-  }
-}
-
-function toggleSingleEditCustomTopic() {
-  const wrapper = document.getElementById('singleEditCustomTopicWrapper');
-  if (wrapper.classList.contains('hidden')) {
-    showSingleEditCustomTopic();
-  } else {
-    hideSingleEditCustomTopic();
-  }
-}
-
-function showSingleEditCustomTopic() {
-  const wrapper = document.getElementById('singleEditCustomTopicWrapper');
-  wrapper.classList.remove('hidden');
-  document.getElementById('singleEditCustomTopicInput').focus();
-}
-
-function hideSingleEditCustomTopic() {
-  const wrapper = document.getElementById('singleEditCustomTopicWrapper');
-  wrapper.classList.add('hidden');
-  document.getElementById('singleEditCustomTopicInput').value = '';
-}
-
-function saveSingleFileModuleTopicChange(e) {
+function submitModuleConfig(e) {
   e.preventDefault();
-  const url = document.getElementById('singleEditFileUrl').value;
-  const newMod = document.getElementById('singleEditModuleSelect').value;
-  const topicSelectVal = document.getElementById('singleEditTopicSelect').value;
-  const customTopicVal = document.getElementById('singleEditCustomTopicInput').value.trim();
+  const targetId = document.getElementById('editModuleTargetId').value;
+  const name = document.getElementById('newModuleName').value.trim();
+  const icon = document.getElementById('newModuleIcon').value.trim() || '📁';
+  const topicsStr = document.getElementById('newModuleTopics').value.trim();
 
-  let finalTopic = customTopicVal || (topicSelectVal !== '__CUSTOM_TOPIC__' ? topicSelectVal : 'General');
+  let parsedTopics = [];
+  if (topicsStr) {
+    parsedTopics = topicsStr.split(',').map(s => s.trim()).filter(Boolean);
+  }
 
-  // If custom topic, add to module
-  const catObj = CATEGORIES.find(c => c.id === newMod);
-  if (catObj && customTopicVal) {
-    if (!catObj.groups) catObj.groups = [];
-    if (!catObj.groups.includes(customTopicVal)) {
-      catObj.groups.push(customTopicVal);
-      if (!topicEdits[newMod]) topicEdits[newMod] = [];
-      topicEdits[newMod].push(customTopicVal);
+  if (targetId) {
+    moduleEdits[targetId] = { name, icon };
+    localStorage.setItem('wlh_module_edits', JSON.stringify(moduleEdits));
+    if (parsedTopics.length > 0) {
+      topicEdits[targetId] = parsedTopics;
       localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
     }
+    showToast('Module "' + name + '" updated!');
+  } else {
+    const newId = 'mod_' + Date.now();
+    const newModule = {
+      id: newId,
+      name,
+      icon,
+      badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+      btn: 'bg-indigo-600 hover:bg-indigo-500',
+      groups: parsedTopics.length > 0 ? parsedTopics : ['General'],
+      isCustom: true
+    };
+    customModules.push(newModule);
+    localStorage.setItem('wlh_custom_modules', JSON.stringify(customModules));
+    showToast('Created module "' + name + '"!');
   }
 
-  // Update in fileMetadata
-  if (!fileMetadata[url]) fileMetadata[url] = {};
-  fileMetadata[url].customTab = newMod;
-  fileMetadata[url].customGroup = finalTopic;
-  localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
-
-  // If it's a customItem, update there too
-  const customIt = customItems.find(it => it.url === url);
-  if (customIt) {
-    customIt.tab = newMod;
-    customIt.group = finalTopic;
-    localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
-  }
-
-  closeEditFileModuleTopicModal();
+  closeAddModuleModal();
   refreshDataModel();
+  updateTotalCounts();
+  renderSidebarCategories();
+  populateAddResourceModules();
   renderSubgroupTabs();
   renderRecords();
-  showToast('Updated file to module: ' + (catObj ? catObj.name : newMod) + ' • ' + finalTopic);
-  logActivity('File Reassigned', 'Moved file to ' + newMod + ' / ' + finalTopic);
 }
 
-// 13. BULK ACTIONS IMPLEMENTATIONS
-function bulkShare() {
+function deleteCurrentTargetModule() {
+  const targetId = document.getElementById('editModuleTargetId').value;
+  if (!targetId) return;
+  if (!confirm('Are you sure you want to delete this custom module?')) return;
+
+  customModules = customModules.filter(m => m.id !== targetId);
+  localStorage.setItem('wlh_custom_modules', JSON.stringify(customModules));
+  delete moduleEdits[targetId];
+  delete topicEdits[targetId];
+
+  closeAddModuleModal();
+  refreshDataModel();
+  renderSidebarCategories();
+  populateAddResourceModules();
+  selectCategory('all');
+  showToast('Module deleted');
+}
+
+// 18. MOVE & COPY MODALS
+function openMoveModal() {
+  openMoveCopyDialog('move');
+}
+
+function openCopyModal() {
+  openMoveCopyDialog('copy');
+}
+
+let activeMoveCopyAction = 'move';
+function openMoveCopyDialog(action) {
+  activeMoveCopyAction = action;
+  document.getElementById('moveCopyModalTitle').textContent = (action === 'move' ? 'Move' : 'Copy') + ' ' + selectedItemUrls.size + ' Resources';
+  document.getElementById('executeMoveCopyBtn').textContent = action === 'move' ? 'Apply Move' : 'Duplicate & Copy';
+
+  const modSelect = document.getElementById('moveTargetModule');
+  modSelect.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+  onMoveModuleChange();
+
+  const modal = document.getElementById('moveCopyModal');
+  const container = document.getElementById('moveCopyModalContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeMoveCopyModal() {
+  const modal = document.getElementById('moveCopyModal');
+  const container = document.getElementById('moveCopyModalContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function onMoveModuleChange() {
+  const modId = document.getElementById('moveTargetModule').value;
+  const catObj = CATEGORIES.find(c => c.id === modId);
+  const topicSelect = document.getElementById('moveTargetTopic');
+  let groups = (catObj && catObj.groups) ? catObj.groups : ['General'];
+  topicSelect.innerHTML = groups.map(g => `<option value="${g}">${g}</option>`).join('');
+}
+
+function executeMoveCopyAction() {
+  const targetMod = document.getElementById('moveTargetModule').value;
+  const targetTopic = document.getElementById('moveTargetTopic').value;
+
+  const urls = [...selectedItemUrls];
+  if (activeMoveCopyAction === 'move') {
+    urls.forEach(u => {
+      if (!fileMetadata[u]) fileMetadata[u] = {};
+      fileMetadata[u].modules = [targetMod];
+      fileMetadata[u].topics = [targetTopic];
+    });
+    localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
+    showToast('Moved ' + urls.length + ' items to ' + targetMod);
+  } else {
+    urls.forEach(u => {
+      const orig = ALL_ITEMS.find(i => i.url === u);
+      if (orig) {
+        const copyItem = {
+          ...orig,
+          id: 'copy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          tab: targetMod,
+          group: targetTopic,
+          modules: [targetMod],
+          topics: [targetTopic],
+          isCustom: true
+        };
+        customItems.unshift(copyItem);
+      }
+    });
+    localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
+    showToast('Copied ' + urls.length + ' items to ' + targetMod);
+  }
+
+  closeMoveCopyModal();
+  clearSelection();
+  refreshDataModel();
+  renderRecords();
+}
+
+// 19. QR CODE & MERGE STUDY PACK
+function showSingleQR(title, url) {
+  openQRWithUrl(title, url);
+}
+
+function openQRModal() {
   const urls = [...selectedItemUrls];
   if (urls.length === 0) return;
-  const text = urls.join('\n');
-  navigator.clipboard.writeText(text).then(() => {
-    showToast('Copied ' + urls.length + ' links to clipboard!');
-  });
+  const firstItem = ALL_ITEMS.find(it => it.url === urls[0]);
+  openQRWithUrl(firstItem ? firstItem.title : 'Selected Resource', urls[0]);
 }
 
-function bulkToggleLock() {
-  const urls = [...selectedItemUrls];
-  let anyUnlocked = urls.some(u => !fileMetadata[u] || !fileMetadata[u].locked);
-  const targetState = anyUnlocked;
+function openQRWithUrl(title, url) {
+  document.getElementById('qrResourceTitle').textContent = title;
+  const canvasContainer = document.getElementById('qrcodeCanvasContainer');
+  canvasContainer.innerHTML = '';
 
-  urls.forEach(u => {
-    if (!fileMetadata[u]) fileMetadata[u] = {};
-    fileMetadata[u].locked = targetState;
-  });
-  localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
-  refreshDataModel();
-  renderRecords();
-  showToast(targetState ? '🔒 Selected files locked with 6-digit PIN' : '🔓 Selected files unlocked');
-  logActivity('Security', (targetState ? 'Locked ' : 'Unlocked ') + urls.length + ' files');
-}
-
-function bulkToggleHide() {
-  const urls = [...selectedItemUrls];
-  let anyVisible = urls.some(u => !fileMetadata[u] || !fileMetadata[u].hidden);
-  const targetState = anyVisible;
-
-  urls.forEach(u => {
-    if (!fileMetadata[u]) fileMetadata[u] = {};
-    fileMetadata[u].hidden = targetState;
-  });
-  localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
-  refreshDataModel();
-  renderRecords();
-  showToast(targetState ? '👁️ Selected files hidden from members' : '👁️ Selected files unhidden');
-  logActivity('Visibility', (targetState ? 'Hidden ' : 'Unhidden ') + urls.length + ' files');
-}
-
-function bulkDownload() {
-  if (!DOWNLOADS_ENABLED) {
-    showToast('Downloads are strictly DISABLED by Admin.');
-    return;
+  if (window.QRCode) {
+    new QRCode(canvasContainer, {
+      text: url,
+      width: 180,
+      height: 180,
+      colorDark: '#0f172a',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } else {
+    canvasContainer.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(url) + '" alt="QR">';
   }
-  const urls = [...selectedItemUrls];
-  urls.forEach((url, i) => {
-    setTimeout(() => {
-      window.open(url, '_blank');
-    }, i * 400);
-  });
-  showToast('Initiated download for ' + urls.length + ' files');
-  logActivity('Download', 'Bulk downloaded ' + urls.length + ' files');
+
+  const modal = document.getElementById('qrModal');
+  const container = document.getElementById('qrModalContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
 }
 
-function bulkPin() {
-  const urls = [...selectedItemUrls];
-  let anyUnpinned = urls.some(u => !pinnedUrls.has(u));
-  urls.forEach(u => {
-    if (anyUnpinned) pinnedUrls.add(u);
-    else pinnedUrls.delete(u);
-  });
-  localStorage.setItem('wlh_pinned_urls', JSON.stringify([...pinnedUrls]));
-  updatePinnedBadge();
-  renderRecords();
-  showToast(anyUnpinned ? '⭐ Pinned selected files' : 'Unpinned selected files');
+function closeQRModal() {
+  const modal = document.getElementById('qrModal');
+  const container = document.getElementById('qrModalContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
 }
 
-function bulkOpenTabs() {
+function openMergeModal() {
   const urls = [...selectedItemUrls];
-  urls.slice(0, 10).forEach(u => window.open(u, '_blank'));
-  showToast('Opened ' + Math.min(urls.length, 10) + ' tabs');
+  if (urls.length === 0) return;
+
+  const preview = document.getElementById('mergeSelectedListPreview');
+  preview.innerHTML = urls.map(u => {
+    const it = ALL_ITEMS.find(i => i.url === u);
+    return `<div class="truncate text-slate-300">• ${it ? it.title : u}</div>`;
+  }).join('');
+
+  const modal = document.getElementById('mergeModal');
+  const container = document.getElementById('mergeModalContainer');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
 }
 
-// 14. IN-APP POPUP PREVIEW WITH ZOOM & CUTE PLAYERS
+function closeMergeModal() {
+  const modal = document.getElementById('mergeModal');
+  const container = document.getElementById('mergeModalContainer');
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function generateMergedStudyPack() {
+  const packTitle = document.getElementById('mergePackTitle').value.trim() || 'Worship Leader Study Pack';
+  const urls = [...selectedItemUrls];
+  const items = urls.map(u => ALL_ITEMS.find(i => i.url === u)).filter(Boolean);
+
+  let docHtml = `
+    <html>
+      <head>
+        <title>${packTitle}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; background: #0f172a; color: #f8fafc; }
+          h1 { color: #818cf8; border-bottom: 2px solid #334155; padding-bottom: 12px; }
+          .item-card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #334155; }
+          .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; background: #3b82f6; color: white; margin-bottom: 8px; font-weight: bold; }
+          a { color: #38bdf8; text-decoration: none; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <h1>${packTitle}</h1>
+        <p>Compiled on: ${new Date().toLocaleDateString()} | Total Resources: ${items.length}</p>
+        ${items.map((it, idx) => `
+          <div class="item-card">
+            <span class="badge">${it.categoryName} • ${it.group}</span>
+            <h3>${idx + 1}. ${it.title}</h3>
+            <p><a href="${it.url}" target="_blank">🔗 Open Original Document: ${it.url}</a></p>
+          </div>
+        `).join('')}
+      </body>
+    </html>
+  `;
+
+  const blob = new Blob([docHtml], { type: 'text/html' });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank');
+  closeMergeModal();
+  clearSelection();
+  showToast('Consolidated Study Pack generated!');
+}
+
+// 20. IN-APP POPUP PREVIEW WITH ZOOM & CUTE PLAYERS
 function openFilePreview(url) {
   const item = ALL_ITEMS.find(it => it.url === url);
   if (!item) return;
@@ -986,14 +2065,12 @@ function openFilePreview(url) {
   document.getElementById('modalCategoryIcon').textContent = item.categoryIcon || '📄';
   document.getElementById('modalExternalLink').href = item.url;
 
-  // STRICT DOWNLOAD VISIBILITY
+  // Direct download button visibility
   const modalDlBtn = document.getElementById('modalDownloadBtn');
-  if (DOWNLOADS_ENABLED) {
+  if (checkUserCanDownload(item)) {
     modalDlBtn.classList.remove('hidden');
-    modalDlBtn.href = item.url;
   } else {
     modalDlBtn.classList.add('hidden');
-    modalDlBtn.removeAttribute('href');
   }
 
   const audioView = document.getElementById('cuteAudioPlayerView');
@@ -1101,764 +2178,144 @@ function verifyPinAndProceed() {
   }
 }
 
-// 15. RECORD RENDERING (TABLE & GRID WITH CHANGE MODULE & TOPIC BUTTONS)
-function renderRecords() {
-  const items = getFilteredRecords();
-  document.getElementById('recordCountLabel').textContent = items.length;
-  const noResults = document.getElementById('noResults');
-
-  if (items.length === 0) {
-    noResults.classList.remove('hidden');
-    document.getElementById('tableBody').innerHTML = '';
-    document.getElementById('gridViewWrapper').innerHTML = '';
-    return;
-  }
-  noResults.classList.add('hidden');
-
-  if (currentViewMode === 'table') {
-    renderTableView(items);
-  } else {
-    renderGridView(items);
-  }
-  updateSelectionState();
-}
-
-function renderTableView(items) {
-  const tbody = document.getElementById('tableBody');
-  tbody.innerHTML = items.map(item => {
-    const isPinned = pinnedUrls.has(item.url);
-    const isSelected = selectedItemUrls.has(item.url);
-    const safeTitle = item.title.replace(/'/g, "\\'");
-    const safeUrl = item.url.replace(/'/g, "\\'");
-    const isTelugu = /[\u0C00-\u0C7F]/.test(item.title);
-    const showDownload = DOWNLOADS_ENABLED;
-
-    return `
-      <tr class="hover:bg-slate-800/50 transition group ${item.isLocked ? 'bg-amber-950/10' : ''} ${item.isHidden ? 'opacity-60' : ''}">
-        
-        <!-- Checkbox -->
-        <td class="py-3 px-3 text-center">
-          <input 
-            type="checkbox" 
-            data-url="${safeUrl}" 
-            onchange="toggleItemSelect('${safeUrl}', event)" 
-            class="row-checkbox rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
-            ${isSelected ? 'checked' : ''}
-          >
-        </td>
-
-        <!-- Star Pin -->
-        <td class="py-3 px-2 text-center">
-          <button 
-            onclick="togglePin('${safeUrl}', event)"
-            class="transition ${isPinned ? 'text-amber-400 scale-110' : 'text-slate-600 hover:text-amber-400'}"
-            title="${isPinned ? 'Unpin' : 'Star favorite'}"
-          >
-            <i class="${isPinned ? 'fa-solid fa-star' : 'fa-regular fa-star'}"></i>
-          </button>
-        </td>
-
-        <!-- Title -->
-        <td class="py-3 px-4 font-semibold text-white">
-          <div class="flex items-center gap-2">
-            ${item.customColor ? `<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${item.customColor}"></span>` : ''}
-            ${item.isLocked ? '<i class="fa-solid fa-lock text-amber-400 text-xs" title="PIN Protected"></i>' : ''}
-            ${item.isHidden ? '<i class="fa-solid fa-eye-slash text-rose-400 text-xs" title="Hidden from members"></i>' : ''}
-            ${item.isCustom ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold px-1.5 py-0.5 rounded border border-emerald-500/30">NEW</span>' : ''}
-            <span 
-              onclick="openFilePreview('${safeUrl}')"
-              class="cursor-pointer hover:text-indigo-400 transition font-medium ${isTelugu ? 'font-telugu' : ''}"
-            >
-              ${item.title}
-            </span>
-          </div>
-        </td>
-
-        <!-- Topic (Clickable to change) -->
-        <td class="py-3 px-4">
-          <button 
-            onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
-            class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:border-indigo-500 transition group/top"
-            title="Click to change topic"
-          >
-            <span>${item.group || 'General'}</span>
-            <i class="fa-solid fa-pen text-[9px] text-slate-500 group-hover/top:text-indigo-300"></i>
-          </button>
-        </td>
-
-        <!-- Module Badge (Clickable to change) -->
-        <td class="py-3 px-4">
-          <button 
-            onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
-            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${item.badge} hover:ring-1 hover:ring-indigo-400 transition"
-            title="Click to change module"
-          >
-            <span>${item.categoryIcon}</span>
-            <span class="truncate">${item.categoryName}</span>
-          </button>
-        </td>
-
-        <!-- Actions -->
-        <td class="py-3 px-4 text-right">
-          <div class="flex items-center justify-end gap-1.5">
-            
-            <!-- Open In-App Preview -->
-            <button 
-              onclick="openFilePreview('${safeUrl}')"
-              class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] transition flex items-center gap-1 shadow-sm"
-              title="Open inside portal"
-            >
-              <i class="fa-regular fa-eye"></i>
-              <span>Preview</span>
-            </button>
-
-            <!-- Change Module & Topic button -->
-            <button 
-              onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
-              class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-300 transition text-[11px] border border-slate-700"
-              title="Change Module & Topic"
-            >
-              <i class="fa-solid fa-folder-tree"></i>
-            </button>
-
-            <!-- Download Button (STRICT PERMISSION) -->
-            ${showDownload ? `
-              <a 
-                href="${item.url}" 
-                download 
-                target="_blank"
-                class="p-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 transition text-[11px]"
-                title="Download File"
-              >
-                <i class="fa-solid fa-download"></i>
-              </a>
-            ` : ''}
-
-            <!-- External Tab -->
-            <a 
-              href="${item.url}" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-[11px] border border-slate-700"
-              title="Open in new browser tab"
-            >
-              <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            </a>
-
-            <!-- QR Code -->
-            <button 
-              onclick="showSingleQR('${safeTitle}', '${safeUrl}')"
-              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-[11px] border border-slate-700"
-              title="Show QR Code"
-            >
-              <i class="fa-solid fa-qrcode"></i>
-            </button>
-
-            <!-- Copy Link -->
-            <button 
-              onclick="copyResourceUrl('${safeUrl}', '${safeTitle}', event)"
-              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-[11px] border border-slate-700"
-              title="Copy link"
-            >
-              <i class="fa-regular fa-copy"></i>
-            </button>
-
-          </div>
-        </td>
-
-      </tr>
-    `;
-  }).join('');
-}
-
-function renderGridView(items) {
-  const container = document.getElementById('gridViewWrapper');
-  container.innerHTML = items.map(item => {
-    const isPinned = pinnedUrls.has(item.url);
-    const isSelected = selectedItemUrls.has(item.url);
-    const safeTitle = item.title.replace(/'/g, "\\'");
-    const safeUrl = item.url.replace(/'/g, "\\'");
-    const isTelugu = /[\u0C00-\u0C7F]/.test(item.title);
-
-    return `
-      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-lg hover:border-slate-700 transition flex flex-col justify-between group ${item.isLocked ? 'ring-1 ring-amber-500/40' : ''}">
-        
-        <div>
-          <div class="flex items-start justify-between gap-2 mb-2">
-            <div class="flex items-center gap-1.5">
-              <input 
-                type="checkbox" 
-                data-url="${safeUrl}" 
-                onchange="toggleItemSelect('${safeUrl}', event)" 
-                class="row-checkbox rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
-                ${isSelected ? 'checked' : ''}
-              >
-              <button 
-                onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
-                class="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 truncate"
-                title="Change Topic"
-              >
-                ${item.group || 'General'} <i class="fa-solid fa-pen text-[8px] text-slate-500"></i>
-              </button>
-            </div>
-            
-            <div class="flex items-center gap-1">
-              <button 
-                onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
-                class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-400 hover:text-indigo-300 flex items-center justify-center text-xs transition"
-                title="Change Module & Topic"
-              >
-                <i class="fa-solid fa-folder-tree"></i>
-              </button>
-              <button 
-                onclick="showSingleQR('${safeTitle}', '${safeUrl}')"
-                class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs transition"
-                title="QR Code"
-              >
-                <i class="fa-solid fa-qrcode"></i>
-              </button>
-              <button 
-                onclick="copyResourceUrl('${safeUrl}', '${safeTitle}', event)"
-                class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs transition"
-                title="Copy Link"
-              >
-                <i class="fa-regular fa-copy"></i>
-              </button>
-              <button 
-                onclick="togglePin('${safeUrl}', event)"
-                class="w-7 h-7 rounded-lg transition flex items-center justify-center text-xs ${isPinned ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500 hover:text-amber-400'}"
-                title="Star"
-              >
-                <i class="${isPinned ? 'fa-solid fa-star' : 'fa-regular fa-star'}"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-1.5 mb-1.5">
-            ${item.customColor ? `<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${item.customColor}"></span>` : ''}
-            ${item.isLocked ? '<i class="fa-solid fa-lock text-amber-400 text-xs"></i>' : ''}
-            ${item.isCustom ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold px-1.5 py-0.2 rounded border border-emerald-500/30">NEW</span>' : ''}
-            <h4 class="text-sm font-bold text-white group-hover:text-indigo-400 transition line-clamp-2 ${isTelugu ? 'font-telugu' : ''}">
-              ${item.title}
-            </h4>
-          </div>
-
-          <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-4">
-            <button onclick="openEditFileModuleTopicModal('${safeUrl}', event)" class="hover:text-indigo-300 flex items-center gap-1">
-              <span>${item.categoryIcon}</span>
-              <span class="truncate">${item.categoryName}</span>
-              <i class="fa-solid fa-pen text-[9px] text-slate-500"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
-          <button 
-            onclick="openFilePreview('${safeUrl}')"
-            class="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
-          >
-            <i class="fa-regular fa-eye"></i>
-            <span>Preview</span>
-          </button>
-
-          <a 
-            href="${item.url}" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            class="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-1.5 border border-slate-700"
-          >
-            <span>External</span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-          </a>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-// 16. ADD NEW RESOURCE WITH AUTO-TOPIC SELECTION
-function populateAddResourceModules() {
-  const select = document.getElementById('newResourceModule');
-  if (!select) return;
-  select.innerHTML = CATEGORIES.map(cat => `
-    <option value="${cat.id}">${cat.icon} ${cat.name}</option>
-  `).join('');
-}
-
-function openAddResourceModal() {
-  populateAddResourceModules();
-  if (currentCategory !== 'all') {
-    document.getElementById('newResourceModule').value = currentCategory;
-  }
-  onModuleChangeInForm();
-
-  const modal = document.getElementById('addResourceModal');
-  const container = document.getElementById('addResourceModalContainer');
-  modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
-}
-
-function closeAddResourceModal() {
-  const modal = document.getElementById('addResourceModal');
-  const container = document.getElementById('addResourceModalContainer');
-  modal.classList.add('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-100');
-  container.classList.add('scale-95');
-  document.getElementById('addResourceForm').reset();
-  hideCustomTopicInput();
-}
-
-function onModuleChangeInForm() {
-  const selectedModuleId = document.getElementById('newResourceModule').value;
-  const catObj = CATEGORIES.find(c => c.id === selectedModuleId);
-  const topicSelect = document.getElementById('newResourceTopicSelect');
-
-  let options = ['<option value="">-- Select Existing Topic --</option>'];
-  if (catObj && catObj.groups && catObj.groups.length > 0) {
-    catObj.groups.forEach(grp => {
-      options.push(`<option value="${grp}">${grp}</option>`);
-    });
-  }
-  options.push('<option value="__NEW_TOPIC__">➕ + Add New Topic...</option>');
-  topicSelect.innerHTML = options.join('');
-
-  if (currentSubgroup !== 'all' && catObj && catObj.groups && catObj.groups.includes(currentSubgroup)) {
-    topicSelect.value = currentSubgroup;
-    hideCustomTopicInput();
-  } else if (catObj && catObj.groups && catObj.groups.length > 0) {
-    topicSelect.selectedIndex = 1;
-    hideCustomTopicInput();
-  } else {
-    showCustomTopicInput();
-  }
-}
-
-function onTopicSelectChange() {
-  const select = document.getElementById('newResourceTopicSelect');
-  if (select.value === '__NEW_TOPIC__') {
-    showCustomTopicInput();
-  } else {
-    hideCustomTopicInput();
-  }
-}
-
-function toggleCustomTopicInput() {
-  const wrapper = document.getElementById('customTopicInputWrapper');
-  if (wrapper.classList.contains('hidden')) {
-    showCustomTopicInput();
-  } else {
-    hideCustomTopicInput();
-  }
-}
-
-function showCustomTopicInput() {
-  const wrapper = document.getElementById('customTopicInputWrapper');
-  const input = document.getElementById('newResourceCustomTopic');
-  wrapper.classList.remove('hidden');
-  input.focus();
-}
-
-function hideCustomTopicInput() {
-  const wrapper = document.getElementById('customTopicInputWrapper');
-  const input = document.getElementById('newResourceCustomTopic');
-  wrapper.classList.add('hidden');
-  input.value = '';
-}
-
-function submitNewResource(e) {
-  e.preventDefault();
-  const moduleId = document.getElementById('newResourceModule').value;
-  const topicSelectVal = document.getElementById('newResourceTopicSelect').value;
-  const customTopicVal = document.getElementById('newResourceCustomTopic').value.trim();
-  const title = document.getElementById('newResourceTitle').value.trim();
-  const url = document.getElementById('newResourceUrl').value.trim();
-
-  let topic = customTopicVal || (topicSelectVal !== '__NEW_TOPIC__' ? topicSelectVal : 'General');
-  
-  const catObj = CATEGORIES.find(c => c.id === moduleId);
-  if (catObj && customTopicVal) {
-    if (!catObj.groups) catObj.groups = [];
-    if (!catObj.groups.includes(topic)) {
-      catObj.groups.push(topic);
-      if (!topicEdits[moduleId]) topicEdits[moduleId] = [];
-      topicEdits[moduleId].push(topic);
-      localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
-    }
-  }
-
-  let previewUrl = url;
-  if (previewUrl.indexOf('docs.google.com/document/d/') !== -1) {
-    previewUrl = previewUrl.split('/edit')[0] + '/preview';
-  } else if (previewUrl.indexOf('drive.google.com/file/d/') !== -1) {
-    previewUrl = previewUrl.split('/view')[0] + '/preview';
-  }
-
-  const newItem = {
-    title,
-    url,
-    previewUrl,
-    group: topic,
-    tab: moduleId,
-    categoryName: catObj ? catObj.name : moduleId,
-    categoryIcon: catObj ? catObj.icon : '📄',
-    badge: catObj ? catObj.badge : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-    btn: catObj ? catObj.btn : 'bg-emerald-600 hover:bg-emerald-500',
-    isCustom: true,
-    id: 'custom_' + Date.now()
-  };
-
-  customItems.unshift(newItem);
-  localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
-
-  closeAddResourceModal();
-  refreshDataModel();
-  updateTotalCounts();
-  renderSidebarCategories();
-  renderSubgroupTabs();
-  renderRecords();
-  showToast('✨ Resource added: ' + title);
-  logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
-}
-
-// 17. MODULE CUSTOMIZER (RENAME, EMOJI, EDIT TOPICS)
-function openAddModuleModal() {
-  document.getElementById('moduleModalTitle').textContent = 'Create New Module';
-  document.getElementById('editModuleTargetId').value = '';
-  document.getElementById('newModuleName').value = '';
-  document.getElementById('newModuleIcon').value = '📁';
-  document.getElementById('newModuleTopics').value = '';
-  document.getElementById('deleteModuleBtn').classList.add('hidden');
-
-  const modal = document.getElementById('addModuleModal');
-  const container = document.getElementById('addModuleModalContainer');
-  modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
-}
-
-function openEditCurrentModuleModal() {
-  if (currentCategory === 'all') return;
-  openEditModuleModal(currentCategory);
-}
-
-function openEditModuleModal(catId, event) {
-  if (event) event.stopPropagation();
-  const catObj = CATEGORIES.find(c => c.id === catId);
-  if (!catObj) return;
-
-  document.getElementById('moduleModalTitle').textContent = 'Edit Module: ' + catObj.name;
-  document.getElementById('editModuleTargetId').value = catId;
-  document.getElementById('newModuleName').value = catObj.name;
-  document.getElementById('newModuleIcon').value = catObj.icon;
-  document.getElementById('newModuleTopics').value = (catObj.groups || []).join(', ');
-
-  const delBtn = document.getElementById('deleteModuleBtn');
-  if (catObj.isCustom) {
-    delBtn.classList.remove('hidden');
-  } else {
-    delBtn.classList.add('hidden');
-  }
-
-  const modal = document.getElementById('addModuleModal');
-  const container = document.getElementById('addModuleModalContainer');
-  modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
-}
-
-function closeAddModuleModal() {
-  const modal = document.getElementById('addModuleModal');
-  const container = document.getElementById('addModuleModalContainer');
-  modal.classList.add('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-100');
-  container.classList.add('scale-95');
-}
-
-function selectEmoji(emoji) {
-  document.getElementById('newModuleIcon').value = emoji;
-}
-
-function submitModuleConfig(e) {
-  e.preventDefault();
-  const targetId = document.getElementById('editModuleTargetId').value;
-  const name = document.getElementById('newModuleName').value.trim();
-  const icon = document.getElementById('newModuleIcon').value.trim() || '📁';
-  const topicsStr = document.getElementById('newModuleTopics').value.trim();
-
-  let parsedTopics = [];
-  if (topicsStr) {
-    parsedTopics = topicsStr.split(',').map(s => s.trim()).filter(Boolean);
-  }
-
-  if (targetId) {
-    moduleEdits[targetId] = { name, icon };
-    localStorage.setItem('wlh_module_edits', JSON.stringify(moduleEdits));
-    if (parsedTopics.length > 0) {
-      topicEdits[targetId] = parsedTopics;
-      localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
-    }
-    showToast('Module "' + name + '" updated!');
-    logActivity('Module Edit', 'Updated module ' + targetId);
-  } else {
-    const newId = 'mod_' + Date.now();
-    const newModule = {
-      id: newId,
-      name,
-      icon,
-      badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-      btn: 'bg-indigo-600 hover:bg-indigo-500',
-      groups: parsedTopics.length > 0 ? parsedTopics : ['General'],
-      isCustom: true
-    };
-    customModules.push(newModule);
-    localStorage.setItem('wlh_custom_modules', JSON.stringify(customModules));
-    showToast('Created module "' + name + '"!');
-    logActivity('Module Create', 'Created new module ' + name);
-  }
-
-  closeAddModuleModal();
-  refreshDataModel();
-  updateTotalCounts();
-  renderSidebarCategories();
-  populateAddResourceModules();
-  renderSubgroupTabs();
-  renderRecords();
-}
-
-function deleteCurrentTargetModule() {
-  const targetId = document.getElementById('editModuleTargetId').value;
-  if (!targetId) return;
-  if (!confirm('Are you sure you want to delete this custom module?')) return;
-
-  customModules = customModules.filter(m => m.id !== targetId);
-  localStorage.setItem('wlh_custom_modules', JSON.stringify(customModules));
-  delete moduleEdits[targetId];
-  delete topicEdits[targetId];
-
-  closeAddModuleModal();
-  refreshDataModel();
-  renderSidebarCategories();
-  populateAddResourceModules();
-  selectCategory('all');
-  showToast('Module deleted');
-  logActivity('Module Delete', 'Deleted custom module ' + targetId);
-}
-
-// 18. MOVE & COPY MODALS
-function openMoveModal() {
-  openMoveCopyDialog('move');
-}
-
-function openCopyModal() {
-  openMoveCopyDialog('copy');
-}
-
-let activeMoveCopyAction = 'move';
-function openMoveCopyDialog(action) {
-  activeMoveCopyAction = action;
-  document.getElementById('moveCopyModalTitle').textContent = (action === 'move' ? 'Move' : 'Copy') + ' ' + selectedItemUrls.size + ' Resources';
-  document.getElementById('executeMoveCopyBtn').textContent = action === 'move' ? 'Apply Move' : 'Duplicate & Copy';
-
-  const modSelect = document.getElementById('moveTargetModule');
-  modSelect.innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
-  onMoveModuleChange();
-
-  const modal = document.getElementById('moveCopyModal');
-  const container = document.getElementById('moveCopyModalContainer');
-  modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
-}
-
-function closeMoveCopyModal() {
-  const modal = document.getElementById('moveCopyModal');
-  const container = document.getElementById('moveCopyModalContainer');
-  modal.classList.add('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-100');
-  container.classList.add('scale-95');
-}
-
-function onMoveModuleChange() {
-  const modId = document.getElementById('moveTargetModule').value;
-  const catObj = CATEGORIES.find(c => c.id === modId);
-  const topicSelect = document.getElementById('moveTargetTopic');
-  let groups = (catObj && catObj.groups) ? catObj.groups : ['General'];
-  topicSelect.innerHTML = groups.map(g => `<option value="${g}">${g}</option>`).join('');
-}
-
-function executeMoveCopyAction() {
-  const targetMod = document.getElementById('moveTargetModule').value;
-  const targetTopic = document.getElementById('moveTargetTopic').value;
-  const catObj = CATEGORIES.find(c => c.id === targetMod);
-
-  const urls = [...selectedItemUrls];
-  if (activeMoveCopyAction === 'move') {
-    urls.forEach(u => {
-      if (!fileMetadata[u]) fileMetadata[u] = {};
-      fileMetadata[u].customTab = targetMod;
-      fileMetadata[u].customGroup = targetTopic;
-    });
-    localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
-    showToast('Moved ' + urls.length + ' items to ' + targetMod);
-  } else {
-    urls.forEach(u => {
-      const orig = ALL_ITEMS.find(i => i.url === u);
-      if (orig) {
-        const copyItem = {
-          ...orig,
-          id: 'copy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-          tab: targetMod,
-          group: targetTopic,
-          categoryName: catObj ? catObj.name : targetMod,
-          isCustom: true
-        };
-        customItems.unshift(copyItem);
-      }
-    });
-    localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
-    showToast('Copied ' + urls.length + ' items to ' + targetMod);
-  }
-
-  closeMoveCopyModal();
-  clearSelection();
-  refreshDataModel();
-  renderRecords();
-}
-
-// 19. QR CODE GENERATOR
-function showSingleQR(title, url) {
-  openQRWithUrl(title, url);
-}
-
-function openQRModal() {
+// 21. BULK ACTIONS (LOCK, HIDE, DIRECT DOWNLOAD, PIN, SHARE)
+function bulkShare() {
   const urls = [...selectedItemUrls];
   if (urls.length === 0) return;
-  const firstItem = ALL_ITEMS.find(it => it.url === urls[0]);
-  openQRWithUrl(firstItem ? firstItem.title : 'Selected Resource', urls[0]);
+  navigator.clipboard.writeText(urls.join('\n')).then(() => {
+    showToast('Copied ' + urls.length + ' links to clipboard!');
+  });
 }
 
-function openQRWithUrl(title, url) {
-  document.getElementById('qrResourceTitle').textContent = title;
-  const canvasContainer = document.getElementById('qrcodeCanvasContainer');
-  canvasContainer.innerHTML = '';
-
-  if (window.QRCode) {
-    new QRCode(canvasContainer, {
-      text: url,
-      width: 180,
-      height: 180,
-      colorDark: '#0f172a',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  } else {
-    canvasContainer.innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(url) + '" alt="QR">';
-  }
-
-  const modal = document.getElementById('qrModal');
-  const container = document.getElementById('qrModalContainer');
-  modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
-}
-
-function closeQRModal() {
-  const modal = document.getElementById('qrModal');
-  const container = document.getElementById('qrModalContainer');
-  modal.classList.add('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-100');
-  container.classList.add('scale-95');
-}
-
-// 20. MERGE STUDY PACK
-function openMergeModal() {
+function bulkToggleLock() {
   const urls = [...selectedItemUrls];
-  if (urls.length === 0) return;
+  let anyUnlocked = urls.some(u => !fileMetadata[u] || !fileMetadata[u].locked);
+  const targetState = anyUnlocked;
 
-  const preview = document.getElementById('mergeSelectedListPreview');
-  preview.innerHTML = urls.map(u => {
-    const it = ALL_ITEMS.find(i => i.url === u);
-    return `<div class="truncate text-slate-300">• ${it ? it.title : u}</div>`;
-  }).join('');
-
-  const modal = document.getElementById('mergeModal');
-  const container = document.getElementById('mergeModalContainer');
-  modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
-}
-
-function closeMergeModal() {
-  const modal = document.getElementById('mergeModal');
-  const container = document.getElementById('mergeModalContainer');
-  modal.classList.add('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-100');
-  container.classList.add('scale-95');
-}
-
-function generateMergedStudyPack() {
-  const packTitle = document.getElementById('mergePackTitle').value.trim() || 'Worship Leader Study Pack';
-  const urls = [...selectedItemUrls];
-  const items = urls.map(u => ALL_ITEMS.find(i => i.url === u)).filter(Boolean);
-
-  let docHtml = `
-    <html>
-      <head>
-        <title>${packTitle}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; background: #0f172a; color: #f8fafc; }
-          h1 { color: #818cf8; border-bottom: 2px solid #334155; padding-bottom: 12px; }
-          .item-card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #334155; }
-          .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; background: #3b82f6; color: white; margin-bottom: 8px; font-weight: bold; }
-          a { color: #38bdf8; text-decoration: none; font-size: 14px; }
-          a:hover { text-decoration: underline; }
-        </style>
-      </head>
-      <body>
-        <h1>${packTitle}</h1>
-        <p>Compiled on: ${new Date().toLocaleDateString()} | Total Resources: ${items.length}</p>
-        ${items.map((it, idx) => `
-          <div class="item-card">
-            <span class="badge">${it.categoryName} • ${it.group}</span>
-            <h3>${idx + 1}. ${it.title}</h3>
-            <p><a href="${it.url}" target="_blank">🔗 Open Original Document: ${it.url}</a></p>
-          </div>
-        `).join('')}
-      </body>
-    </html>
-  `;
-
-  const blob = new Blob([docHtml], { type: 'text/html' });
-  const blobUrl = URL.createObjectURL(blob);
-  window.open(blobUrl, '_blank');
-  closeMergeModal();
-  clearSelection();
-  showToast('Consolidated Study Pack generated!');
-}
-
-// 21. COLOR TAGGING
-function openColorTagModal() {
-  const palette = document.getElementById('colorTagPalette');
-  palette.classList.remove('hidden');
-  palette.style.top = (window.innerHeight - 120) + 'px';
-  palette.style.left = (window.innerWidth / 2 - 120) + 'px';
-}
-
-function applyColorTag(color) {
-  const urls = [...selectedItemUrls];
   urls.forEach(u => {
     if (!fileMetadata[u]) fileMetadata[u] = {};
-    fileMetadata[u].color = color;
+    fileMetadata[u].locked = targetState;
   });
   localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
-  document.getElementById('colorTagPalette').classList.add('hidden');
   refreshDataModel();
   renderRecords();
-  showToast('Color tag applied to ' + urls.length + ' files');
+  showToast(targetState ? '🔒 Selected files locked with 6-digit PIN' : '🔓 Selected files unlocked');
 }
 
-// 22. SETTINGS MODAL & TABS
+function bulkToggleHide() {
+  const urls = [...selectedItemUrls];
+  let anyVisible = urls.some(u => !fileMetadata[u] || !fileMetadata[u].hidden);
+  const targetState = anyVisible;
+
+  urls.forEach(u => {
+    if (!fileMetadata[u]) fileMetadata[u] = {};
+    fileMetadata[u].hidden = targetState;
+  });
+  localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
+  refreshDataModel();
+  renderRecords();
+  showToast(targetState ? '👁️ Selected files hidden from members' : '👁️ Selected files unhidden');
+}
+
+function bulkDownload() {
+  if (!DOWNLOADS_ENABLED) {
+    showToast('Downloads are strictly DISABLED by Admin.');
+    return;
+  }
+  const urls = [...selectedItemUrls];
+  urls.forEach((url, i) => {
+    setTimeout(() => {
+      const it = ALL_ITEMS.find(item => item.url === url);
+      triggerDirectDownload(url, it ? it.title : 'file');
+    }, i * 500);
+  });
+  showToast('Initiating direct download for ' + urls.length + ' files');
+}
+
+function bulkPin() {
+  const urls = [...selectedItemUrls];
+  let anyUnpinned = urls.some(u => !pinnedUrls.has(u));
+  urls.forEach(u => {
+    if (anyUnpinned) pinnedUrls.add(u);
+    else pinnedUrls.delete(u);
+  });
+  localStorage.setItem('wlh_pinned_urls', JSON.stringify([...pinnedUrls]));
+  updatePinnedBadge();
+  renderRecords();
+  showToast(anyUnpinned ? '⭐ Pinned selected files' : 'Unpinned selected files');
+}
+
+function handleSearch(val) {
+  searchQuery = val.trim().toLowerCase();
+  const clearBtn = document.getElementById('clearSearchBtn');
+  if (searchQuery) clearBtn.classList.remove('hidden');
+  else clearBtn.classList.add('hidden');
+  renderRecords();
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  searchQuery = '';
+  document.getElementById('clearSearchBtn').classList.add('hidden');
+  currentSubgroup = 'all';
+  renderSubgroupTabs();
+  renderRecords();
+}
+
+function setViewMode(mode) {
+  currentViewMode = mode;
+  const tableBtn = document.getElementById('viewModeTableBtn');
+  const gridBtn = document.getElementById('viewModeGridBtn');
+  const tableWrapper = document.getElementById('tableViewWrapper');
+  const gridWrapper = document.getElementById('gridViewWrapper');
+
+  if (mode === 'table') {
+    tableBtn.className = 'p-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-xs transition';
+    gridBtn.className = 'p-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+    tableWrapper.classList.remove('hidden');
+    gridWrapper.classList.add('hidden');
+  } else {
+    gridBtn.className = 'p-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-xs transition';
+    tableBtn.className = 'p-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+    tableWrapper.classList.add('hidden');
+    gridWrapper.classList.remove('hidden');
+  }
+  renderRecords();
+}
+
+function togglePinnedFilter() {
+  isPinnedOnly = !isPinnedOnly;
+  const btn = document.getElementById('pinnedFilterBtn');
+  if (isPinnedOnly) {
+    btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500 bg-amber-500/20 text-xs font-semibold text-amber-300 transition';
+    document.getElementById('breadcrumbCurrent').textContent = 'Saved Resources (Starred)';
+  } else {
+    btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-700 transition';
+    if (currentCategory === 'all') {
+      document.getElementById('breadcrumbCurrent').textContent = 'All Resources (' + ALL_ITEMS.length + ')';
+    } else {
+      const catObj = CATEGORIES.find(c => c.id === currentCategory);
+      document.getElementById('breadcrumbCurrent').textContent = catObj ? catObj.name : currentCategory;
+    }
+  }
+  renderRecords();
+}
+
+function togglePin(url, event) {
+  if (event) event.stopPropagation();
+  if (pinnedUrls.has(url)) {
+    pinnedUrls.delete(url);
+    showToast('Unstarred');
+  } else {
+    pinnedUrls.add(url);
+    showToast('Saved to Favorites ⭐');
+  }
+  localStorage.setItem('wlh_pinned_urls', JSON.stringify([...pinnedUrls]));
+  updatePinnedBadge();
+  renderRecords();
+}
+
+// 22. SETTINGS & PROFILE
 function openSettingsModal(tab) {
   switchSettingsTab(tab || 'profile');
   loadSettingsFormData();
@@ -1879,10 +2336,11 @@ function closeSettingsModal() {
 }
 
 function switchSettingsTab(tab) {
-  const tabs = ['profile', 'security', 'permissions', 'audit', 'suggestion'];
+  const tabs = ['profile', 'security', 'audit', 'suggestion'];
   tabs.forEach(t => {
     const btn = document.getElementById('stab-' + t);
     const content = document.getElementById('tabContent-' + t);
+    if (!btn || !content) return;
     if (t === tab) {
       btn.className = 'px-3 py-2 border-b-2 border-indigo-500 text-indigo-400 font-bold';
       content.classList.remove('hidden');
@@ -1893,7 +2351,6 @@ function switchSettingsTab(tab) {
   });
 
   if (tab === 'audit') renderAuditView();
-  if (tab === 'permissions') renderUserAssignmentsView();
   if (tab === 'suggestion') renderSuggestionsView();
 }
 
@@ -1922,7 +2379,6 @@ function saveUserProfile(e) {
 
   updateUserUI();
   showToast('Profile & Zion details updated!');
-  logActivity('Profile Update', 'Updated Zion to ' + CURRENT_USER.zion);
 }
 
 function saveSecurityCredentials(e) {
@@ -1954,7 +2410,6 @@ function saveSecurityCredentials(e) {
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
 
   showToast('Password & 6-Digit PIN updated successfully!');
-  logActivity('Security Update', 'Changed Password/PIN');
 }
 
 function renderAuditView() {
@@ -1990,36 +2445,6 @@ function clearAuditHistory() {
   renderAuditView();
 }
 
-function renderUserAssignmentsView() {
-  const container = document.getElementById('userAssignmentsList');
-  container.innerHTML = ALL_USERS.map(u => `
-    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
-      <div>
-        <div class="font-bold text-white">${u.fullName} (${u.userId})</div>
-        <div class="text-[10px] text-slate-400">${u.zion} • Role: ${u.role}</div>
-      </div>
-      <div class="flex items-center gap-2">
-        <select onchange="updateUserModuleAssignment('${u.userId}', this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2 py-1 rounded-lg outline-none">
-          <option value="all" ${(u.assignedModules || []).includes('all') ? 'selected' : ''}>All Modules</option>
-          ${CATEGORIES.map(c => `
-            <option value="${c.id}" ${(u.assignedModules || []).includes(c.id) ? 'selected' : ''}>Only ${c.name}</option>
-          `).join('')}
-        </select>
-      </div>
-    </div>
-  `).join('');
-}
-
-function updateUserModuleAssignment(userId, val) {
-  const user = ALL_USERS.find(u => u.userId === userId);
-  if (user) {
-    user.assignedModules = [val];
-    localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
-    showToast('Module assignment updated for ' + user.fullName);
-  }
-}
-
-// 23. ENQUIRIES & SUGGESTIONS
 function submitSuggestion(e) {
   e.preventDefault();
   const subject = document.getElementById('suggestionSubject').value.trim();
@@ -2061,7 +2486,6 @@ function renderSuggestionsView() {
   `).join('');
 }
 
-// 24. UTILITIES & TOAST
 function showToast(msg) {
   const toast = document.getElementById('toast');
   const toastMsg = document.getElementById('toastMsg');
