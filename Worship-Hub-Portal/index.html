@@ -936,6 +936,24 @@
           </div>
         </div>
 
+        <!-- 3. Allowed Positions Multi-Select -->
+        <div class="pt-2 border-t border-slate-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block font-bold text-slate-300">
+              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> 3. Allowed Positions (ఎవరికి కనిపించాలి) *
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="toggleSelectAllPositions('editFilePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
+              <span class="text-slate-600 text-[10px]">•</span>
+              <button type="button" onclick="toggleSelectAllPositions('editFilePositionChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="editFilePositionsCheckboxList">
+            <!-- Populated via JS -->
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Only users with checked positions can view this file.</p>
+        </div>
+
         <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
           <button type="button" onclick="closeEditFileModuleTopicModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-xl">Cancel</button>
           <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30">
@@ -1241,6 +1259,23 @@
           >
         </div>
 
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-300">
+              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> Visible to Positions (ఎవరికి కనిపించాలి)
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="toggleSelectAllPositions('resourcePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
+              <span class="text-slate-600 text-[10px]">•</span>
+              <button type="button" onclick="toggleSelectAllPositions('resourcePositionChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="resourcePositionsCheckboxList">
+            <!-- Populated via JS -->
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">If all or none selected, file is visible to all members.</p>
+        </div>
+
         <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2.5">
           <button 
             type="button" 
@@ -1327,6 +1362,23 @@
           ></textarea>
         </div>
 
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-300">
+              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> Visible to Positions (ఎవరికి కనిపించాలి)
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="toggleSelectAllPositions('modulePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
+              <span class="text-slate-600 text-[10px]">•</span>
+              <button type="button" onclick="toggleSelectAllPositions('modulePositionChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="modulePositionsCheckboxList">
+            <!-- Populated via JS -->
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">If all or none selected, module is visible to all members.</p>
+        </div>
+
         <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
           <button 
             type="button" 
@@ -1402,6 +1454,24 @@
               <div>
                 <label class="block font-bold text-slate-300 mb-1">Area / Region</label>
                 <input type="text" id="settingArea" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none">
+              </div>
+              <div class="col-span-2">
+                <label class="block font-bold text-slate-300 mb-1">Position (పదవి / బాధ్యత)</label>
+                <select id="settingPosition" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none">
+
+            <option value="" disabled selected>Select Position</option>
+            <option value="Overseer">Overseer</option>
+            <option value="(D)Overseer">(D)Overseer</option>
+            <option value="Deacon">Deacon</option>
+            <option value="BCL">BCL</option>
+            <option value="PBCL">PBCL</option>
+            <option value="Group Leader">Group Leader</option>
+            <option value="Unit Leader">Unit Leader</option>
+            <option value="IUnit Leader">IUnit Leader</option>
+            <option value="Co-Worker">Co-Worker</option>
+            <option value="Evangelist">Evangelist</option>
+            <option value="Member">Member</option>
+                </select>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -1724,6 +1794,25 @@
             <input type="text" id="regArea" required placeholder="Area / Zone" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
           </div>
         </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-300 mb-1">Position (పదవి / బాధ్యత) *</label>
+          <select id="regPosition" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+
+            <option value="" disabled selected>Select Position</option>
+            <option value="Overseer">Overseer</option>
+            <option value="(D)Overseer">(D)Overseer</option>
+            <option value="Deacon">Deacon</option>
+            <option value="BCL">BCL</option>
+            <option value="PBCL">PBCL</option>
+            <option value="Group Leader">Group Leader</option>
+            <option value="Unit Leader">Unit Leader</option>
+            <option value="IUnit Leader">IUnit Leader</option>
+            <option value="Co-Worker">Co-Worker</option>
+            <option value="Evangelist">Evangelist</option>
+            <option value="Member">Member</option>
+          </select>
+        </div>
+
         <div>
           <label class="block text-[11px] font-bold text-slate-300 mb-1">Personal PIN (6 Digits) *</label>
           <div class="relative">
@@ -2149,6 +2238,24 @@
                   <input type="text" id="recoverPassword" placeholder="123456" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white font-mono">
                 </div>
                 <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Position (పదవి / బాధ్యత) *</label>
+                  <select id="recoverPosition" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white">
+
+            <option value="" disabled selected>Select Position</option>
+            <option value="Overseer">Overseer</option>
+            <option value="(D)Overseer">(D)Overseer</option>
+            <option value="Deacon">Deacon</option>
+            <option value="BCL">BCL</option>
+            <option value="PBCL">PBCL</option>
+            <option value="Group Leader">Group Leader</option>
+            <option value="Unit Leader">Unit Leader</option>
+            <option value="IUnit Leader">IUnit Leader</option>
+            <option value="Co-Worker">Co-Worker</option>
+            <option value="Evangelist">Evangelist</option>
+            <option value="Member">Member</option>
+                  </select>
+                </div>
+                <div>
                   <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">6-Digit PIN (Default: 123456)</label>
                   <input type="text" id="recoverPin" maxlength="6" placeholder="123456" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white font-mono">
                 </div>
@@ -2348,7 +2455,61 @@
     </div>
   </div>
 
+  
+  <!-- ======================================================== -->
+  <!-- MODAL: TOPIC POSITION PERMISSIONS (MULTI-SELECT)        -->
+  <!-- ======================================================== -->
+  <div id="topicPermissionsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-indigo-500/40 overflow-hidden transform scale-95 transition-transform duration-300" id="topicPermissionsModalContainer">
+      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center text-base">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Topic Position Access</h3>
+            <p class="text-[11px] text-purple-300 truncate" id="topicPermModalSubtitle">Select Allowed Positions</p>
+          </div>
+        </div>
+        <button onclick="closeTopicPermissionsModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="saveTopicPermissions(event)" class="p-6 space-y-4 text-xs">
+        <input type="hidden" id="topicPermCatId" value="">
+        <input type="hidden" id="topicPermTopicName" value="">
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block font-bold text-slate-300">
+              Allowed Positions for this Topic (ఎవరికి కనిపించాలి):
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="toggleSelectAllPositions('topicPositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
+              <span class="text-slate-600 text-[10px]">•</span>
+              <button type="button" onclick="toggleSelectAllPositions('topicPositionChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto bg-slate-950 p-3 rounded-2xl border border-slate-800" id="topicPositionsCheckboxList">
+            <!-- Populated via JS -->
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1.5">If all or none are checked, this topic will be visible to all members.</p>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2.5">
+          <button type="button" onclick="closeTopicPermissionsModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition shadow-md">
+            Save Topic Access
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=5.0"></script>
+  <script src="portal_engine.js?v=5.1"></script>
 </body>
 </html>
