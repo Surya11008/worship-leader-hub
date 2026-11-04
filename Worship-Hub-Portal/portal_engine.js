@@ -2896,9 +2896,10 @@ function renderPendingUsersList() {
   const container = document.getElementById('pendingUsersListContainer');
   if (!container) return;
   const pending = ALL_USERS.filter(u => u.status === 'pending');
+  const rejected = ALL_USERS.filter(u => u.status === 'rejected');
   updateApprovalCountBadge();
 
-  if (pending.length === 0) {
+  if (pending.length === 0 && rejected.length === 0) {
     container.innerHTML = `
       <div class="py-12 text-center text-slate-400">
         <i class="fa-solid fa-circle-check text-4xl text-emerald-400 mb-2"></i>
@@ -2909,34 +2910,69 @@ function renderPendingUsersList() {
     return;
   }
 
-  container.innerHTML = pending.map(u => `
-    <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
-      <div class="space-y-1">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-white text-sm">${u.fullName}</span>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">ID: ${u.userId}</span>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Pending</span>
+  let html = '';
+
+  if (pending.length > 0) {
+    html += pending.map(u => `
+      <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md mb-2">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-white text-sm">${u.fullName}</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">ID: ${u.userId}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">⏳ Pending</span>
+          </div>
+          <div class="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5">
+            ${u.gmail ? `<span><i class="fa-solid fa-envelope text-[10px] mr-1 text-slate-500"></i>${u.gmail}</span>` : ''}
+            ${u.phone ? `<span><i class="fa-solid fa-phone text-[10px] mr-1 text-slate-500"></i>${u.phone}</span>` : ''}
+            ${u.zion ? `<span><i class="fa-solid fa-church text-[10px] mr-1 text-slate-500"></i>${u.zion}</span>` : ''}
+            ${u.area ? `<span><i class="fa-solid fa-location-dot text-[10px] mr-1 text-slate-500"></i>${u.area}</span>` : ''}
+          </div>
+          <div class="text-[10px] text-slate-500">
+            Registered: ${new Date(u.registeredAt || Date.now()).toLocaleString()}
+          </div>
         </div>
-        <div class="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5">
-          ${u.gmail ? `<span><i class="fa-solid fa-envelope text-[10px] mr-1 text-slate-500"></i>${u.gmail}</span>` : ''}
-          ${u.phone ? `<span><i class="fa-solid fa-phone text-[10px] mr-1 text-slate-500"></i>${u.phone}</span>` : ''}
-          ${u.zion ? `<span><i class="fa-solid fa-church text-[10px] mr-1 text-slate-500"></i>${u.zion}</span>` : ''}
-          ${u.area ? `<span><i class="fa-solid fa-location-dot text-[10px] mr-1 text-slate-500"></i>${u.area}</span>` : ''}
-        </div>
-        <div class="text-[10px] text-slate-500">
-          Registered: ${new Date(u.registeredAt || Date.now()).toLocaleString()}
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button onclick="approveUser('${u.userId}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5">
+            <i class="fa-solid fa-check text-xs"></i> Approve
+          </button>
+          <button onclick="rejectUser('${u.userId}')" class="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs rounded-xl border border-rose-500/30 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-xmark text-xs"></i> Reject
+          </button>
         </div>
       </div>
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <button onclick="approveUser('${u.userId}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-1.5">
-          <i class="fa-solid fa-check text-xs"></i> Approve
-        </button>
-        <button onclick="rejectUser('${u.userId}')" class="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs rounded-xl border border-rose-500/30 transition flex items-center gap-1.5">
-          <i class="fa-solid fa-xmark text-xs"></i> Reject
-        </button>
+    `).join('');
+  }
+
+  if (rejected.length > 0) {
+    html += `
+      <div class="mt-4 pt-3 border-t border-slate-800">
+        <h4 class="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-xmark text-rose-400 text-xs"></i>
+          Inactive / Previously Rejected Accounts (Click to Re-Approve)
+        </h4>
+        ${rejected.map(u => `
+          <div class="p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm mb-2 opacity-85 hover:opacity-100 transition">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-white text-xs">${u.fullName}</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-700 text-slate-300">ID: ${u.userId}</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-bold">Rejected</span>
+              </div>
+              <div class="text-[10px] text-slate-400 flex flex-wrap gap-x-2">
+                ${u.zion ? `<span>${u.zion}</span>` : ''}
+                ${u.phone ? `<span>${u.phone}</span>` : ''}
+              </div>
+            </div>
+            <button onclick="approveUser('${u.userId}')" class="px-3 py-1 bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold text-[11px] rounded-lg shadow transition flex items-center gap-1 self-start sm:self-center">
+              <i class="fa-solid fa-check text-[10px]"></i> Approve & Activate
+            </button>
+          </div>
+        `).join('')}
       </div>
-    </div>
-  `).join('');
+    `;
+  }
+
+  container.innerHTML = html;
 }
 
 function approveUser(userId) {
@@ -3543,7 +3579,8 @@ function setupRealtimeListeners() {
 
   // 0. Sync Schedules Live
   FIREBASE_DB.ref('l_support/schedules').on('value', snap => {
-    const val = snap.val();
+    let val = snap.val();
+    if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
     if (val && Array.isArray(val)) {
       SCHEDULES_LIST = val;
       localStorage.setItem('l_support_schedules', JSON.stringify(SCHEDULES_LIST));
@@ -3553,7 +3590,8 @@ function setupRealtimeListeners() {
 
   // 1. Sync Notices Live
   FIREBASE_DB.ref('l_support/notices').on('value', snap => {
-    const val = snap.val();
+    let val = snap.val();
+    if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
     if (val && Array.isArray(val)) {
       NOTICES_LIST = val;
       localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
@@ -3564,7 +3602,8 @@ function setupRealtimeListeners() {
 
   // 2. Sync Sermon Used Records Live
   FIREBASE_DB.ref('l_support/my_room_records').on('value', snap => {
-    const val = snap.val();
+    let val = snap.val();
+    if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
     if (val && Array.isArray(val)) {
       myRoomRecords = val;
       localStorage.setItem('wlh_my_room_records', JSON.stringify(myRoomRecords));
@@ -3575,7 +3614,8 @@ function setupRealtimeListeners() {
 
   // 3. Sync User Registrations & Approvals Live
   FIREBASE_DB.ref('l_support/users').on('value', snap => {
-    const val = snap.val();
+    let val = snap.val();
+    if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
     if (val && Array.isArray(val)) {
       // Smart Auto-Recovery: Merge any local pending users created on this device that are missing in Firebase
       let merged = [...val];
@@ -3602,9 +3642,6 @@ function setupRealtimeListeners() {
 
         const pending = ALL_USERS.filter(u => u.status === 'pending');
         if (pending.length > 0) {
-          if (pending.length > prevPendingCount) {
-            showToast('🔔 New User Registration Request received!');
-          }
           openPendingApprovalsModal();
         }
       }
