@@ -562,7 +562,7 @@ function handleLoginSubmit(e) {
   }
 }
 
-function handleRegisterSubmit(e) {
+async function handleRegisterSubmit(e) {
   e.preventDefault();
   const fullName = document.getElementById('regFullName').value.trim();
   const userId = document.getElementById('regUserId').value.trim();
@@ -582,6 +582,19 @@ function handleRegisterSubmit(e) {
     alert('Personal PIN must be exactly 6 digits (numbers only)!');
     return;
   }
+
+  // Fetch remote users to ensure fresh list before registration
+  try {
+    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json');
+    const remoteUsers = await res.json();
+    if (remoteUsers && Array.isArray(remoteUsers)) {
+      ALL_USERS = remoteUsers;
+      localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+    }
+  } catch (err) {
+    console.warn('Could not fetch remote users before registration:', err);
+  }
+
   if (ALL_USERS.some(u => u.userId.toLowerCase() === userId.toLowerCase())) {
     alert('User ID already exists! Please choose another.');
     return;
@@ -605,6 +618,9 @@ function handleRegisterSubmit(e) {
 
   ALL_USERS.push(newUser);
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+
+  // Sync immediately to Firebase Realtime Database
+  fbSync('users', ALL_USERS);
 
   alert('Account created successfully!\n\nYour account is currently pending Admin approval. You will be able to log in once Admin approves your account.');
 
@@ -1195,6 +1211,7 @@ function toggleUserDownloadPermission(userId) {
   if (user) {
     user.canDownload = !(user.canDownload !== false);
     localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+    fbSync('users', ALL_USERS);
     openAdminManagementModal(); // refresh
     showToast('Download permission updated for ' + user.fullName);
   }
@@ -2637,6 +2654,7 @@ function saveUserProfile(e) {
 
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
+  fbSync('users', ALL_USERS);
 
   updateUserUI();
   showToast('Profile updated!'); updateUserUI(); if(activeView==='home') renderHomePage();
@@ -2669,6 +2687,7 @@ function saveSecurityCredentials(e) {
 
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
+  fbSync('users', ALL_USERS);
 
   showToast('Password & 6-Digit PIN updated successfully!');
 }
@@ -2925,9 +2944,13 @@ function approveUser(userId) {
   if (!user) return;
   user.status = 'approved';
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
   showToast('User ' + user.fullName + ' (' + user.userId + ') Approved!');
   logActivity('User Approved', 'Admin approved user ' + user.userId);
   renderPendingUsersList();
+  renderAdminPanelApprovals();
+  renderAdminPanelUsers();
+  updateApprovalCountBadge();
   if (ALL_USERS.filter(u => u.status === 'pending').length === 0) {
     setTimeout(() => closePendingApprovalsModal(), 500);
   }
@@ -2939,9 +2962,13 @@ function rejectUser(userId) {
   if (!user) return;
   user.status = 'rejected';
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
   showToast('User ' + user.userId + ' registration rejected.');
   logActivity('User Rejected', 'Admin rejected user ' + user.userId);
   renderPendingUsersList();
+  renderAdminPanelApprovals();
+  renderAdminPanelUsers();
+  updateApprovalCountBadge();
 }
 
 
@@ -3488,10 +3515,26 @@ function testFirebaseConnection() {
 }
 
 function fbSync(path, data) {
+  const restUrl = 'https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/' + path + '.json';
   if (IS_FIREBASE_CONNECTED && FIREBASE_DB) {
     FIREBASE_DB.ref('l_support/' + path).set(data).catch(err => {
-      console.warn('Firebase sync write error for', path, err);
+      console.warn('Firebase SDK write failed for', path, err);
+      try {
+        fetch(restUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        }).catch(e => console.warn('REST fallback failed:', e));
+      } catch (e) {}
     });
+  } else {
+    try {
+      fetch(restUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).catch(e => console.warn('Direct REST sync failed:', e));
+    } catch (e) {}
   }
 }
 
@@ -3534,12 +3577,24 @@ function setupRealtimeListeners() {
   FIREBASE_DB.ref('l_support/users').on('value', snap => {
     const val = snap.val();
     if (val && Array.isArray(val)) {
+      const prevPendingCount = ALL_USERS.filter(u => u.status === 'pending').length;
       ALL_USERS = val;
       localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
       updateApprovalCountBadge();
+
       if (CURRENT_USER && CURRENT_USER.role === 'admin') {
         renderAdminPanelApprovals();
         renderAdminPanelUsers();
+        renderPendingUsersList();
+
+        const pending = ALL_USERS.filter(u => u.status === 'pending');
+        if (pending.length > 0) {
+          // If new pending request arrived or on load, notify and show modal
+          if (pending.length > prevPendingCount) {
+            showToast('🔔 New User Registration Request received!');
+          }
+          openPendingApprovalsModal();
+        }
       }
     }
   });
