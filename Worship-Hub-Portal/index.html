@@ -155,6 +155,25 @@
         <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold uppercase">Main</span>
       </button>
 
+      <!-- 3. ADMIN MANAGEMENT CENTER BUTTON (Admin Only) -->
+      <button 
+        onclick="openAdminControlPanel()" 
+        id="btnAdminCenterSidebar"
+        class="hidden w-full items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-purple-800/80 hover:from-purple-800 hover:to-indigo-800 border border-purple-500/40 text-white shadow-md group cursor-pointer"
+        title="Open Admin Management Center"
+      >
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center text-sm group-hover:scale-110 transition flex-shrink-0">
+            <i class="fa-solid fa-crown text-amber-300"></i>
+          </div>
+          <div class="text-left min-w-0">
+            <div class="leading-tight font-extrabold truncate">Admin Center</div>
+            <div class="text-[9px] text-purple-200/90 truncate">Management Hub</div>
+          </div>
+        </div>
+        <span class="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-rose-500 text-white flex-shrink-0 hidden" id="sidebarPendingCountBadge">0</span>
+      </button>
+
       <!-- 2. DYNAMIC USER ROOM (e.g. Admin Room, David Room, Peter Room) -->
       <button 
         onclick="switchToMyRoom()" 
@@ -1921,164 +1940,341 @@
   </div>
 
   <!-- ======================================================== -->
-  <!-- MODAL: DEDICATED ADMIN CONTROL PANEL                     -->
+  <!-- MODAL: STAR GALAXY STYLE ADMIN MANAGEMENT CENTER         -->
   <!-- ======================================================== -->
-  <div id="adminControlPanelModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-4">
-    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-4xl border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[92vh] flex flex-col" id="adminControlPanelContainer">
+  <div id="adminControlPanelModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 p-2 sm:p-4">
+    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 max-h-[94vh] flex flex-col" id="adminControlPanelContainer">
       
-      <!-- Panel Header -->
-      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between flex-shrink-0">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center justify-center text-lg">
-            <i class="fa-solid fa-shield-halved"></i>
+      <!-- 1. Star Galaxy Purple/Indigo Gradient Header Banner -->
+      <div class="bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 p-5 sm:p-6 text-white shadow-lg flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl animate-pulse">👑</span>
+            <h2 class="font-extrabold text-lg sm:text-2xl tracking-wide">Admin Management Center</h2>
+            <span class="bg-white/20 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider border border-white/20">Master Authority</span>
           </div>
-          <div>
-            <h3 class="text-base font-extrabold text-white flex items-center gap-2">
-              Admin Control Panel
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Master Authority</span>
-            </h3>
-            <p class="text-[11px] text-slate-400">Approvals, user downloads, notices, audit history & live sync</p>
+          <p class="text-xs sm:text-sm text-purple-100 mt-1 max-w-2xl font-medium">
+            Members Information, Registrations, Manager Permissions & User Suggestions
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="refreshAdminCloudData()" class="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition flex items-center gap-1.5 border border-white/20 cursor-pointer shadow-sm">
+            <i class="fa-solid fa-rotate text-xs"></i>
+            <span>Cloud Sync</span>
+          </button>
+          <button onclick="closeAdminControlPanel()" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-bold border border-white/20 transition cursor-pointer">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Navigation Tabs (Exact 6 Star Galaxy Tabs) -->
+      <div class="flex items-center gap-1.5 px-4 sm:px-6 pt-3 pb-1 border-b border-slate-800 bg-slate-950/60 text-xs font-bold overflow-x-auto flex-shrink-0 custom-scrollbar">
+        <!-- Tab 1: Members Information -->
+        <button onclick="switchAdminPanelTab('members')" id="admtab-members" class="px-4 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-purple-600 text-white shadow-xs">
+          <i class="fa-solid fa-users text-xs"></i>
+          <span>Members Information</span>
+          <span id="starTabMembersCount" class="px-1.5 py-0.2 rounded-full bg-white/20 text-white text-[10px] font-black">0</span>
+        </button>
+
+        <!-- Tab 2: Online Users -->
+        <button onclick="switchAdminPanelTab('online')" id="admtab-online" class="px-4 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Online Users</span>
+          <span id="starTabOnlineCount" class="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black">1</span>
+        </button>
+
+        <!-- Tab 3: Pending Approvals -->
+        <button onclick="switchAdminPanelTab('approvals')" id="admtab-approvals" class="px-4 py-2 rounded-2xl whitespace-nowrap transition-all relative flex items-center gap-1.5 cursor-pointer bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
+          <i class="fa-solid fa-user-clock text-xs"></i>
+          <span>Pending Approvals</span>
+          <span id="starTabApprovalsBadge" class="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black">0</span>
+        </button>
+
+        <!-- Tab 4: Manager Permissions -->
+        <button onclick="switchAdminPanelTab('managers')" id="admtab-managers" class="px-4 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
+          <i class="fa-solid fa-user-shield text-xs"></i>
+          <span>Manager Permissions</span>
+        </button>
+
+        <!-- Tab 5: Member Permissions & Downloads -->
+        <button onclick="switchAdminPanelTab('memberperms')" id="admtab-memberperms" class="px-4 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
+          <i class="fa-solid fa-sliders text-xs text-emerald-400"></i>
+          <span>Member Permissions</span>
+        </button>
+
+        <!-- Tab 6: Feedback & Suggestions -->
+        <button onclick="switchAdminPanelTab('feedback')" id="admtab-feedback" class="px-4 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
+          <i class="fa-solid fa-comments text-xs"></i>
+          <span>Feedback</span>
+          <span id="starTabFeedbackBadge" class="px-1.5 py-0.2 rounded-full bg-sky-500 text-white text-[10px] font-black">0</span>
+        </button>
+
+        <!-- Tab 7: Firebase Live Sync -->
+        <button onclick="switchAdminPanelTab('firebase')" id="admtab-firebase" class="px-3.5 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
+          <i class="fa-solid fa-fire text-amber-400 text-xs"></i>
+          <span>Firebase</span>
+        </button>
+      </div>
+
+      <!-- 3. Panel Body (Scrollable container for all 7 tabs) -->
+      <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-xs bg-slate-900/90">
+        
+        <!-- ============================================== -->
+        <!-- TAB 1: MEMBERS INFORMATION                     -->
+        <!-- ============================================== -->
+        <div id="admcontent-members" class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-extrabold text-white uppercase tracking-wide">All Registered Members & Detailed Information</h3>
+              <p class="text-[11px] text-slate-400 mt-0.5">Manage roles, reset credentials, assign managers, or delete accounts.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="membersTotalCountBadge" class="px-3 py-1 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs">Total: 4 accounts</span>
+            </div>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="relative">
+            <input 
+              type="text" 
+              id="adminMembersSearchInput" 
+              oninput="filterAdminMembers(this.value)"
+              placeholder="Search by name, User ID, phone, Zion church, or area..." 
+              class="w-full pl-9 pr-4 py-2.5 bg-slate-800/90 border border-slate-700 focus:border-indigo-500 rounded-2xl text-xs text-white outline-none shadow-inner"
+            >
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+          </div>
+
+          <!-- Members Grid Container -->
+          <div id="adminStarMembersGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Dynamically populated member cards -->
           </div>
         </div>
-        <button onclick="closeAdminControlPanel()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
 
-      <!-- Panel Tabs -->
-      <div class="flex items-center gap-2 px-6 pt-3 border-b border-slate-800 bg-slate-950/40 text-xs font-bold overflow-x-auto flex-shrink-0">
-        <button onclick="switchAdminPanelTab('approvals')" id="admtab-approvals" class="px-3.5 py-2 border-b-2 border-amber-500 text-amber-400 flex items-center gap-1.5">
-          <i class="fa-solid fa-user-clock"></i> User Approvals <span id="admtabApprovalBadge" class="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold">0</span>
-        </button>
-        <button onclick="switchAdminPanelTab('users')" id="admtab-users" class="px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5">
-          <i class="fa-solid fa-users-gear"></i> User Permissions & Downloads
-        </button>
-        <button onclick="switchAdminPanelTab('notices')" id="admtab-notices" class="px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5">
-          <i class="fa-solid fa-bullhorn"></i> Notices Manager
-        </button>
-        <button onclick="switchAdminPanelTab('audit')" id="admtab-audit" class="px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5">
-          <i class="fa-solid fa-clock-rotate-left"></i> Online & Audit History
-        </button>
-        <button onclick="switchAdminPanelTab('firebase')" id="admtab-firebase" class="px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5">
-          <i class="fa-solid fa-fire text-amber-400"></i> Firebase Live Sync
-        </button>
-      </div>
-
-      <!-- Panel Body -->
-      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6 text-xs">
-        
-        <!-- TAB 1: User Approvals -->
-        <div id="admcontent-approvals" class="space-y-4">
-          <div class="flex items-center justify-between">
-            <h4 class="font-bold text-white text-sm">Registrations Pending Authorization</h4>
-            <span class="text-[11px] text-slate-400">Only approved users can access the portal.</span>
+        <!-- ============================================== -->
+        <!-- TAB 2: ONLINE USERS                            -->
+        <!-- ============================================== -->
+        <div id="admcontent-online" class="hidden space-y-4">
+          <!-- Green Gradient Banner -->
+          <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-3xl p-5 text-white shadow-md flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-2xl shadow-inner">
+                🟢
+              </div>
+              <div>
+                <h3 class="text-base sm:text-lg font-black tracking-wide" id="starOnlineHeaderTitle">Live Online Members (1)</h3>
+                <p class="text-xs text-emerald-100 font-bold mt-0.5">Real-time active users across L Support (Visible exclusively to Admin)</p>
+              </div>
+            </div>
+            <span class="bg-white/20 text-white text-xs font-black px-3.5 py-1.5 rounded-2xl shadow-xs flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-300 animate-ping"></span>
+              Live Presence Heartbeat
+            </span>
           </div>
-          <div id="adminPanelApprovalsList" class="space-y-3">
+
+          <!-- Online Users Grid -->
+          <div id="adminStarOnlineGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <!-- Dynamically populated online user cards -->
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 3: PENDING APPROVALS                       -->
+        <!-- ============================================== -->
+        <div id="admcontent-approvals" class="hidden space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-extrabold text-white uppercase tracking-wide">Pending Account Registrations (Admin Approval Required)</h3>
+              <span id="starPendingCountBadge" class="px-2 py-0.5 rounded-full text-xs font-black bg-amber-400 text-amber-950">0</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="refreshAdminCloudData()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 cursor-pointer">
+                <i class="fa-solid fa-rotate text-xs"></i>
+                <span>Refresh</span>
+              </button>
+              <button type="button" onclick="toggleAddRecoverMemberForm()" class="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                <span>➕ Add / Recover Member</span>
+              </button>
+              <button type="button" id="btnApproveAllPending" onclick="approveAllPendingMembers()" class="hidden px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                <i class="fa-solid fa-check-double text-xs"></i>
+                <span id="btnApproveAllText">Approve All</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Collapsible Recover Missed Member Registration Form -->
+          <div id="starRecoverMemberBox" class="hidden p-4 bg-indigo-950/60 border-2 border-indigo-500/40 rounded-3xl shadow-lg space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
+                  <i class="fa-solid fa-user-plus text-xs"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs sm:text-sm font-black text-white">Recover Missed Member Registration</h4>
+                  <p class="text-[11px] text-indigo-300">Instantly register and approve any member whose application was missed!</p>
+                </div>
+              </div>
+              <button onclick="toggleAddRecoverMemberForm()" class="p-1 rounded-lg text-slate-400 hover:text-white transition">✕</button>
+            </div>
+
+            <form onsubmit="handleAdminRecoverMemberSubmit(event)" class="space-y-3 bg-slate-900/80 p-3.5 rounded-2xl border border-indigo-500/20">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+                <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Full Name *</label>
+                  <input type="text" id="recoverFullName" required placeholder="e.g. David" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">User ID / Username *</label>
+                  <input type="text" id="recoverUserId" required placeholder="e.g. david101" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white font-mono">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Phone Number</label>
+                  <input type="text" id="recoverPhone" placeholder="e.g. 9876543210" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Gmail Address</label>
+                  <input type="email" id="recoverGmail" placeholder="e.g. david@gmail.com" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Zion Church Name</label>
+                  <input type="text" id="recoverZion" placeholder="e.g. Hyderabad Zion" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Area / Zone</label>
+                  <input type="text" id="recoverArea" placeholder="e.g. Zone 1" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Password (Default: 123456)</label>
+                  <input type="text" id="recoverPassword" placeholder="123456" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white font-mono">
+                </div>
+                <div>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">6-Digit PIN (Default: 123456)</label>
+                  <input type="text" id="recoverPin" maxlength="6" placeholder="123456" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white font-mono">
+                </div>
+              </div>
+              <div class="flex items-center justify-end gap-2 pt-1 border-t border-slate-800">
+                <button type="button" onclick="toggleAddRecoverMemberForm()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white cursor-pointer">Cancel</button>
+                <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer">
+                  <i class="fa-solid fa-check text-xs"></i>
+                  <span>✓ Add & Approve Member Immediately</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Pending List Container -->
+          <div id="starPendingListContainer" class="space-y-3">
             <!-- Dynamically rendered pending cards -->
           </div>
         </div>
 
-        <!-- TAB 2: User Permissions & Downloads -->
-        <div id="admcontent-users" class="hidden space-y-5">
-          <div class="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between">
-            <div>
-              <h4 class="font-bold text-white text-sm">Global Master Download Switch</h4>
-              <p class="text-slate-400 text-[11px] mt-0.5">If turned OFF, NO download buttons appear anywhere for viewers.</p>
+        <!-- ============================================== -->
+        <!-- TAB 4: MANAGER PERMISSIONS                     -->
+        <!-- ============================================== -->
+        <div id="admcontent-managers" class="hidden space-y-4">
+          <div class="p-4 bg-purple-950/40 rounded-3xl border border-purple-500/30 text-xs text-purple-200 leading-relaxed shadow-sm">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-base">👑</span>
+              <strong class="text-sm text-purple-100 font-black">Manager Status Input & Modification Permission:</strong>
             </div>
-            <button onclick="toggleMasterDownloads()" id="adminControlPanelMasterDownloadBtn" class="px-5 py-2.5 rounded-xl font-extrabold text-xs transition border border-rose-500/40 bg-rose-500/20 text-rose-300">
+            <p class="text-purple-300 font-medium">
+              By default, managers have standard member permissions. When granted, managers can oversee assigned members, manage preaching journals, and allow past date modifications.
+            </p>
+          </div>
+
+          <div id="starManagersListContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Dynamically populated manager cards -->
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 5: MEMBER PERMISSIONS & DOWNLOADS          -->
+        <!-- ============================================== -->
+        <div id="admcontent-memberperms" class="hidden space-y-4">
+          <!-- Global Downloads Switch -->
+          <div class="p-4 bg-slate-800/80 border border-slate-700 rounded-3xl flex items-center justify-between gap-4">
+            <div>
+              <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-down text-emerald-400"></i>
+                Global File Downloads Access
+              </h4>
+              <p class="text-[11px] text-slate-400 mt-0.5">When turned ON, all authorized members can download sermon files and study packs.</p>
+            </div>
+            <button 
+              id="starGlobalDownloadBtn" 
+              onclick="toggleGlobalDownloadSetting()" 
+              class="px-4 py-2 rounded-xl font-bold text-xs transition shadow-md bg-rose-500/20 text-rose-300 border border-rose-500/30"
+            >
               Downloads: OFF
             </button>
           </div>
 
-          <div>
-            <h4 class="font-bold text-white mb-2 text-sm">User Download & Module Permissions</h4>
-            <div class="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden">
-              <table class="w-full text-left text-xs">
-                <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
-                  <tr>
-                    <th class="py-2.5 px-3">User</th>
-                    <th class="py-2.5 px-3">Role & Status</th>
-                    <th class="py-2.5 px-3">Assigned Folders</th>
-                    <th class="py-2.5 px-3 text-right">Download Access</th>
+          <!-- Members Permissions Table -->
+          <div class="bg-slate-950/60 border border-slate-800 rounded-3xl overflow-hidden shadow-inner">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+              <h4 class="font-bold text-white text-xs uppercase tracking-wider">Per-Member Authorization & Modules</h4>
+              <span class="text-[11px] text-slate-400">Click toggles to update live permissions</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-400 text-[10px] font-black uppercase tracking-wider bg-slate-900/60">
+                    <th class="py-2.5 px-3.5">Member</th>
+                    <th class="py-2.5 px-3">Role</th>
+                    <th class="py-2.5 px-3">Assigned Modules</th>
+                    <th class="py-2.5 px-3">Preaching Room</th>
+                    <th class="py-2.5 px-3 text-right">Download Permission</th>
                   </tr>
                 </thead>
-                <tbody id="adminPanelUsersTableBody" class="divide-y divide-slate-800/60 text-slate-300">
-                  <!-- Rendered via JS -->
+                <tbody id="starMemberPermsTableBody" class="divide-y divide-slate-800/60 text-xs">
+                  <!-- Dynamically populated -->
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        <!-- TAB 3: Notices Manager -->
-        <div id="admcontent-notices" class="hidden space-y-4">
+        <!-- ============================================== -->
+        <!-- TAB 6: USER FEEDBACK & SUGGESTIONS             -->
+        <!-- ============================================== -->
+        <div id="admcontent-feedback" class="hidden space-y-4">
           <div class="flex items-center justify-between">
-            <h4 class="font-bold text-white text-sm">Active Announcements on Home Page</h4>
-            <button onclick="openAddNoticeModal()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5">
-              <i class="fa-solid fa-plus text-[10px]"></i> Post New Notice
-            </button>
+            <div>
+              <h3 class="text-sm font-extrabold text-white uppercase tracking-wide">User Enquiries & Suggestions</h3>
+              <p class="text-[11px] text-slate-400 mt-0.5">Feedback submitted by members through settings.</p>
+            </div>
+            <span id="starFeedbackCountBadge" class="px-2.5 py-1 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs">0 Submissions</span>
           </div>
-          <div id="adminPanelNoticesList" class="space-y-3">
-            <!-- Rendered via JS -->
+
+          <div id="starFeedbackListContainer" class="space-y-3">
+            <!-- Dynamically populated feedback cards -->
           </div>
         </div>
 
-        <!-- TAB 4: Audit & Activity Log -->
-        <div id="admcontent-audit" class="hidden space-y-4">
-          <div class="flex items-center justify-between">
-            <h4 class="font-bold text-white text-sm">System Login & Activity History</h4>
-            <button onclick="clearAuditHistory()" class="text-rose-400 hover:underline text-xs">Clear Log</button>
-          </div>
-          <div class="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden">
-            <table class="w-full text-left text-xs">
-              <thead class="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
-                <tr>
-                  <th class="py-2.5 px-3">User</th>
-                  <th class="py-2.5 px-3">Action</th>
-                  <th class="py-2.5 px-3">Details</th>
-                  <th class="py-2.5 px-3 text-right">Time</th>
-                </tr>
-              </thead>
-              <tbody id="adminPanelAuditTableBody" class="divide-y divide-slate-800/60 text-slate-300">
-                <!-- Rendered via JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- TAB 5: Firebase Live Cloud Sync -->
+        <!-- ============================================== -->
+        <!-- TAB 7: FIREBASE LIVE CLOUD SYNC                -->
+        <!-- ============================================== -->
         <div id="admcontent-firebase" class="hidden space-y-4">
-          <div class="p-4 bg-gradient-to-r from-amber-950/60 to-slate-950 rounded-2xl border border-amber-500/30 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
-                <i class="fa-solid fa-fire"></i>
-              </div>
-              <div>
-                <h4 class="font-bold text-white text-sm">Firebase Realtime Live Sync</h4>
-                <p class="text-slate-400 text-[11px]">Instant live sync across all user devices for sermons, files, approvals & notices.</p>
-              </div>
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="font-bold text-white text-sm">Firebase Realtime Cloud Database</h4>
+              <p class="text-[11px] text-slate-400 mt-0.5">Real-time sync between Admin and all member devices.</p>
             </div>
             <div id="firebaseConnectionStatusBadge" class="px-3 py-1 rounded-xl font-bold text-xs bg-slate-800 text-slate-400 border border-slate-700">
-              ⚪ Local Mode (Offline)
+              Connecting...
             </div>
           </div>
 
-          <form onsubmit="saveFirebaseConfig(event)" class="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
-            <h5 class="font-bold text-white text-xs mb-1">Firebase Project Configuration</h5>
-            <p class="text-[11px] text-slate-400">Paste your Firebase web app config JSON or project parameters below:</p>
-            <textarea 
-              id="firebaseConfigInput" 
-              rows="6" 
-              placeholder='{ "apiKey": "...", "authDomain": "...", "databaseURL": "https://...", "projectId": "..." }' 
-              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl font-mono text-[11px] text-emerald-300 outline-none resize-none"
-            ></textarea>
-
-            <div class="flex items-center justify-between pt-2">
-              <button type="button" onclick="testFirebaseConnection()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-xl text-xs border border-slate-700">
-                Test Connection
-              </button>
-              <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow-md">
-                Save & Connect Firebase
+          <form onsubmit="saveFirebaseConfig(event)" class="space-y-3 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-400 mb-1">Firebase Configuration JSON</label>
+              <textarea id="firebaseConfigInput" rows="7" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-indigo-300 font-mono outline-none focus:border-indigo-500"></textarea>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-[10px] text-slate-500">Auto-connected to Project: lsupport-e390b</span>
+              <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition shadow-md">
+                Save & Connect Cloud
               </button>
             </div>
           </form>
@@ -2088,7 +2284,6 @@
 
     </div>
   </div>
-    <!-- ======================================================== -->
   <!-- MODAL: ADD / EDIT SCHEDULE EVENT (ADMIN ONLY)            -->
   <!-- ======================================================== -->
   <div id="addScheduleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
@@ -2154,6 +2349,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=4.6"></script>
+  <script src="portal_engine.js?v=5.0"></script>
 </body>
 </html>
