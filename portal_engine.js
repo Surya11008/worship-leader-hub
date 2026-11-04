@@ -1,5 +1,157 @@
 
 // ========================================================
+// POSITION-BASED ACCESS CONTROL (OVERSEER, DEACON, BCL, ETC.)
+// ========================================================
+const ALL_POSITIONS = [
+  'Overseer',
+  '(D)Overseer',
+  'Deacon',
+  'BCL',
+  'PBCL',
+  'Group Leader',
+  'Unit Leader',
+  'IUnit Leader',
+  'Co-Worker',
+  'Evangelist',
+  'Member'
+];
+
+let modulePermissions = JSON.parse(localStorage.getItem('wlh_module_permissions') || '{}');
+let topicPermissions = JSON.parse(localStorage.getItem('wlh_topic_permissions') || '{}');
+let filePermissions = JSON.parse(localStorage.getItem('wlh_file_permissions') || '{}');
+
+function isPositionAllowed(allowedPositions, user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  if (!allowedPositions || !Array.isArray(allowedPositions) || allowedPositions.length === 0 || allowedPositions.includes('all') || allowedPositions.includes('All')) {
+    return true;
+  }
+  const userPos = user.position || 'Member';
+  return allowedPositions.some(p => p.toLowerCase() === userPos.toLowerCase());
+}
+
+function isFileVisibleToUser(item, user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+
+  // 1. Direct file position permission
+  const fileAllowed = filePermissions[item.url] || item.allowedPositions;
+  if (!isPositionAllowed(fileAllowed, user)) return false;
+
+  // 2. Module position permission
+  const itemModules = item.modules || (item.tab ? [item.tab] : []);
+  if (itemModules.length > 0) {
+    const hasAllowedModule = itemModules.some(modId => {
+      const modAllowed = modulePermissions[modId];
+      return isPositionAllowed(modAllowed, user);
+    });
+    if (!hasAllowedModule) return false;
+  }
+
+  // 3. Topic position permission
+  const itemTopics = item.topics || (item.group ? [item.group] : []);
+  if (itemTopics.length > 0) {
+    const mainMod = itemModules[0] || item.tab || 'all';
+    const hasAllowedTopic = itemTopics.some(topName => {
+      const key = mainMod + '::' + topName;
+      const topAllowed = topicPermissions[key];
+      return isPositionAllowed(topAllowed, user);
+    });
+    if (!hasAllowedTopic) return false;
+  }
+
+  return true;
+}
+
+function renderPositionCheckboxes(containerId, nameAttr, selectedPositions = []) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const isAll = !selectedPositions || selectedPositions.length === 0 || selectedPositions.includes('all') || selectedPositions.includes('All');
+  container.innerHTML = ALL_POSITIONS.map(pos => {
+    const isChecked = isAll || selectedPositions.some(p => p.toLowerCase() === pos.toLowerCase());
+    return `
+      <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-800/80 cursor-pointer border border-slate-800 transition">
+        <input type="checkbox" name="${nameAttr}" value="${pos}" ${isChecked ? 'checked' : ''} class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+        <span class="text-slate-200 text-[11px] font-semibold">${pos}</span>
+      </label>
+    `;
+  }).join('');
+}
+
+function getSelectedPositionsFromCheckboxes(nameAttr) {
+  const cbs = document.querySelectorAll(`input[name="${nameAttr}"]:checked`);
+  const values = Array.from(cbs).map(cb => cb.value);
+  if (values.length === 0 || values.length === ALL_POSITIONS.length) {
+    return ['all'];
+  }
+  return values;
+}
+
+function toggleSelectAllPositions(nameAttr, forceState) {
+  const cbs = document.querySelectorAll(`input[name="${nameAttr}"]`);
+  const anyUnchecked = Array.from(cbs).some(cb => !cb.checked);
+  const targetState = forceState !== undefined ? forceState : anyUnchecked;
+  cbs.forEach(cb => cb.checked = targetState);
+}
+
+function openTopicPermissionsModal(catId, topicName, event) {
+  if (event) event.stopPropagation();
+  const catObj = CATEGORIES.find(c => c.id === catId);
+  const modal = document.getElementById('topicPermissionsModal');
+  const container = document.getElementById('topicPermissionsModalContainer');
+  if (!modal || !container) return;
+
+  document.getElementById('topicPermCatId').value = catId;
+  document.getElementById('topicPermTopicName').value = topicName;
+  document.getElementById('topicPermModalSubtitle').textContent = (catObj ? catObj.name : catId) + ' › ' + topicName;
+
+  const key = catId + '::' + topicName;
+  const currentAllowed = topicPermissions[key] || ['all'];
+  renderPositionCheckboxes('topicPositionsCheckboxList', 'topicPositionChoice', currentAllowed);
+
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-95');
+  container.classList.add('scale-100');
+}
+
+function closeTopicPermissionsModal() {
+  const modal = document.getElementById('topicPermissionsModal');
+  const container = document.getElementById('topicPermissionsModalContainer');
+  if (!modal || !container) return;
+  modal.classList.add('opacity-0', 'pointer-events-none');
+  container.classList.remove('scale-100');
+  container.classList.add('scale-95');
+}
+
+function saveTopicPermissions(e) {
+  e.preventDefault();
+  const catId = document.getElementById('topicPermCatId').value;
+  const topicName = document.getElementById('topicPermTopicName').value;
+  const selected = getSelectedPositionsFromCheckboxes('topicPositionChoice');
+  
+  const key = catId + '::' + topicName;
+  topicPermissions[key] = selected;
+  localStorage.setItem('wlh_topic_permissions', JSON.stringify(topicPermissions));
+  fbSync('topic_permissions', topicPermissions);
+
+  closeTopicPermissionsModal();
+  renderSubgroupTabs();
+  renderRecords();
+  showToast('Position access updated for topic "' + topicName + '"!');
+}
+
+function adminChangeUserPosition(userId, newPos) {
+  const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (!user) return;
+  user.position = newPos;
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
+  showToast(user.fullName + ' position updated to ' + newPos + '!');
+  renderStarMembersGrid();
+}
+
+
+// ========================================================
 // LIVE USER PRESENCE TRACKING (STAR GALAXY STYLE)
 // ========================================================
 let PRESENCE_DATA = {};
@@ -608,6 +760,7 @@ async function handleRegisterSubmit(e) {
   const zion = document.getElementById('regZion').value.trim();
   const area = document.getElementById('regArea').value.trim();
   const pin = document.getElementById('regPin').value.trim();
+  const position = document.getElementById('regPosition') ? document.getElementById('regPosition').value : 'Member';
 
   if (pass !== passAgain) {
     alert('Passwords do not match! Please check again.');
@@ -644,6 +797,7 @@ async function handleRegisterSubmit(e) {
     zion,
     area,
     pin,
+    position: position || 'Member',
     role: 'member',
     status: 'pending', // Waiting for Admin approval!
     registeredAt: new Date().toISOString(),
@@ -1095,6 +1249,9 @@ function openEditFileModuleTopicModal(url, e) {
     `;
   }).join('');
 
+  const currentFileAllowed = filePermissions[url] || item.allowedPositions || ['all'];
+  renderPositionCheckboxes('editFilePositionsCheckboxList', 'editFilePositionChoice', currentFileAllowed);
+
   const modal = document.getElementById('editFileModuleTopicModal');
   const container = document.getElementById('editFileModuleTopicContainer');
   modal.classList.remove('opacity-0', 'pointer-events-none');
@@ -1338,7 +1495,12 @@ function updatePinnedBadge() {
 // 12. SIDEBAR CATEGORIES RENDER
 function renderSidebarCategories() {
   const container = document.getElementById('dynamicSidebarCategories');
-  container.innerHTML = CATEGORIES.map(cat => {
+  if (!container) return;
+  const visibleCategories = CATEGORIES.filter(cat => {
+    const allowed = modulePermissions[cat.id] || cat.allowedPositions;
+    return isPositionAllowed(allowed, CURRENT_USER);
+  });
+  container.innerHTML = visibleCategories.map(cat => {
     const catCount = ALL_ITEMS.filter(it => it.modules.includes(cat.id) || it.tab === cat.id).length;
     const isActive = (activeView === 'resources' && currentCategory === cat.id && !isPinnedOnly);
 
@@ -1430,7 +1592,13 @@ function renderSubgroupTabs() {
     </button>
   `;
 
-  (catObj.groups || []).forEach(grp => {
+  const visibleGroups = (catObj.groups || []).filter(grp => {
+    const key = catObj.id + '::' + grp;
+    const allowed = topicPermissions[key];
+    return isPositionAllowed(allowed, CURRENT_USER);
+  });
+
+  visibleGroups.forEach(grp => {
     const grpCount = catItems.filter(it => it.topics.includes(grp) || it.group === grp).length;
     const isActive = (currentSubgroup === grp);
 
@@ -1455,10 +1623,21 @@ function renderSubgroupTabs() {
         <button 
           onclick="renameTopic('${catObj.id}', '${grp.replace(/'/g, "\\'")}', event)"
           title="Rename this topic"
-          class="pr-2 pl-0.5 text-[10px] text-slate-400 hover:text-amber-300 opacity-0 group-hover/grp:opacity-100 transition"
+          class="px-1 text-[10px] text-slate-400 hover:text-amber-300 opacity-0 group-hover/grp:opacity-100 transition"
         >
           <i class="fa-solid fa-pen"></i>
         </button>
+
+        ${isAdmin ? `
+          <button 
+            type="button"
+            onclick="openTopicPermissionsModal('${catObj.id}', '${grp.replace(/'/g, "\\'")}', event)"
+            title="Set Position Access for this Topic"
+            class="pr-2 pl-0.5 text-[10px] text-slate-400 hover:text-indigo-400 opacity-0 group-hover/grp:opacity-100 transition"
+          >
+            <i class="fa-solid fa-shield-halved"></i>
+          </button>
+        ` : ''}
       </div>
     `;
   });
@@ -1926,6 +2105,7 @@ function openAddResourceModal() {
     document.getElementById('newResourceModule').value = currentCategory;
   }
   onModuleChangeInForm();
+  renderPositionCheckboxes('resourcePositionsCheckboxList', 'resourcePositionChoice', ['all']);
 
   const modal = document.getElementById('addResourceModal');
   const container = document.getElementById('addResourceModalContainer');
@@ -2023,8 +2203,10 @@ function submitNewResource(e) {
     previewUrl = previewUrl.split('/view')[0] + '/preview';
   }
 
+  const fileAllowedPositions = getSelectedPositionsFromCheckboxes('resourcePositionChoice');
   const newItem = {
     title,
+    allowedPositions: fileAllowedPositions,
     url,
     previewUrl,
     group: topic,
@@ -2040,6 +2222,9 @@ function submitNewResource(e) {
   };
 
   customItems.unshift(newItem);
+  filePermissions[newItem.url] = fileAllowedPositions;
+  localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
+  fbSync('file_permissions', filePermissions);
   localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); fbSync('custom_resources', customItems);
 
   closeAddResourceModal();
@@ -2059,6 +2244,7 @@ function openAddModuleModal() {
   document.getElementById('newModuleName').value = '';
   document.getElementById('newModuleIcon').value = '📁';
   document.getElementById('newModuleTopics').value = '';
+  renderPositionCheckboxes('modulePositionsCheckboxList', 'modulePositionChoice', ['all']);
   document.getElementById('deleteModuleBtn').classList.add('hidden');
 
   const modal = document.getElementById('addModuleModal');
@@ -2083,6 +2269,8 @@ function openEditModuleModal(catId, event) {
   document.getElementById('newModuleName').value = catObj.name;
   document.getElementById('newModuleIcon').value = catObj.icon;
   document.getElementById('newModuleTopics').value = (catObj.groups || []).join(', ');
+  const currentModAllowed = modulePermissions[catId] || catObj.allowedPositions || ['all'];
+  renderPositionCheckboxes('modulePositionsCheckboxList', 'modulePositionChoice', currentModAllowed);
 
   const delBtn = document.getElementById('deleteModuleBtn');
   if (catObj.isCustom) delBtn.classList.remove('hidden');
@@ -2119,8 +2307,12 @@ function submitModuleConfig(e) {
     parsedTopics = topicsStr.split(',').map(s => s.trim()).filter(Boolean);
   }
 
+  const modAllowedPositions = getSelectedPositionsFromCheckboxes('modulePositionChoice');
   if (targetId) {
     moduleEdits[targetId] = { name, icon };
+    modulePermissions[targetId] = modAllowedPositions;
+    localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
+    fbSync('module_permissions', modulePermissions);
     localStorage.setItem('wlh_module_edits', JSON.stringify(moduleEdits));
     if (parsedTopics.length > 0) {
       topicEdits[targetId] = parsedTopics;
@@ -2136,8 +2328,12 @@ function submitModuleConfig(e) {
       badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
       btn: 'bg-indigo-600 hover:bg-indigo-500',
       groups: parsedTopics.length > 0 ? parsedTopics : ['General'],
-      isCustom: true
+      isCustom: true,
+      allowedPositions: modAllowedPositions
     };
+    modulePermissions[newId] = modAllowedPositions;
+    localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
+    fbSync('module_permissions', modulePermissions);
     customModules.push(newModule);
     localStorage.setItem('wlh_custom_modules', JSON.stringify(customModules));
     showToast('Created module "' + name + '"!');
@@ -2674,6 +2870,9 @@ function loadSettingsFormData() {
   document.getElementById('settingArea').value = CURRENT_USER.area || '';
   document.getElementById('settingPhone').value = CURRENT_USER.phone || '';
   document.getElementById('settingEmail').value = CURRENT_USER.gmail || '';
+  if (document.getElementById('settingPosition')) {
+    document.getElementById('settingPosition').value = CURRENT_USER.position || 'Member';
+  }
 }
 
 function saveUserProfile(e) {
@@ -2683,6 +2882,9 @@ function saveUserProfile(e) {
   CURRENT_USER.area = document.getElementById('settingArea').value.trim();
   CURRENT_USER.phone = document.getElementById('settingPhone').value.trim();
   CURRENT_USER.gmail = document.getElementById('settingEmail').value.trim();
+  if (document.getElementById('settingPosition')) {
+    CURRENT_USER.position = document.getElementById('settingPosition').value || 'Member';
+  }
 
   const idx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === CURRENT_USER.userId.toLowerCase());
   if (idx !== -1) ALL_USERS[idx] = CURRENT_USER;
@@ -3459,6 +3661,9 @@ function renderStarMembersGrid(filterQuery) {
                 <h4 class="font-extrabold text-white text-sm flex items-center gap-1.5 flex-wrap truncate">
                   <span class="truncate">${u.fullName || 'User'}</span>
                   ${statusBadge}
+                  <span class="px-2 py-0.5 rounded-md text-[9px] font-black bg-purple-500/20 text-purple-200 border border-purple-500/30">
+                    <i class="fa-solid fa-id-badge text-[8px] mr-1 text-purple-400"></i>${u.position || 'Member'}
+                  </span>
                 </h4>
                 <div class="text-[11px] font-mono text-purple-300 truncate">@${u.userId}</div>
               </div>
@@ -3852,6 +4057,7 @@ function handleAdminRecoverMemberSubmit(e) {
   const area = document.getElementById('recoverArea').value.trim();
   const password = document.getElementById('recoverPassword').value.trim() || '123456';
   const pin = document.getElementById('recoverPin').value.trim() || '123456';
+  const position = document.getElementById('recoverPosition') ? document.getElementById('recoverPosition').value : 'Member';
 
   if (!fullName || !userId) {
     alert('Please enter Full Name and User ID.');
@@ -3868,6 +4074,7 @@ function handleAdminRecoverMemberSubmit(e) {
     area,
     password,
     pin,
+    position: position || 'Member',
     role: 'member',
     status: 'approved',
     canDownload: true,
@@ -4329,6 +4536,20 @@ function startBackgroundLivePoller() {
           }
         }
 
+        // 6. Permissions sync
+        if (data.module_permissions && typeof data.module_permissions === 'object') {
+          modulePermissions = data.module_permissions;
+          localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
+        }
+        if (data.topic_permissions && typeof data.topic_permissions === 'object') {
+          topicPermissions = data.topic_permissions;
+          localStorage.setItem('wlh_topic_permissions', JSON.stringify(topicPermissions));
+        }
+        if (data.file_permissions && typeof data.file_permissions === 'object') {
+          filePermissions = data.file_permissions;
+          localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
+        }
+
         if (usersChanged) {
           if (typeof updateStarAdminBadges === 'function') updateStarAdminBadges();
           if (CURRENT_USER.role === 'admin') {
@@ -4544,6 +4765,38 @@ function setupRealtimeListeners() {
     if (val && typeof val === 'object') {
       PRESENCE_DATA = val;
       renderStarOnlineGrid();
+    }
+  });
+
+  // 8. Sync Module Permissions Live
+  FIREBASE_DB.ref('l_support/module_permissions').on('value', snap => {
+    let val = snap.val();
+    if (val && typeof val === 'object') {
+      modulePermissions = val;
+      localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
+      renderSidebarCategories();
+      renderRecords();
+    }
+  });
+
+  // 9. Sync Topic Permissions Live
+  FIREBASE_DB.ref('l_support/topic_permissions').on('value', snap => {
+    let val = snap.val();
+    if (val && typeof val === 'object') {
+      topicPermissions = val;
+      localStorage.setItem('wlh_topic_permissions', JSON.stringify(topicPermissions));
+      renderSubgroupTabs();
+      renderRecords();
+    }
+  });
+
+  // 10. Sync File Permissions Live
+  FIREBASE_DB.ref('l_support/file_permissions').on('value', snap => {
+    let val = snap.val();
+    if (val && typeof val === 'object') {
+      filePermissions = val;
+      localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
+      renderRecords();
     }
   });
 
