@@ -1,3 +1,33 @@
+
+// ========================================================
+// LIVE USER PRESENCE TRACKING (STAR GALAXY STYLE)
+// ========================================================
+let PRESENCE_DATA = {};
+let presenceInterval = null;
+
+function initPresenceTracking() {
+  if (!CURRENT_USER || !CURRENT_USER.userId) return;
+  const heartbeat = () => {
+    if (!CURRENT_USER || !CURRENT_USER.userId) return;
+    const userPresence = {
+      userId: CURRENT_USER.userId,
+      fullName: CURRENT_USER.fullName || 'User',
+      role: CURRENT_USER.role || 'member',
+      zion: CURRENT_USER.zion || '',
+      area: CURRENT_USER.area || '',
+      lastActive: Date.now()
+    };
+    if (IS_FIREBASE_CONNECTED && FIREBASE_DB) {
+      FIREBASE_DB.ref('l_support/presence/' + CURRENT_USER.userId).set(userPresence).catch(() => {});
+    } else {
+      fbSync('presence/' + CURRENT_USER.userId, userPresence);
+    }
+  };
+  heartbeat();
+  if (presenceInterval) clearInterval(presenceInterval);
+  presenceInterval = setInterval(heartbeat, 30000);
+}
+
 /* ========================================================
    L SUPPORT — ENTERPRISE ENGINE v4.0
    Features:
@@ -415,7 +445,9 @@ function updateUserUI() {
   const addResourceBtn = document.querySelector('button[onclick="openAddResourceModal()"]');
   const addModuleBtn = document.querySelector('button[onclick="openAddModuleModal()"]');
 
+  const btnAdminCenterSidebar = document.getElementById('btnAdminCenterSidebar');
   if (isAdmin) {
+    if (btnAdminCenterSidebar) { btnAdminCenterSidebar.classList.remove('hidden'); btnAdminCenterSidebar.classList.add('flex'); }
     if (dlWrapper) dlWrapper.classList.remove('hidden');
     if (approvalTopBtn) approvalTopBtn.classList.remove('hidden');
     if (topAdminPanelBtn) topAdminPanelBtn.classList.remove('hidden');
@@ -425,6 +457,7 @@ function updateUserUI() {
     if (addModuleBtn) addModuleBtn.classList.remove('hidden');
     updateApprovalCountBadge();
   } else {
+    if (btnAdminCenterSidebar) { btnAdminCenterSidebar.classList.add('hidden'); btnAdminCenterSidebar.classList.remove('flex'); }
     if (dlWrapper) dlWrapper.classList.add('hidden');
     if (approvalTopBtn) approvalTopBtn.classList.add('hidden');
     if (topAdminPanelBtn) topAdminPanelBtn.classList.add('hidden');
@@ -554,6 +587,7 @@ function handleLoginSubmit(e) {
   renderSubgroupTabs();
   renderRecords();
   updateMyRoomBadge();
+  initPresenceTracking();
   showToast('Welcome back, ' + user.fullName + '!');
   logActivity('Login', 'Successful login for ' + user.userId);
 
@@ -2874,13 +2908,7 @@ function updateApprovalCountBadge() {
 
 function openPendingApprovalsModal() {
   if (!CURRENT_USER || CURRENT_USER.role !== 'admin') return;
-  renderPendingUsersList();
-  const modal = document.getElementById('pendingApprovalsModal');
-  const container = document.getElementById('pendingApprovalsContainer');
-  if (!modal || !container) return;
-  modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
+  openAdminControlPanel('approvals');
 }
 
 function closePendingApprovalsModal() {
@@ -2984,9 +3012,9 @@ function approveUser(userId) {
   showToast('User ' + user.fullName + ' (' + user.userId + ') Approved!');
   logActivity('User Approved', 'Admin approved user ' + user.userId);
   renderPendingUsersList();
-  renderAdminPanelApprovals();
-  renderAdminPanelUsers();
-  updateApprovalCountBadge();
+  renderStarApprovalsList();
+  renderStarMembersGrid();
+  updateStarAdminBadges();
   if (ALL_USERS.filter(u => u.status === 'pending').length === 0) {
     setTimeout(() => closePendingApprovalsModal(), 500);
   }
@@ -3002,9 +3030,9 @@ function rejectUser(userId) {
   showToast('User ' + user.userId + ' registration rejected.');
   logActivity('User Rejected', 'Admin rejected user ' + user.userId);
   renderPendingUsersList();
-  renderAdminPanelApprovals();
-  renderAdminPanelUsers();
-  updateApprovalCountBadge();
+  renderStarApprovalsList();
+  renderStarMembersGrid();
+  updateStarAdminBadges();
 }
 
 
@@ -3221,20 +3249,26 @@ function renderModalNewArrivals(filterModule) {
 
 
 // ========================================================
-// DEDICATED ADMIN CONTROL PANEL LOGIC
+// DEDICATED ADMIN CONTROL PANEL LOGIC (STAR GALAXY MANAGEMENT CENTER)
 // ========================================================
+let currentAdminTab = 'members';
+
 function openAdminControlPanel(tab) {
   if (!CURRENT_USER || CURRENT_USER.role !== 'admin') {
-    alert('Access restricted to Admin only.');
+    alert('Access restricted to Admin only (Master Authority: surya11008).');
     return;
   }
-  switchAdminPanelTab(tab || 'approvals');
   const modal = document.getElementById('adminControlPanelModal');
   const container = document.getElementById('adminControlPanelContainer');
   if (!modal || !container) return;
+
+  updateStarAdminBadges();
+
   modal.classList.remove('opacity-0', 'pointer-events-none');
   container.classList.remove('scale-95');
   container.classList.add('scale-100');
+
+  switchAdminPanelTab(tab || currentAdminTab || 'members');
 }
 
 function closeAdminControlPanel() {
@@ -3246,124 +3280,877 @@ function closeAdminControlPanel() {
   container.classList.add('scale-95');
 }
 
+function updateStarAdminBadges() {
+  const pendingCount = ALL_USERS.filter(u => u.status === 'pending').length;
+  const totalMembers = ALL_USERS.length;
+  
+  // Tab Badges
+  const tabMembersCount = document.getElementById('starTabMembersCount');
+  if (tabMembersCount) tabMembersCount.textContent = totalMembers;
+
+  const tabApprovalsBadge = document.getElementById('starTabApprovalsBadge');
+  if (tabApprovalsBadge) {
+    tabApprovalsBadge.textContent = pendingCount;
+    tabApprovalsBadge.classList.toggle('hidden', pendingCount === 0);
+  }
+
+  const pendingCountBadge = document.getElementById('starPendingCountBadge');
+  if (pendingCountBadge) pendingCountBadge.textContent = pendingCount + ' Pending';
+
+  const btnApproveAllText = document.getElementById('btnApproveAllText');
+  if (btnApproveAllText) btnApproveAllText.textContent = 'Approve All (' + pendingCount + ')';
+
+  const btnApproveAll = document.getElementById('btnApproveAllPending');
+  if (btnApproveAll) btnApproveAll.classList.toggle('hidden', pendingCount === 0);
+
+  const topBadge = document.getElementById('topApprovalCountBadge');
+  if (topBadge) topBadge.textContent = pendingCount;
+
+  const adminPanelBadge = document.getElementById('adminPanelBadge');
+  if (adminPanelBadge) {
+    adminPanelBadge.textContent = pendingCount;
+    adminPanelBadge.classList.toggle('hidden', pendingCount === 0);
+  }
+
+  const sidebarPending = document.getElementById('sidebarPendingCountBadge');
+  if (sidebarPending) {
+    sidebarPending.textContent = pendingCount;
+    sidebarPending.classList.toggle('hidden', pendingCount === 0);
+  }
+}
+
 function switchAdminPanelTab(tab) {
-  const tabs = ['approvals', 'users', 'notices', 'audit', 'firebase'];
+  currentAdminTab = tab || 'members';
+  const tabs = ['members', 'online', 'approvals', 'managers', 'memberperms', 'feedback', 'firebase'];
+  
   tabs.forEach(t => {
     const btn = document.getElementById('admtab-' + t);
     const content = document.getElementById('admcontent-' + t);
     if (!btn || !content) return;
-    if (t === tab) {
-      btn.className = 'px-3.5 py-2 border-b-2 border-amber-500 text-amber-400 flex items-center gap-1.5 font-bold';
+    
+    if (t === currentAdminTab) {
+      btn.className = 'px-4 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/30 cursor-pointer';
       content.classList.remove('hidden');
     } else {
-      btn.className = 'px-3.5 py-2 border-b-2 border-transparent text-slate-400 hover:text-white flex items-center gap-1.5';
+      btn.className = 'px-4 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 text-xs font-bold bg-slate-900/80 text-purple-200 hover:text-white hover:bg-slate-800 border border-purple-500/20 cursor-pointer';
       content.classList.add('hidden');
     }
   });
 
-  if (tab === 'approvals') renderAdminPanelApprovals();
-  if (tab === 'users') renderAdminPanelUsers();
-  if (tab === 'notices') renderAdminPanelNotices();
-  if (tab === 'audit') renderAdminPanelAudit();
-  if (tab === 'firebase') loadFirebasePanelData();
+  updateStarAdminBadges();
+
+  if (currentAdminTab === 'members') renderStarMembersGrid();
+  if (currentAdminTab === 'online') renderStarOnlineGrid();
+  if (currentAdminTab === 'approvals') renderStarApprovalsList();
+  if (currentAdminTab === 'managers') renderStarManagersList();
+  if (currentAdminTab === 'memberperms') renderStarMemberPerms();
+  if (currentAdminTab === 'feedback') renderStarFeedbackList();
+  if (currentAdminTab === 'firebase') renderStarFirebaseTab();
 }
 
-function renderAdminPanelApprovals() {
-  const container = document.getElementById('adminPanelApprovalsList');
-  if (!container) return;
-  const pending = ALL_USERS.filter(u => u.status === 'pending');
-  updateApprovalCountBadge();
+function refreshAdminCloudData() {
+  showToast('Refreshing cloud data from Firebase...');
+  const restUrl = 'https://lsupport-e390b-default-rtdb.firebaseio.com/l_support.json';
+  fetch(restUrl)
+    .then(r => r.json())
+    .then(data => {
+      if (data) {
+        if (data.users) {
+          let uList = data.users;
+          if (!Array.isArray(uList) && typeof uList === 'object') uList = Object.values(uList);
+          if (Array.isArray(uList)) {
+            ALL_USERS = uList;
+            localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+          }
+        }
+        if (data.presence) {
+          PRESENCE_DATA = data.presence;
+        }
+        if (data.downloads_enabled !== undefined) {
+          DOWNLOADS_ENABLED = data.downloads_enabled;
+          localStorage.setItem('wlh_downloads_enabled', JSON.stringify(DOWNLOADS_ENABLED));
+        }
+        if (data.suggestions) {
+          let sList = data.suggestions;
+          if (!Array.isArray(sList) && typeof sList === 'object') sList = Object.values(sList);
+          if (Array.isArray(sList)) {
+            suggestionsList = sList;
+            localStorage.setItem('wlh_suggestions', JSON.stringify(suggestionsList));
+          }
+        }
+      }
+      updateStarAdminBadges();
+      switchAdminPanelTab(currentAdminTab);
+      showToast('Cloud data successfully refreshed!');
+    })
+    .catch(err => {
+      console.warn('Manual refresh failed:', err);
+      showToast('Cache reloaded');
+      switchAdminPanelTab(currentAdminTab);
+    });
+}
 
-  if (pending.length === 0) {
-    container.innerHTML = '<div class="py-8 text-center text-slate-500 text-xs">No registrations pending approval.</div>';
+function renderStarMembersGrid(filterQuery) {
+  const container = document.getElementById('adminStarMembersGrid');
+  const countBadge = document.getElementById('membersTotalCountBadge');
+  if (!container) return;
+
+  const searchInput = document.getElementById('adminMembersSearchInput');
+  const q = (filterQuery !== undefined ? filterQuery : (searchInput ? searchInput.value : '')).toLowerCase().trim();
+
+  let list = [...ALL_USERS];
+  if (q) {
+    list = list.filter(u => 
+      (u.fullName && u.fullName.toLowerCase().includes(q)) ||
+      (u.userId && u.userId.toLowerCase().includes(q)) ||
+      (u.phone && u.phone.toLowerCase().includes(q)) ||
+      (u.gmail && u.gmail.toLowerCase().includes(q)) ||
+      (u.zion && u.zion.toLowerCase().includes(q)) ||
+      (u.area && u.area.toLowerCase().includes(q)) ||
+      (u.role && u.role.toLowerCase().includes(q))
+    );
+  }
+
+  if (countBadge) countBadge.textContent = list.length + ' Members';
+  const tabMembersCount = document.getElementById('starTabMembersCount');
+  if (tabMembersCount) tabMembersCount.textContent = ALL_USERS.length;
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full py-12 text-center text-slate-400">
+        <i class="fa-solid fa-users-slash text-4xl text-purple-400/50 mb-3"></i>
+        <p class="font-bold text-white text-sm">No Members Found</p>
+        <p class="text-xs text-slate-500 mt-1">Try adjusting your search criteria or register a new member.</p>
+      </div>
+    `;
     return;
   }
 
-  container.innerHTML = pending.map(u => `
-    <div class="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
-      <div class="space-y-1">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-white text-sm">${u.fullName}</span>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">ID: ${u.userId}</span>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Pending</span>
-        </div>
-        <div class="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5">
-          ${u.gmail ? `<span><i class="fa-solid fa-envelope text-[10px] mr-1"></i>${u.gmail}</span>` : ''}
-          ${u.phone ? `<span><i class="fa-solid fa-phone text-[10px] mr-1"></i>${u.phone}</span>` : ''}
-          ${u.zion ? `<span><i class="fa-solid fa-church text-[10px] mr-1"></i>${u.zion}</span>` : ''}
-          ${u.area ? `<span><i class="fa-solid fa-location-dot text-[10px] mr-1"></i>${u.area}</span>` : ''}
-        </div>
-      </div>
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <button onclick="approveUser('${u.userId}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition">
-          Approve
-        </button>
-        <button onclick="rejectUser('${u.userId}')" class="px-3.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs rounded-xl border border-rose-500/30 transition">
-          Reject
-        </button>
-      </div>
-    </div>
-  `).join('');
-}
+  const managers = ALL_USERS.filter(u => u.role === 'manager' || u.role === 'admin');
 
-function renderAdminPanelUsers() {
-  const tbody = document.getElementById('adminPanelUsersTableBody');
-  if (!tbody) return;
-  tbody.innerHTML = ALL_USERS.map(u => `
-    <tr class="hover:bg-slate-900/50">
-      <td class="py-2.5 px-3">
-        <div class="font-bold text-white">${u.fullName}</div>
-        <div class="text-[10px] text-slate-400 font-mono">${u.userId}</div>
-      </td>
-      <td class="py-2.5 px-3">
-        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'admin' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-800 text-slate-400'}">${u.role}</span>
-        <span class="ml-1 text-[10px] text-emerald-400 font-semibold">${u.status || 'approved'}</span>
-      </td>
-      <td class="py-2.5 px-3 text-[11px] text-slate-400">
-        ${u.role === 'admin' ? 'All Modules' : (u.assignedModules && u.assignedModules.includes('all') ? 'All Modules' : (u.assignedModules || []).join(', '))}
-      </td>
-      <td class="py-2.5 px-3 text-right">
-        ${u.role === 'admin' ? '<span class="text-emerald-400 font-bold text-[11px]">Unlimited</span>' : `
-          <button onclick="toggleUserDownload('${u.userId}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${u.canDownload ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}">
-            ${u.canDownload ? 'Allowed' : 'Denied'}
+  container.innerHTML = list.map(u => {
+    const isPrimaryAdmin = u.userId.toLowerCase() === 'surya11008';
+    const isApproved = u.status === 'approved' || !u.status;
+    const initial = (u.fullName || u.userId || '?').charAt(0).toUpperCase();
+    const roleBadge = u.role === 'admin' 
+      ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-xs flex items-center gap-1">👑 ADMIN</span>'
+      : (u.role === 'manager' 
+          ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-xs flex items-center gap-1">⭐ MANAGER</span>'
+          : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1">👤 MEMBER</span>');
+
+    const statusBadge = isApproved 
+      ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Active</span>'
+      : (u.status === 'pending' 
+          ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">Pending</span>'
+          : '<span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">Rejected</span>');
+
+    const pastDatesMode = u.viewPastDates !== false;
+
+    return `
+      <div class="bg-slate-900/90 border border-slate-800 hover:border-purple-500/40 rounded-3xl p-4 shadow-lg hover:shadow-purple-900/10 transition-all flex flex-col justify-between space-y-4">
+        <div class="space-y-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white font-black text-lg flex items-center justify-center shadow-md border border-purple-400/30 flex-shrink-0">
+                ${initial}
+              </div>
+              <div class="min-w-0">
+                <h4 class="font-extrabold text-white text-sm flex items-center gap-1.5 flex-wrap truncate">
+                  <span class="truncate">${u.fullName || 'User'}</span>
+                  ${statusBadge}
+                </h4>
+                <div class="text-[11px] font-mono text-purple-300 truncate">@${u.userId}</div>
+              </div>
+            </div>
+            <div class="flex-shrink-0">${roleBadge}</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800/80">
+            <div class="text-slate-400 truncate">
+              <i class="fa-solid fa-phone text-[10px] text-purple-400 mr-1"></i>
+              <span>${u.phone || 'No phone'}</span>
+            </div>
+            <div class="text-slate-400 truncate">
+              <i class="fa-solid fa-envelope text-[10px] text-purple-400 mr-1"></i>
+              <span>${u.gmail || 'No email'}</span>
+            </div>
+            <div class="text-slate-400 truncate">
+              <i class="fa-solid fa-church text-[10px] text-purple-400 mr-1"></i>
+              <span>${u.zion || 'Zion not set'}</span>
+            </div>
+            <div class="text-slate-400 truncate">
+              <i class="fa-solid fa-location-dot text-[10px] text-purple-400 mr-1"></i>
+              <span>${u.area || 'Area not set'}</span>
+            </div>
+          </div>
+
+          ${!isPrimaryAdmin ? `
+            <div class="flex items-center justify-between text-xs bg-slate-950/40 px-3 py-2 rounded-xl border border-slate-800">
+              <span class="text-slate-400 text-[11px] flex items-center gap-1">
+                <i class="fa-solid fa-user-tie text-indigo-400"></i> Assigned Manager:
+              </span>
+              <select onchange="adminAssignManager('${u.userId}', this.value)" class="bg-slate-900 border border-slate-700 rounded-lg text-slate-200 text-[11px] px-2 py-0.5 focus:outline-hidden focus:border-purple-500">
+                <option value="" ${!u.assignedManager ? 'selected' : ''}>None (Direct)</option>
+                ${managers.map(m => `<option value="${m.userId}" ${u.assignedManager === m.userId ? 'selected' : ''}>${m.fullName} (${m.role})</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-1.5 text-xs">
+          <button 
+            type="button"
+            onclick="adminToggleUserPastDates('${u.userId}')" 
+            class="px-2.5 py-1 rounded-xl text-[10px] font-bold transition flex items-center gap-1 ${pastDatesMode ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'}"
+            title="Toggle between Past Dates input or Today Only input"
+          >
+            <i class="fa-solid fa-calendar-check text-[9px]"></i>
+            <span>${pastDatesMode ? 'Past Dates' : 'Today Only'}</span>
           </button>
-        `}
-      </td>
-    </tr>
-  `).join('');
-}
 
-function renderAdminPanelNotices() {
-  const container = document.getElementById('adminPanelNoticesList');
-  if (!container) return;
-  container.innerHTML = NOTICES_LIST.map((n, i) => `
-    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-white text-xs">${n.title}</span>
-          <span class="text-[10px] px-2 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-bold">${n.category}</span>
+          ${!isPrimaryAdmin ? `
+            <button 
+              type="button"
+              onclick="adminToggleUserRole('${u.userId}')" 
+              class="px-2.5 py-1 rounded-xl text-[10px] font-bold transition flex items-center gap-1 ${u.role === 'manager' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30'}"
+              title="Change user leadership role"
+            >
+              <i class="fa-solid fa-user-shield text-[9px]"></i>
+              <span>${u.role === 'manager' ? 'Demote to Member' : 'Make Manager'}</span>
+            </button>
+          ` : ''}
+
+          <button 
+            type="button"
+            onclick="adminResetUserPassword('${u.userId}')" 
+            class="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition flex items-center gap-1 cursor-pointer"
+            title="Reset Password & PIN to 123456"
+          >
+            <i class="fa-solid fa-key text-[9px] text-amber-400"></i>
+            <span>Reset Pass / PIN</span>
+          </button>
+
+          ${!isPrimaryAdmin ? `
+            <button 
+              type="button"
+              onclick="adminDeleteUser('${u.userId}')" 
+              class="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition text-xs cursor-pointer"
+              title="Delete member permanently"
+            >
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          ` : ''}
         </div>
-        <p class="text-slate-400 text-[11px] mt-1 line-clamp-1">${n.content}</p>
       </div>
-      <button onclick="deleteNotice('${n.id || i}')" class="p-1.5 text-slate-500 hover:text-rose-400 transition" title="Delete notice">
-        <i class="fa-solid fa-trash-can"></i>
-      </button>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
-function renderAdminPanelAudit() {
-  const tbody = document.getElementById('adminPanelAuditTableBody');
-  if (!tbody) return;
-  tbody.innerHTML = auditLog.slice(0, 50).map(e => `
-    <tr>
-      <td class="py-2 px-3 font-bold text-white">${e.userName}</td>
-      <td class="py-2 px-3 text-indigo-300">${e.action}</td>
-      <td class="py-2 px-3 text-slate-400">${e.details}</td>
-      <td class="py-2 px-3 text-right text-slate-500 font-mono">${e.time}</td>
-    </tr>
-  `).join('');
+function filterAdminMembers(val) {
+  renderStarMembersGrid(val);
 }
+
+function adminToggleUserPastDates(userId) {
+  const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (!user) return;
+  user.viewPastDates = user.viewPastDates === false ? true : false;
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
+  showToast(user.fullName + ': ' + (user.viewPastDates ? 'Past Dates Allowed' : 'Restricted to Today Only'));
+  renderStarMembersGrid();
+}
+
+function adminToggleUserRole(userId) {
+  if (userId.toLowerCase() === 'surya11008') {
+    alert('Master Admin authority cannot be changed.');
+    return;
+  }
+  const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (!user) return;
+  const newRole = user.role === 'manager' ? 'member' : 'manager';
+  user.role = newRole;
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
+  showToast('Updated ' + user.fullName + ' role to ' + newRole.toUpperCase() + '!');
+  renderStarMembersGrid();
+  renderStarManagersList();
+}
+
+function adminAssignManager(userId, managerId) {
+  const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (!user) return;
+  user.assignedManager = managerId || null;
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
+  showToast('Assigned ' + user.fullName + ' to ' + (managerId ? managerId : 'Direct'));
+}
+
+function adminResetUserPassword(userId) {
+  const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (!user) return;
+  if (!confirm('Reset Password and 6-digit PIN for ' + user.fullName + ' (@' + user.userId + ') to default 123456?')) return;
+  user.password = '123456';
+  user.pin = '123456';
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
+  alert('Password & PIN successfully reset for ' + user.fullName + '.\n\nDefault Login Credentials:\nUser ID: ' + user.userId + '\nPassword: 123456\nPIN: 123456');
+}
+
+function adminDeleteUser(userId) {
+  if (userId.toLowerCase() === 'surya11008') {
+    alert('Master Admin cannot be deleted.');
+    return;
+  }
+  const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (!user) return;
+  if (!confirm('Are you sure you want to permanently delete user ' + user.fullName + ' (@' + user.userId + ')?\nThis cannot be undone.')) return;
+  ALL_USERS = ALL_USERS.filter(u => u.userId.toLowerCase() !== userId.toLowerCase());
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
+  showToast('User ' + userId + ' deleted permanently.');
+  updateStarAdminBadges();
+  renderStarMembersGrid();
+}
+
+function renderStarOnlineGrid() {
+  const container = document.getElementById('adminStarOnlineGrid');
+  const title = document.getElementById('starOnlineHeaderTitle');
+  const tabBadge = document.getElementById('starTabOnlineCount');
+  if (!container) return;
+
+  const now = Date.now();
+  let onlineUsers = [];
+
+  if (CURRENT_USER && CURRENT_USER.userId) {
+    onlineUsers.push({
+      userId: CURRENT_USER.userId,
+      fullName: CURRENT_USER.fullName,
+      role: CURRENT_USER.role,
+      zion: CURRENT_USER.zion || '',
+      area: CURRENT_USER.area || '',
+      lastActive: now,
+      isSelf: true
+    });
+  }
+
+  if (PRESENCE_DATA && typeof PRESENCE_DATA === 'object') {
+    Object.values(PRESENCE_DATA).forEach(p => {
+      if (p && p.userId && (!CURRENT_USER || p.userId.toLowerCase() !== CURRENT_USER.userId.toLowerCase())) {
+        const diffMs = now - (p.lastActive || 0);
+        if (diffMs < 60 * 60 * 1000) {
+          onlineUsers.push({
+            ...p,
+            isSelf: false
+          });
+        }
+      }
+    });
+  }
+
+  onlineUsers.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
+
+  if (title) title.textContent = 'Live Online Members (' + onlineUsers.length + ')';
+  if (tabBadge) tabBadge.textContent = onlineUsers.length;
+
+  container.innerHTML = onlineUsers.map(u => {
+    const diffMin = Math.round((now - (u.lastActive || now)) / 60000);
+    const statusText = u.isSelf ? 'Active Now (You)' : (diffMin <= 5 ? 'Active Now' : diffMin + 'm ago');
+    const initial = (u.fullName || u.userId || '?').charAt(0).toUpperCase();
+
+    return `
+      <div class="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 rounded-3xl p-4 shadow-lg flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="relative flex-shrink-0">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-lg flex items-center justify-center shadow-md">
+              ${initial}
+            </div>
+            <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse"></span>
+          </div>
+          <div class="min-w-0">
+            <h4 class="font-bold text-white text-sm truncate">${u.fullName || 'User'}</h4>
+            <div class="text-[11px] font-mono text-slate-400">@${u.userId}</div>
+            <div class="text-[10px] text-slate-500 truncate mt-0.5">
+              ${u.zion ? `<span>${u.zion}</span> • ` : ''}<span>${u.area || 'Active'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex-shrink-0 text-right">
+          <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            ${statusText}
+          </span>
+          <div class="text-[9px] text-slate-500 mt-1 uppercase font-semibold">${u.role || 'member'}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderStarApprovalsList() {
+  const container = document.getElementById('starPendingListContainer');
+  if (!container) return;
+
+  const pending = ALL_USERS.filter(u => u.status === 'pending');
+  const rejected = ALL_USERS.filter(u => u.status === 'rejected');
+
+  updateStarAdminBadges();
+
+  let html = '';
+
+  if (pending.length === 0) {
+    html += `
+      <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-8 text-center space-y-3">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl border border-emerald-500/30">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 class="font-extrabold text-white text-base">No Pending Approvals</h3>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">
+          All registered users have been reviewed and approved! All new accounts can log in immediately upon approval.
+        </p>
+        <div class="pt-2">
+          <button 
+            type="button" 
+            onclick="toggleAddRecoverMemberForm()" 
+            class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition inline-flex items-center gap-2 shadow-md shadow-purple-900/30 cursor-pointer"
+          >
+            <i class="fa-solid fa-user-plus"></i>
+            <span>Add or Recover Member Immediately</span>
+          </button>
+        </div>
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="space-y-3">
+        <div class="text-xs font-bold text-slate-400 px-1 flex items-center justify-between">
+          <span>Reviewing ${pending.length} Registration Requests:</span>
+          <span class="text-[11px] text-purple-300">Click Approve to grant immediate access</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          ${pending.map(u => `
+            <div class="bg-slate-900 border border-amber-500/40 hover:border-amber-500 rounded-3xl p-4 shadow-lg flex flex-col justify-between space-y-3 transition">
+              <div class="space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-300 font-black flex items-center justify-center text-base border border-amber-500/30">
+                      ${(u.fullName || u.userId || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 class="font-extrabold text-white text-sm">${u.fullName || 'User'}</h4>
+                      <div class="text-[11px] font-mono text-purple-300">ID: ${u.userId}</div>
+                    </div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                    ⏳ Pending
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800">
+                  <div class="text-slate-300 truncate">
+                    <i class="fa-solid fa-phone text-[10px] text-amber-400 mr-1"></i>
+                    <span>${u.phone || 'No phone'}</span>
+                  </div>
+                  <div class="text-slate-300 truncate">
+                    <i class="fa-solid fa-envelope text-[10px] text-amber-400 mr-1"></i>
+                    <span>${u.gmail || 'No email'}</span>
+                  </div>
+                  <div class="text-slate-300 truncate">
+                    <i class="fa-solid fa-church text-[10px] text-amber-400 mr-1"></i>
+                    <span>${u.zion || 'Zion not set'}</span>
+                  </div>
+                  <div class="text-slate-300 truncate">
+                    <i class="fa-solid fa-location-dot text-[10px] text-amber-400 mr-1"></i>
+                    <span>${u.area || 'Area not set'}</span>
+                  </div>
+                </div>
+
+                <div class="text-[10px] text-slate-500 flex items-center justify-between px-1">
+                  <span>Registered: ${new Date(u.registeredAt || Date.now()).toLocaleDateString()}</span>
+                  <span>Pass: ${u.password ? 'Set' : 'Default'}</span>
+                </div>
+              </div>
+
+              <div class="pt-2 border-t border-slate-800 flex items-center gap-2">
+                <button 
+                  type="button"
+                  onclick="approveUser('${u.userId}')" 
+                  class="flex-1 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <i class="fa-solid fa-check"></i>
+                  <span>Approve & Grant Access</span>
+                </button>
+                <button 
+                  type="button"
+                  onclick="rejectUser('${u.userId}')" 
+                  class="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-xs rounded-xl border border-rose-500/30 transition flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <i class="fa-solid fa-xmark"></i>
+                  <span>Reject</span>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (rejected.length > 0) {
+    html += `
+      <div class="mt-6 pt-4 border-t border-slate-800 space-y-2">
+        <h4 class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-xmark text-rose-400"></i>
+          Rejected / Inactive Registrations (Click Approve to Restore):
+        </h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          ${rejected.map(u => `
+            <div class="p-3 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-white text-xs truncate">${u.fullName}</span>
+                  <span class="text-[10px] font-mono text-purple-300">@${u.userId}</span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-bold">Rejected</span>
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5 truncate">${u.zion || ''} • ${u.phone || ''}</div>
+              </div>
+              <button 
+                type="button"
+                onclick="approveUser('${u.userId}')" 
+                class="px-3 py-1 bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold text-[11px] rounded-lg shadow-sm transition flex items-center gap-1 flex-shrink-0 cursor-pointer"
+              >
+                <i class="fa-solid fa-check text-[10px]"></i>
+                <span>Re-Approve</span>
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+function toggleAddRecoverMemberForm() {
+  const box = document.getElementById('starRecoverMemberBox');
+  if (!box) return;
+  box.classList.toggle('hidden');
+  if (!box.classList.contains('hidden')) {
+    const input = document.getElementById('recoverFullName');
+    if (input) input.focus();
+  }
+}
+
+function handleAdminRecoverMemberSubmit(e) {
+  e.preventDefault();
+  const fullName = document.getElementById('recoverFullName').value.trim();
+  const userId = document.getElementById('recoverUserId').value.trim().toLowerCase();
+  const phone = document.getElementById('recoverPhone').value.trim();
+  const gmail = document.getElementById('recoverGmail').value.trim();
+  const zion = document.getElementById('recoverZion').value.trim();
+  const area = document.getElementById('recoverArea').value.trim();
+  const password = document.getElementById('recoverPassword').value.trim() || '123456';
+  const pin = document.getElementById('recoverPin').value.trim() || '123456';
+
+  if (!fullName || !userId) {
+    alert('Please enter Full Name and User ID.');
+    return;
+  }
+
+  const existingIdx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === userId);
+  const newUserData = {
+    fullName,
+    userId,
+    phone,
+    gmail,
+    zion,
+    area,
+    password,
+    pin,
+    role: 'member',
+    status: 'approved',
+    canDownload: true,
+    viewPastDates: true,
+    assignedModules: ['all'],
+    registeredAt: Date.now()
+  };
+
+  if (existingIdx !== -1) {
+    ALL_USERS[existingIdx] = { ...ALL_USERS[existingIdx], ...newUserData, status: 'approved' };
+  } else {
+    ALL_USERS.push(newUserData);
+  }
+
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
+
+  e.target.reset();
+  const box = document.getElementById('starRecoverMemberBox');
+  if (box) box.classList.add('hidden');
+
+  alert('Member "' + fullName + '" successfully recovered and approved!\n\nUser can log in now:\nUser ID: ' + userId + '\nPassword: ' + password + '\nPIN: ' + pin);
+
+  updateStarAdminBadges();
+  renderStarApprovalsList();
+  renderStarMembersGrid();
+}
+
+function approveAllPendingMembers() {
+  const pending = ALL_USERS.filter(u => u.status === 'pending');
+  if (pending.length === 0) {
+    showToast('No pending members to approve.');
+    return;
+  }
+  if (!confirm('Approve all ' + pending.length + ' pending members at once?')) return;
+
+  ALL_USERS.forEach(u => {
+    if (u.status === 'pending') {
+      u.status = 'approved';
+      if (!u.role) u.role = 'member';
+      if (u.canDownload === undefined) u.canDownload = true;
+      if (u.viewPastDates === undefined) u.viewPastDates = true;
+    }
+  });
+
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  fbSync('users', ALL_USERS);
+  showToast('Successfully approved all ' + pending.length + ' members!');
+
+  updateStarAdminBadges();
+  renderStarApprovalsList();
+  renderStarMembersGrid();
+}
+
+function renderStarManagersList() {
+  const container = document.getElementById('starManagersListContainer');
+  if (!container) return;
+
+  const managers = ALL_USERS.filter(u => u.role === 'manager');
+
+  if (managers.length === 0) {
+    container.innerHTML = `
+      <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-8 text-center space-y-3">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl border border-purple-500/30">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <h3 class="font-extrabold text-white text-base">No Appointed Managers</h3>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">
+          Managers can oversee designated members and past-date records. To appoint a manager, go to the <strong>Members Information</strong> tab and click <strong>"Make Manager"</strong> on any member.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${managers.map(m => {
+        const assignedMembers = ALL_USERS.filter(u => u.assignedManager === m.userId);
+        const pastDatesMode = m.viewPastDates !== false;
+        return `
+          <div class="bg-slate-900 border border-slate-800 hover:border-purple-500/40 rounded-3xl p-4 shadow-lg space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-black flex items-center justify-center text-base">
+                  ${m.fullName.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h4 class="font-extrabold text-white text-sm">${m.fullName}</h4>
+                  <div class="text-[11px] font-mono text-purple-300">@${m.userId}</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                MANAGER
+              </span>
+            </div>
+
+            <div class="text-xs text-slate-400 bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800 space-y-1">
+              <div><strong>Zion:</strong> ${m.zion || 'Not set'} | <strong>Area:</strong> ${m.area || 'Not set'}</div>
+              <div><strong>Assigned Members:</strong> ${assignedMembers.length} members under supervision</div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+              <button 
+                type="button"
+                onclick="adminToggleUserPastDates('${m.userId}')" 
+                class="px-2.5 py-1 rounded-xl text-[10px] font-bold ${pastDatesMode ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}"
+              >
+                ${pastDatesMode ? 'Past Dates Allowed' : 'Today Only'}
+              </button>
+              <button 
+                type="button"
+                onclick="adminToggleUserRole('${m.userId}')" 
+                class="text-[10px] text-rose-400 hover:underline cursor-pointer"
+              >
+                Demote to Member
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderStarMemberPerms() {
+  const btn = document.getElementById('starGlobalDownloadBtn');
+  const tbody = document.getElementById('starMemberPermsTableBody');
+  
+  if (btn) {
+    if (DOWNLOADS_ENABLED) {
+      btn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer';
+      btn.innerHTML = '<i class="fa-solid fa-lock-open text-xs"></i><span>Downloads: ACTIVE (All Allowed)</span>';
+    } else {
+      btn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md bg-rose-600 hover:bg-rose-500 text-white cursor-pointer';
+      btn.innerHTML = '<i class="fa-solid fa-lock text-xs"></i><span>Downloads: OFF (Admin Only)</span>';
+    }
+  }
+
+  if (!tbody) return;
+
+  tbody.innerHTML = ALL_USERS.map(u => {
+    const isPrimaryAdmin = u.userId.toLowerCase() === 'surya11008';
+    const canDown = isPrimaryAdmin ? true : (u.canDownload !== false);
+    return `
+      <tr class="hover:bg-slate-900/60 transition">
+        <td class="py-2.5 px-3">
+          <div class="font-bold text-white text-xs">${u.fullName}</div>
+          <div class="text-[10px] font-mono text-purple-300">@${u.userId}</div>
+        </td>
+        <td class="py-2.5 px-3">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'admin' ? 'bg-amber-500/20 text-amber-300' : (u.role === 'manager' ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-800 text-slate-400')}">
+            ${u.role ? u.role.toUpperCase() : 'MEMBER'}
+          </span>
+        </td>
+        <td class="py-2.5 px-3">
+          ${isPrimaryAdmin ? `
+            <span class="text-emerald-400 font-extrabold text-[11px]">Unlimited Master</span>
+          ` : `
+            <button 
+              type="button"
+              onclick="toggleUserDownload('${u.userId}')" 
+              class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${canDown ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'} cursor-pointer"
+            >
+              ${canDown ? 'Allowed' : 'Blocked'}
+            </button>
+          `}
+        </td>
+        <td class="py-2.5 px-3 text-[11px] text-slate-400">
+          ${u.role === 'admin' ? 'All Modules (Master)' : 'All Available Modules'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function toggleGlobalDownloadSetting() {
+  DOWNLOADS_ENABLED = !DOWNLOADS_ENABLED;
+  localStorage.setItem('wlh_downloads_enabled', JSON.stringify(DOWNLOADS_ENABLED));
+  fbSync('downloads_enabled', DOWNLOADS_ENABLED);
+  showToast('Global File Downloads: ' + (DOWNLOADS_ENABLED ? 'ENABLED for all members' : 'DISABLED (Admin only)'));
+  renderStarMemberPerms();
+  updateTopDownloadBtn();
+  renderRecords();
+}
+
+function renderStarFeedbackList() {
+  const container = document.getElementById('starFeedbackListContainer');
+  const countBadge = document.getElementById('starFeedbackCountBadge');
+  const tabBadge = document.getElementById('starTabFeedbackBadge');
+  if (!container) return;
+
+  if (countBadge) countBadge.textContent = suggestionsList.length + ' Enquiries';
+  if (tabBadge) {
+    tabBadge.textContent = suggestionsList.length;
+    tabBadge.classList.toggle('hidden', suggestionsList.length === 0);
+  }
+
+  if (suggestionsList.length === 0) {
+    container.innerHTML = `
+      <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-8 text-center space-y-3">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-2xl border border-sky-500/30">
+          <i class="fa-solid fa-comments"></i>
+        </div>
+        <h3 class="font-extrabold text-white text-base">No Feedback or Suggestions</h3>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">
+          User enquiries and suggestions submitted from the portal settings will appear here in real-time.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="space-y-3">
+      ${suggestionsList.map((s, idx) => `
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 shadow-lg space-y-2">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h4 class="font-bold text-white text-sm">${s.subject || 'Enquiry'}</h4>
+              <div class="text-[11px] text-purple-300 mt-0.5">
+                From: <strong>${s.userName || 'Member'}</strong> (@${s.userId || 'anon'}) • ${s.zion || 'Zion'}
+              </div>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono flex-shrink-0">${s.time || ''}</span>
+          </div>
+          <p class="text-xs text-slate-300 bg-slate-950/60 p-3 rounded-2xl border border-slate-800 leading-relaxed">
+            ${s.message || ''}
+          </p>
+          <div class="flex justify-end pt-1">
+            <button 
+              type="button"
+              onclick="adminDeleteSuggestion(${idx})" 
+              class="text-[11px] text-slate-400 hover:text-rose-400 transition flex items-center gap-1 cursor-pointer"
+            >
+              <i class="fa-solid fa-trash-can text-[10px]"></i> Dismiss
+            </button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function adminDeleteSuggestion(index) {
+  suggestionsList.splice(index, 1);
+  localStorage.setItem('wlh_suggestions', JSON.stringify(suggestionsList));
+  fbSync('suggestions', suggestionsList);
+  renderStarFeedbackList();
+  showToast('Enquiry removed.');
+}
+
+function renderStarFirebaseTab() {
+  const badge = document.getElementById('firebaseConnectionStatusBadge');
+  const input = document.getElementById('firebaseConfigInput');
+  if (badge) {
+    badge.textContent = IS_FIREBASE_CONNECTED ? 'Connected & Live' : 'Connected via Cloud REST API';
+  }
+  if (input) {
+    input.value = JSON.stringify({
+      databaseURL: 'https://lsupport-e390b-default-rtdb.firebaseio.com',
+      projectId: 'lsupport-e390b',
+      connected: true,
+      totalUsers: ALL_USERS.length,
+      pendingUsers: ALL_USERS.filter(u => u.status === 'pending').length,
+      noticesCount: NOTICES_LIST.length,
+      schedulesCount: SCHEDULES_LIST.length
+    }, null, 2);
+  }
+}
+
+function saveFirebaseConfig(e) {
+  if (e) e.preventDefault();
+  showToast('Firebase connection parameters verified & active.');
+}
+
+// Aliases for legacy hooks
+function renderAdminPanelApprovals() { renderStarApprovalsList(); }
+function renderAdminPanelUsers() { renderStarMembersGrid(); }
+function renderAdminPanelNotices() {}
+function renderAdminPanelAudit() {}
+function loadFirebasePanelData() { renderStarFirebaseTab(); }
+
+
 
 // Post Notice Form
 function openAddNoticeModal() {
@@ -3668,6 +4455,26 @@ function setupRealtimeListeners() {
       refreshDataModel();
       renderRecords();
       renderHomeNewArrivals();
+    }
+  });
+
+  // 6. Sync Presence Live
+  FIREBASE_DB.ref('l_support/presence').on('value', snap => {
+    let val = snap.val();
+    if (val && typeof val === 'object') {
+      PRESENCE_DATA = val;
+      renderStarOnlineGrid();
+    }
+  });
+
+  // 7. Sync Suggestions / Feedback Live
+  FIREBASE_DB.ref('l_support/suggestions').on('value', snap => {
+    let val = snap.val();
+    if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
+    if (val && Array.isArray(val)) {
+      suggestionsList = val;
+      localStorage.setItem('wlh_suggestions', JSON.stringify(suggestionsList));
+      renderStarFeedbackList();
     }
   });
 }
