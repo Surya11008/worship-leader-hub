@@ -3577,8 +3577,21 @@ function setupRealtimeListeners() {
   FIREBASE_DB.ref('l_support/users').on('value', snap => {
     const val = snap.val();
     if (val && Array.isArray(val)) {
+      // Smart Auto-Recovery: Merge any local pending users created on this device that are missing in Firebase
+      let merged = [...val];
+      try {
+        const localUsers = JSON.parse(localStorage.getItem('wlh_users') || '[]');
+        if (Array.isArray(localUsers)) {
+          const missingRemote = localUsers.filter(lu => lu && lu.userId && !val.some(ru => ru.userId.toLowerCase() === lu.userId.toLowerCase()));
+          if (missingRemote.length > 0) {
+            merged = merged.concat(missingRemote);
+            FIREBASE_DB.ref('l_support/users').set(merged);
+          }
+        }
+      } catch (e) {}
+
       const prevPendingCount = ALL_USERS.filter(u => u.status === 'pending').length;
-      ALL_USERS = val;
+      ALL_USERS = merged;
       localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
       updateApprovalCountBadge();
 
@@ -3589,7 +3602,6 @@ function setupRealtimeListeners() {
 
         const pending = ALL_USERS.filter(u => u.status === 'pending');
         if (pending.length > 0) {
-          // If new pending request arrived or on load, notify and show modal
           if (pending.length > prevPendingCount) {
             showToast('🔔 New User Registration Request received!');
           }
