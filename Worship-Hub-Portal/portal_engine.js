@@ -308,6 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize Firebase Realtime Cloud Sync
   initFirebase();
+  startBackgroundLivePoller();
 
   const hasActiveSession = sessionStorage.getItem('l_support_session_active') === 'true';
 
@@ -4260,6 +4261,85 @@ function deleteNotice(id) {
   showToast('Notice deleted.');
 }
 
+
+
+// ========================================================
+// DUAL-CHANNEL REALTIME SYNC ENGINE (WEBSOCKET + 15S BACKGROUND POLLER)
+// ========================================================
+function startBackgroundLivePoller() {
+  setInterval(() => {
+    if (!CURRENT_USER) return;
+    fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support.json')
+      .then(r => r.json())
+      .then(data => {
+        if (!data) return;
+        let usersChanged = false;
+
+        // 1. Users sync
+        if (data.users) {
+          let uList = data.users;
+          if (!Array.isArray(uList) && typeof uList === 'object') uList = Object.values(uList);
+          if (Array.isArray(uList)) {
+            const currentStr = JSON.stringify(ALL_USERS);
+            const remoteStr = JSON.stringify(uList);
+            if (currentStr !== remoteStr) {
+              ALL_USERS = uList;
+              localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+              usersChanged = true;
+            }
+          }
+        }
+
+        // 2. Downloads permission sync
+        if (data.downloads_enabled !== undefined && data.downloads_enabled !== DOWNLOADS_ENABLED) {
+          DOWNLOADS_ENABLED = data.downloads_enabled;
+          localStorage.setItem('wlh_downloads_enabled', JSON.stringify(DOWNLOADS_ENABLED));
+          updateTopDownloadBtn();
+          renderRecords();
+          if (typeof renderStarMemberPerms === 'function') renderStarMemberPerms();
+        }
+
+        // 3. Notices sync
+        if (data.notices) {
+          let nList = data.notices;
+          if (!Array.isArray(nList) && typeof nList === 'object') nList = Object.values(nList);
+          if (Array.isArray(nList) && JSON.stringify(nList) !== JSON.stringify(NOTICES_LIST)) {
+            NOTICES_LIST = nList;
+            localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
+            renderHomeNotices();
+          }
+        }
+
+        // 4. Schedules sync
+        if (data.schedules) {
+          let sList = data.schedules;
+          if (!Array.isArray(sList) && typeof sList === 'object') sList = Object.values(sList);
+          if (Array.isArray(sList) && JSON.stringify(sList) !== JSON.stringify(SCHEDULES_LIST)) {
+            SCHEDULES_LIST = sList;
+            localStorage.setItem('l_support_schedules', JSON.stringify(SCHEDULES_LIST));
+            renderHomeSchedule();
+          }
+        }
+
+        // 5. Presence sync
+        if (data.presence && typeof data.presence === 'object') {
+          PRESENCE_DATA = data.presence;
+          if (typeof renderStarOnlineGrid === 'function' && currentAdminTab === 'online') {
+            renderStarOnlineGrid();
+          }
+        }
+
+        if (usersChanged) {
+          if (typeof updateStarAdminBadges === 'function') updateStarAdminBadges();
+          if (CURRENT_USER.role === 'admin') {
+            if (typeof renderStarApprovalsList === 'function') renderStarApprovalsList();
+            if (typeof renderStarMembersGrid === 'function') renderStarMembersGrid();
+          }
+        }
+      })
+      .catch(() => {});
+  }, 12000); // Polls every 12 seconds as a secondary fallback
+}
 
 // ========================================================
 // FIREBASE REALTIME CLOUD SYNCHRONIZATION ENGINE
