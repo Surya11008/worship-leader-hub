@@ -321,14 +321,39 @@ function isFileVisibleToUser(item, user) {
   if (!user) return false;
   if (user.role === 'admin' || (user.userId && user.userId.toLowerCase() === 'surya11008')) return true;
 
-  // 1. Direct file permission check
+  // Direct file permissions
   const filePerm = filePermissions[item.url] || {
     positions: item.allowedPositions || ['all'],
     users: item.allowedUsers || []
   };
+
+  const fileUsers = Array.isArray(filePerm.users) ? filePerm.users.map(u => String(u).trim().toLowerCase()) : [];
+  const rawPositions = Array.isArray(filePerm.positions) ? filePerm.positions : (Array.isArray(filePerm) ? filePerm : ['all']);
+  const filePositions = rawPositions.map(p => String(p).trim().toLowerCase());
+
+  const uid = user.userId ? String(user.userId).trim().toLowerCase() : '';
+  const uname = user.fullName ? String(user.fullName).trim().toLowerCase() : (user.name ? String(user.name).trim().toLowerCase() : '');
+  const upos = user.position ? String(user.position).trim().toLowerCase() : '';
+
+  // Direct assignment exception (Overrides module restrictions as explicitly requested):
+  // If file is specifically assigned to this user (by userId, username, or explicit role targeting)
+  const isDirectlyAssignedToUser = Boolean(
+    (uid && fileUsers.includes(uid)) ||
+    (uname && fileUsers.includes(uname)) ||
+    (filePerm.assignedTo && (filePerm.assignedTo.toLowerCase() === uid || filePerm.assignedTo.toLowerCase() === uname)) ||
+    (item.assignedTo && (item.assignedTo.toLowerCase() === uid || item.assignedTo.toLowerCase() === uname)) ||
+    (!filePositions.includes('all') && !filePositions.includes('*') && upos && filePositions.includes(upos))
+  );
+
+  // If directly assigned to this specific user or user's specific position, ALWAYS grant visibility!
+  if (isDirectlyAssignedToUser) {
+    return true;
+  }
+
+  // 1. Otherwise, regular files must pass direct file permission check
   if (!isEntityVisibleToUser(filePerm, user)) return false;
 
-  // 2. Module permission check
+  // 2. Regular files must also have permission for at least one module they belong to
   const itemModules = item.modules || (item.tab ? [item.tab] : []);
   if (itemModules.length > 0) {
     const hasAllowedModule = itemModules.some(modId => {
@@ -747,11 +772,6 @@ function refreshDataModel() {
     };
   });
 
-  // Filter modules based on user assignment (if user is not admin)
-  if (CURRENT_USER && CURRENT_USER.role !== 'admin' && CURRENT_USER.assignedModules && !CURRENT_USER.assignedModules.includes('all')) {
-    CATEGORIES = CATEGORIES.filter(c => CURRENT_USER.assignedModules.includes(c.id));
-  }
-
   // Combine items and apply multi-module & multi-topic metadata
   ALL_ITEMS = [...customItems, ...BASE_ITEMS].map(it => {
     const meta = fileMetadata[it.url] || {};
@@ -781,6 +801,18 @@ function refreshDataModel() {
 
   if (CURRENT_USER && CURRENT_USER.role !== 'admin') {
     ALL_ITEMS = ALL_ITEMS.filter(it => !it.isHidden);
+  }
+
+  // Filter modules based on user assignment (if user is not admin)
+  // Preserving modules where user has explicit assigned files!
+  if (CURRENT_USER && CURRENT_USER.role !== 'admin' && CURRENT_USER.assignedModules && !CURRENT_USER.assignedModules.includes('all')) {
+    CATEGORIES = CATEGORIES.filter(c => {
+      if (CURRENT_USER.assignedModules.includes(c.id)) return true;
+      return ALL_ITEMS.some(it => 
+        ((it.modules && it.modules.includes(c.id)) || it.tab === c.id) &&
+        isFileVisibleToUser(it, CURRENT_USER)
+      );
+    });
   }
 }
 
@@ -2015,7 +2047,7 @@ function updatePinnedBadge() {
   else badge.classList.add('hidden');
 }
 
-// 12. SIDEBAR CATEGORIES RENDER
+// 12. SIDEBAR CATEGORIES RENDER (VIBRANT RAINBOW PALETTE & CUTE DYNAMIC INTERACTION)
 function renderSidebarCategories() {
   const container = document.getElementById('dynamicSidebarCategories');
   if (!container) return;
@@ -2030,12 +2062,33 @@ function renderSidebarCategories() {
       positions: cat.allowedPositions || ['all'],
       users: cat.allowedUsers || []
     };
-    return isEntityVisibleToUser(allowed, CURRENT_USER);
+    // 1. If user has explicit module permission, show it
+    if (isEntityVisibleToUser(allowed, CURRENT_USER)) return true;
+
+    // 2. EXCEPTION: If module permission is restricted, but user has AT LEAST ONE directly assigned file inside this module, SHOW THIS MODULE!
+    return ALL_ITEMS.some(it => 
+      ((it.modules && it.modules.includes(cat.id)) || it.tab === cat.id) &&
+      isFileVisibleToUser(it, CURRENT_USER)
+    );
   });
 
   const isAdmin = isAdminUser();
 
-  container.innerHTML = visibleCategories.map(cat => {
+  const RAINBOW_CYCLE = [
+    { border: 'border-rose-200/90 dark:border-rose-800/40', bg: 'bg-rose-50/80 hover:bg-rose-100/90 dark:bg-rose-950/20 dark:hover:bg-rose-900/40', text: 'text-rose-700 dark:text-rose-300', iconBg: 'bg-rose-100 text-rose-600 dark:bg-rose-900/60 dark:text-rose-300', badge: 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200' },
+    { border: 'border-amber-200/90 dark:border-amber-800/40', bg: 'bg-amber-50/80 hover:bg-amber-100/90 dark:bg-amber-950/20 dark:hover:bg-amber-900/40', text: 'text-amber-700 dark:text-amber-300', iconBg: 'bg-amber-100 text-amber-600 dark:bg-amber-900/60 dark:text-amber-300', badge: 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200' },
+    { border: 'border-emerald-200/90 dark:border-emerald-800/40', bg: 'bg-emerald-50/80 hover:bg-emerald-100/90 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/40', text: 'text-emerald-700 dark:text-emerald-300', iconBg: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/60 dark:text-emerald-300', badge: 'bg-emerald-200/80 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200' },
+    { border: 'border-cyan-200/90 dark:border-cyan-800/40', bg: 'bg-cyan-50/80 hover:bg-cyan-100/90 dark:bg-cyan-950/20 dark:hover:bg-cyan-900/40', text: 'text-cyan-700 dark:text-cyan-300', iconBg: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/60 dark:text-cyan-300', badge: 'bg-cyan-200/80 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-200' },
+    { border: 'border-sky-200/90 dark:border-sky-800/40', bg: 'bg-sky-50/80 hover:bg-sky-100/90 dark:bg-sky-950/20 dark:hover:bg-sky-900/40', text: 'text-sky-700 dark:text-sky-300', iconBg: 'bg-sky-100 text-sky-600 dark:bg-sky-900/60 dark:text-sky-300', badge: 'bg-sky-200/80 text-sky-800 dark:bg-sky-900/60 dark:text-sky-200' },
+    { border: 'border-indigo-200/90 dark:border-indigo-800/40', bg: 'bg-indigo-50/80 hover:bg-indigo-100/90 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/40', text: 'text-indigo-700 dark:text-indigo-300', iconBg: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/60 dark:text-indigo-300', badge: 'bg-indigo-200/80 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200' },
+    { border: 'border-purple-200/90 dark:border-purple-800/40', bg: 'bg-purple-50/80 hover:bg-purple-100/90 dark:bg-purple-950/20 dark:hover:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-300', iconBg: 'bg-purple-100 text-purple-600 dark:bg-purple-900/60 dark:text-purple-300', badge: 'bg-purple-200/80 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200' },
+    { border: 'border-pink-200/90 dark:border-pink-800/40', bg: 'bg-pink-50/80 hover:bg-pink-100/90 dark:bg-pink-950/20 dark:hover:bg-pink-900/40', text: 'text-pink-700 dark:text-pink-300', iconBg: 'bg-pink-100 text-pink-600 dark:bg-pink-900/60 dark:text-pink-300', badge: 'bg-pink-200/80 text-pink-800 dark:bg-pink-900/60 dark:text-pink-200' },
+    { border: 'border-fuchsia-200/90 dark:border-fuchsia-800/40', bg: 'bg-fuchsia-50/80 hover:bg-fuchsia-100/90 dark:bg-fuchsia-950/20 dark:hover:bg-fuchsia-900/40', text: 'text-fuchsia-700 dark:text-fuchsia-300', iconBg: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/60 dark:text-fuchsia-300', badge: 'bg-fuchsia-200/80 text-fuchsia-800 dark:bg-fuchsia-900/60 dark:text-fuchsia-200' },
+    { border: 'border-teal-200/90 dark:border-teal-800/40', bg: 'bg-teal-50/80 hover:bg-teal-100/90 dark:bg-teal-950/20 dark:hover:bg-teal-900/40', text: 'text-teal-700 dark:text-teal-300', iconBg: 'bg-teal-100 text-teal-600 dark:bg-teal-900/60 dark:text-teal-300', badge: 'bg-teal-200/80 text-teal-800 dark:bg-teal-900/60 dark:text-teal-200' }
+  ];
+
+  container.innerHTML = visibleCategories.map((cat, idx) => {
+    const theme = RAINBOW_CYCLE[idx % RAINBOW_CYCLE.length];
     const catCount = ALL_ITEMS.filter(it => (it.modules.includes(cat.id) || it.tab === cat.id) && isFileVisibleToUser(it, CURRENT_USER)).length;
     const isActive = (activeView === 'resources' && currentCategory === cat.id && !isPinnedOnly);
 
@@ -2059,24 +2112,24 @@ function renderSidebarCategories() {
     ` : '';
 
     return `
-      <div class="relative group flex items-center">
+      <div class="relative group flex items-center mb-1">
         <button 
           onclick="switchToResourcesTab('${cat.id}')" 
           id="cat-btn-${cat.id}"
-          class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+          class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 hover:scale-[1.015] active:scale-95 ${
             isActive 
-              ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' 
-              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-white'
+              ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-pink-500 text-white shadow-md shadow-indigo-500/25 border border-indigo-400/40' 
+              : `${theme.bg} ${theme.text} ${theme.border} border shadow-2xs`
           }"
         >
           <div class="flex items-center gap-2.5 truncate">
-            <span class="text-base flex-shrink-0">${cat.icon || '📁'}</span>
+            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm ${isActive ? 'bg-white/20 text-white' : theme.iconBg} transition-transform group-hover:scale-110 flex-shrink-0 shadow-2xs">${cat.icon || '📁'}</span>
             <span class="truncate">${escapeHtml(cat.name)}</span>
           </div>
           <div class="flex items-center gap-1.5 flex-shrink-0">
             ${adminActionsHtml}
-            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${
-              isActive ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+              isActive ? 'bg-white/25 text-white' : theme.badge
             }">${catCount}</span>
           </div>
         </button>
@@ -2174,7 +2227,7 @@ function renderSubgroupTabs() {
     <button 
       onclick="filterSubgroup('all')"
       class="px-3 py-1 rounded-xl text-xs font-bold transition flex-shrink-0 ${
-        currentSubgroup === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+        currentSubgroup === 'all' ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300'
       }"
     >
       All (${catItems.length})
@@ -2192,13 +2245,13 @@ function renderSubgroupTabs() {
     const isActive = (currentSubgroup === grp);
 
     html += `
-      <div class="inline-flex items-center group/grp rounded-xl ${isActive ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} transition flex-shrink-0">
+      <div class="inline-flex items-center group/grp rounded-xl ${isActive ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'} transition flex-shrink-0">
         <button 
           onclick="filterSubgroup('${grp.replace(/'/g, "\\'")}')"
           class="px-3 py-1 text-xs font-semibold flex items-center gap-1.5"
         >
           <span>${grp}</span>
-          <span class="text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-400'}">${grpCount}</span>
+          <span class="text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}">${grpCount}</span>
         </button>
 
         <button 
@@ -5337,9 +5390,12 @@ function processLivePermissionsUpdate(modPerms, topicPerms, filePerms) {
   }
   if (changed) {
     console.log('⚡ [Live Instant Sync] Permissions updated');
+    if (typeof refreshDataModel === 'function') refreshDataModel();
+    if (typeof updateTotalCounts === 'function') updateTotalCounts();
     if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
     if (typeof renderSubgroupTabs === 'function') renderSubgroupTabs();
     if (typeof renderRecords === 'function') renderRecords();
+    if (typeof renderHomeNewArrivals === 'function') renderHomeNewArrivals();
   }
 }
 
@@ -5373,7 +5429,37 @@ function startBackgroundLivePoller() {
         // 3. Instant Permissions Updates
         processLivePermissionsUpdate(data.module_permissions, data.topic_permissions, data.file_permissions);
 
-        // 4. Instant UI Custom Texts Updates
+        // 4. Instant Categories & Custom Modules Sync
+        if (data.custom_modules) {
+          let mList = data.custom_modules;
+          if (!Array.isArray(mList) && typeof mList === 'object') mList = Object.values(mList);
+          if (Array.isArray(mList) && JSON.stringify(mList) !== JSON.stringify(customModules)) {
+            customModules = mList;
+            localStorage.setItem('wlh_custom_modules', JSON.stringify(customModules));
+            if (typeof refreshDataModel === 'function') refreshDataModel();
+            if (typeof updateTotalCounts === 'function') updateTotalCounts();
+            if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+            if (typeof populateAddResourceModules === 'function') populateAddResourceModules();
+          }
+        }
+
+        // 5. Instant Hidden Categories Sync
+        if (data.hidden_categories) {
+          let hList = data.hidden_categories;
+          if (!Array.isArray(hList) && typeof hList === 'object') hList = Object.values(hList);
+          if (Array.isArray(hList)) {
+            let currentHidden = [];
+            try { currentHidden = JSON.parse(localStorage.getItem('wlh_hidden_categories') || '[]'); } catch(e) {}
+            if (JSON.stringify(hList) !== JSON.stringify(currentHidden)) {
+              localStorage.setItem('wlh_hidden_categories', JSON.stringify(hList));
+              if (typeof refreshDataModel === 'function') refreshDataModel();
+              if (typeof updateTotalCounts === 'function') updateTotalCounts();
+              if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+            }
+          }
+        }
+
+        // 6. Instant UI Custom Texts Updates
         if (data.custom_ui_texts && typeof data.custom_ui_texts === 'object') {
           if (JSON.stringify(UI_CUSTOM_TEXTS) !== JSON.stringify(data.custom_ui_texts)) {
             UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS, data.custom_ui_texts);
@@ -5382,7 +5468,7 @@ function startBackgroundLivePoller() {
           }
         }
 
-        // 5. Downloads Permission Sync
+        // 7. Downloads Permission Sync
         if (data.downloads_enabled !== undefined && data.downloads_enabled !== DOWNLOADS_ENABLED) {
           DOWNLOADS_ENABLED = data.downloads_enabled;
           localStorage.setItem('wlh_downloads_enabled', JSON.stringify(DOWNLOADS_ENABLED));
@@ -5391,7 +5477,7 @@ function startBackgroundLivePoller() {
           if (typeof renderStarMemberPerms === 'function') renderStarMemberPerms();
         }
 
-        // 6. Notices Live Sync
+        // 8. Notices Live Sync
         if (data.notices) {
           let nList = data.notices;
           if (!Array.isArray(nList) && typeof nList === 'object') nList = Object.values(nList);
@@ -5403,7 +5489,7 @@ function startBackgroundLivePoller() {
           }
         }
 
-        // 7. Schedules Live Sync
+        // 9. Schedules Live Sync
         if (data.schedules) {
           let sList = data.schedules;
           if (!Array.isArray(sList) && typeof sList === 'object') sList = Object.values(sList);
@@ -5414,7 +5500,7 @@ function startBackgroundLivePoller() {
           }
         }
 
-        // 8. Presence Live Sync
+        // 10. Presence Live Sync
         if (data.presence && typeof data.presence === 'object') {
           PRESENCE_DATA = data.presence;
           if (typeof renderStarOnlineGrid === 'function' && typeof currentAdminTab !== 'undefined' && currentAdminTab === 'online') {
@@ -5629,8 +5715,10 @@ function setupRealtimeListeners() {
     if (val && typeof val === 'object') {
       modulePermissions = val;
       localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
-      renderSidebarCategories();
-      renderRecords();
+      if (typeof refreshDataModel === 'function') refreshDataModel();
+      if (typeof updateTotalCounts === 'function') updateTotalCounts();
+      if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+      if (typeof renderRecords === 'function') renderRecords();
     }
   });
 
@@ -5640,22 +5728,50 @@ function setupRealtimeListeners() {
     if (val && typeof val === 'object') {
       topicPermissions = val;
       localStorage.setItem('wlh_topic_permissions', JSON.stringify(topicPermissions));
-      renderSubgroupTabs();
-      renderRecords();
+      if (typeof renderSubgroupTabs === 'function') renderSubgroupTabs();
+      if (typeof renderRecords === 'function') renderRecords();
     }
   });
 
-  // 10. Sync File Permissions Live
+  // 10. Sync File Permissions Live (triggers module appearance if assigned file exists)
   FIREBASE_DB.ref('l_support/file_permissions').on('value', snap => {
     let val = snap.val();
     if (val && typeof val === 'object') {
       filePermissions = val;
       localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
-      renderRecords();
+      if (typeof refreshDataModel === 'function') refreshDataModel();
+      if (typeof updateTotalCounts === 'function') updateTotalCounts();
+      if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+      if (typeof renderRecords === 'function') renderRecords();
     }
   });
 
-  // 7. Sync Suggestions / Feedback Live
+  // 11. Sync Custom Modules & Hidden Categories Live
+  FIREBASE_DB.ref('l_support/custom_modules').on('value', snap => {
+    let val = snap.val();
+    if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
+    if (val && Array.isArray(val)) {
+      customModules = val;
+      localStorage.setItem('wlh_custom_modules', JSON.stringify(customModules));
+      if (typeof refreshDataModel === 'function') refreshDataModel();
+      if (typeof updateTotalCounts === 'function') updateTotalCounts();
+      if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+      if (typeof populateAddResourceModules === 'function') populateAddResourceModules();
+    }
+  });
+
+  FIREBASE_DB.ref('l_support/hidden_categories').on('value', snap => {
+    let val = snap.val();
+    if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
+    if (val && Array.isArray(val)) {
+      localStorage.setItem('wlh_hidden_categories', JSON.stringify(val));
+      if (typeof refreshDataModel === 'function') refreshDataModel();
+      if (typeof updateTotalCounts === 'function') updateTotalCounts();
+      if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+    }
+  });
+
+  // 12. Sync Suggestions / Feedback Live
   FIREBASE_DB.ref('l_support/suggestions').on('value', snap => {
     let val = snap.val();
     if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
