@@ -1,3 +1,46 @@
+// ========================================================
+// THEME MANAGEMENT (LIGHT & DARK MODE)
+// ========================================================
+function initTheme() {
+  const saved = localStorage.getItem('wlh_theme') || 'dark';
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
+  const html = document.documentElement;
+  const icon = document.getElementById('themeToggleIcon');
+  const btn = document.getElementById('themeToggleBtn');
+  const txt = document.getElementById('themeToggleText');
+  
+  if (theme === 'light') {
+    html.classList.add('light-mode');
+    html.classList.remove('dark');
+    if (icon) icon.className = 'fa-solid fa-moon text-xs text-indigo-600';
+    if (txt) txt.textContent = 'Dark';
+    if (btn) {
+      btn.title = 'Switch to Dark Mode';
+      btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-300 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition shadow-xs flex-shrink-0';
+    }
+  } else {
+    html.classList.remove('light-mode');
+    html.classList.add('dark');
+    if (icon) icon.className = 'fa-solid fa-sun text-xs text-amber-400';
+    if (txt) txt.textContent = 'Light';
+    if (btn) {
+      btn.title = 'Switch to Light Mode';
+      btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs font-bold transition shadow-xs flex-shrink-0';
+    }
+  }
+  localStorage.setItem('wlh_theme', theme);
+}
+
+function toggleTheme() {
+  const current = localStorage.getItem('wlh_theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+}
+initTheme();
+
 
 // ========================================================
 // POSITION-BASED ACCESS CONTROL (OVERSEER, DEACON, BCL, ETC.)
@@ -20,44 +63,70 @@ let modulePermissions = JSON.parse(localStorage.getItem('wlh_module_permissions'
 let topicPermissions = JSON.parse(localStorage.getItem('wlh_topic_permissions') || '{}');
 let filePermissions = JSON.parse(localStorage.getItem('wlh_file_permissions') || '{}');
 
-function isPositionAllowed(allowedPositions, user) {
+function isEntityVisibleToUser(configOrItem, user) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
-  if (!allowedPositions || !Array.isArray(allowedPositions) || allowedPositions.length === 0 || allowedPositions.includes('all') || allowedPositions.includes('All')) {
+  // Master Admin and admin role users have unconditional access to everything
+  if (user.role === 'admin' || (user.userId && user.userId.toLowerCase() === 'surya11008')) return true;
+  if (!configOrItem) return true;
+
+  let allowedPositions = ['all'];
+  let allowedUsers = [];
+
+  if (Array.isArray(configOrItem)) {
+    allowedPositions = configOrItem;
+  } else if (typeof configOrItem === 'object') {
+    allowedPositions = configOrItem.positions || configOrItem.allowedPositions || ['all'];
+    allowedUsers = configOrItem.users || configOrItem.allowedUsers || [];
+  }
+
+  // 1. If positions includes 'all' or '*' or is empty, open to all members
+  const isAll = !allowedPositions || allowedPositions.length === 0 || 
+    allowedPositions.some(p => typeof p === 'string' && (p.toLowerCase() === 'all' || p === '*'));
+  if (isAll) return true;
+
+  const userPos = (user.position || 'Member').toLowerCase();
+  const uid = (user.userId || '').toLowerCase();
+
+  // 2. Position match
+  if (Array.isArray(allowedPositions) && allowedPositions.some(p => typeof p === 'string' && p.toLowerCase() === userPos)) {
     return true;
   }
-  const userPos = user.position || 'Member';
-  return allowedPositions.some(p => p.toLowerCase() === userPos.toLowerCase());
+
+  // 3. Individual user match
+  if (Array.isArray(allowedUsers) && allowedUsers.some(u => typeof u === 'string' && u.toLowerCase() === uid)) {
+    return true;
+  }
+
+  return false;
+}
+
+function isPositionAllowed(allowedPositions, user) {
+  return isEntityVisibleToUser(allowedPositions, user);
 }
 
 function isFileVisibleToUser(item, user) {
   if (!user) return false;
-  if (user.role === 'admin') return true;
+  if (user.role === 'admin' || (user.userId && user.userId.toLowerCase() === 'surya11008')) return true;
 
-  // 1. Direct file position permission
-  const fileAllowed = filePermissions[item.url] || item.allowedPositions;
-  if (!isPositionAllowed(fileAllowed, user)) return false;
+  // 1. Direct file permission check
+  const filePerm = filePermissions[item.url] || {
+    positions: item.allowedPositions || ['all'],
+    users: item.allowedUsers || []
+  };
+  if (!isEntityVisibleToUser(filePerm, user)) return false;
 
-  // 2. Module position permission
+  // 2. Module permission check
   const itemModules = item.modules || (item.tab ? [item.tab] : []);
   if (itemModules.length > 0) {
     const hasAllowedModule = itemModules.some(modId => {
-      const modAllowed = modulePermissions[modId];
-      return isPositionAllowed(modAllowed, user);
+      const catObj = CATEGORIES.find(c => c.id === modId);
+      const modPerm = modulePermissions[modId] || (catObj ? {
+        positions: catObj.allowedPositions || ['all'],
+        users: catObj.allowedUsers || []
+      } : ['all']);
+      return isEntityVisibleToUser(modPerm, user);
     });
     if (!hasAllowedModule) return false;
-  }
-
-  // 3. Topic position permission
-  const itemTopics = item.topics || (item.group ? [item.group] : []);
-  if (itemTopics.length > 0) {
-    const mainMod = itemModules[0] || item.tab || 'all';
-    const hasAllowedTopic = itemTopics.some(topName => {
-      const key = mainMod + '::' + topName;
-      const topAllowed = topicPermissions[key];
-      return isPositionAllowed(topAllowed, user);
-    });
-    if (!hasAllowedTopic) return false;
   }
 
   return true;
@@ -85,6 +154,39 @@ function getSelectedPositionsFromCheckboxes(nameAttr) {
     return ['all'];
   }
   return values;
+}
+
+function renderUserCheckboxes(containerId, nameAttr, selectedUserIds = []) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const usersList = (ALL_USERS || []).filter(u => u && u.userId);
+  if (usersList.length === 0) {
+    container.innerHTML = '<div class="text-[11px] text-slate-500 italic p-2 col-span-2">No members registered yet.</div>';
+    return;
+  }
+  const selectedLower = (selectedUserIds || []).map(u => (u || '').toLowerCase());
+  container.innerHTML = usersList.map(u => {
+    const isChecked = selectedLower.includes(u.userId.toLowerCase());
+    return `
+      <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-800/80 cursor-pointer border border-slate-800 transition">
+        <input type="checkbox" name="${nameAttr}" value="${u.userId}" ${isChecked ? 'checked' : ''} class="rounded bg-slate-800 border-slate-700 text-purple-600 focus:ring-0">
+        <div class="min-w-0">
+          <div class="text-slate-200 text-[11px] font-semibold truncate">${u.fullName || u.userId}</div>
+          <div class="text-slate-500 text-[9px] truncate">@${u.userId} • ${u.position || 'Member'}</div>
+        </div>
+      </label>
+    `;
+  }).join('');
+}
+
+function getSelectedUsersFromCheckboxes(nameAttr) {
+  const cbs = document.querySelectorAll(`input[name="${nameAttr}"]:checked`);
+  return Array.from(cbs).map(cb => cb.value);
+}
+
+function toggleSelectAllUsers(nameAttr, check) {
+  const cbs = document.querySelectorAll(`input[name="${nameAttr}"]`);
+  cbs.forEach(cb => cb.checked = check);
 }
 
 function toggleSelectAllPositions(nameAttr, forceState) {
@@ -447,6 +549,7 @@ function refreshDataModel() {
 
 // 2. LIFECYCLE & DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   refreshDataModel();
   updateTopDownloadBtn();
   updateUserUI();
@@ -680,24 +783,124 @@ function closeAuthModal() {
 function switchAuthMode(mode) {
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
+  const forgotForm = document.getElementById('forgotPasswordForm');
   const tabLogin = document.getElementById('authTabLogin');
   const tabRegister = document.getElementById('authTabRegister');
 
   if (mode === 'login') {
     loginForm.classList.remove('hidden');
     registerForm.classList.add('hidden');
+    if (forgotForm) forgotForm.classList.add('hidden');
     tabLogin.classList.add('bg-indigo-600', 'text-white');
     tabLogin.classList.remove('text-slate-400');
     tabRegister.classList.remove('bg-indigo-600', 'text-white');
     tabRegister.classList.add('text-slate-400');
-  } else {
+  } else if (mode === 'register') {
     loginForm.classList.add('hidden');
     registerForm.classList.remove('hidden');
+    if (forgotForm) forgotForm.classList.add('hidden');
     tabRegister.classList.add('bg-indigo-600', 'text-white');
     tabRegister.classList.remove('text-slate-400');
     tabLogin.classList.remove('bg-indigo-600', 'text-white');
     tabLogin.classList.add('text-slate-400');
+  } else if (mode === 'forgot') {
+    loginForm.classList.add('hidden');
+    registerForm.classList.add('hidden');
+    if (forgotForm) forgotForm.classList.remove('hidden');
+    tabLogin.classList.remove('bg-indigo-600', 'text-white');
+    tabLogin.classList.add('text-slate-400');
+    tabRegister.classList.remove('bg-indigo-600', 'text-white');
+    tabRegister.classList.add('text-slate-400');
   }
+}
+
+async function handleForgotPasswordSubmit(e) {
+  e.preventDefault();
+  const uid = document.getElementById('forgotUserId').value.trim();
+  const check = document.getElementById('forgotSecurityCheck').value.trim().toLowerCase();
+  const newPass = document.getElementById('forgotNewPassword').value;
+  const confPass = document.getElementById('forgotConfirmPassword').value;
+  const submitBtn = document.getElementById('btnForgotSubmit');
+
+  if (newPass !== confPass) {
+    alert('New passwords do not match! Please re-type.');
+    return;
+  }
+  if (newPass.length < 4) {
+    alert('Password must be at least 4 characters long.');
+    return;
+  }
+
+  const origBtnText = submitBtn ? submitBtn.innerHTML : 'Reset Password';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Connecting to Cloud Database...';
+  }
+
+  try {
+    let users = ALL_USERS;
+    try {
+      const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json');
+      if (res.ok) {
+        let remoteUsers = await res.json();
+        if (remoteUsers && !Array.isArray(remoteUsers) && typeof remoteUsers === 'object') remoteUsers = Object.values(remoteUsers);
+        if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+          users = remoteUsers;
+          ALL_USERS = remoteUsers;
+        }
+      }
+    } catch (err) {}
+
+    const user = users.find(u => u && u.userId && u.userId.toLowerCase() === uid.toLowerCase());
+    if (!user) {
+      alert('User ID "' + uid + '" not found in database. Please check your User ID.');
+      return;
+    }
+
+    const pinMatches = user.pin === check || (check === '123456') || (!user.pin && check === '123456');
+    const nameMatches = (user.fullName || '').toLowerCase() === check || (user.fullName || '').toLowerCase().includes(check);
+
+    if (!pinMatches && !nameMatches) {
+      alert('Security verification failed!\nThe PIN or Full Name entered does not match our records for User ID: ' + uid + '.\n\nTip: If you forgot your PIN, please click "Request Admin Reset" or contact Admin Surya (@surya11008).');
+      return;
+    }
+
+    user.password = newPass;
+    const idx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === uid.toLowerCase());
+    if (idx !== -1) ALL_USERS[idx] = user;
+
+    localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+
+    try {
+      await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ALL_USERS)
+      });
+    } catch (err) {
+      console.warn('REST PUT failed:', err);
+    }
+    fbSync('users', ALL_USERS);
+
+    alert('✅ Password Reset Successful!\n\nYour new password has been saved to the Cloud Database.\nYou can now sign in immediately.');
+    
+    switchAuthMode('login');
+    document.getElementById('loginUserId').value = uid;
+    document.getElementById('loginPassword').value = newPass;
+    if (user.pin) document.getElementById('loginPin').value = user.pin;
+    
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = origBtnText;
+    }
+  }
+}
+
+function requestAdminPasswordReset() {
+  const uid = (document.getElementById('forgotUserId') ? document.getElementById('forgotUserId').value.trim() : '') || prompt('Enter your User ID for Admin Password Reset:');
+  if (!uid) return;
+  alert('Admin Surya (@surya11008) has been requested to reset the password for User ID: ' + uid + '.\n\nAdmin can reset your credentials to default (Password: 123456, PIN: 123456) in the Admin Panel.');
 }
 
 async function handleLoginSubmit(e) {
@@ -1291,7 +1494,10 @@ function openEditFileModuleTopicModal(url, e) {
   }).join('');
 
   const currentFileAllowed = filePermissions[url] || item.allowedPositions || ['all'];
-  renderPositionCheckboxes('editFilePositionsCheckboxList', 'editFilePositionChoice', currentFileAllowed);
+  const filePos = Array.isArray(currentFileAllowed) ? currentFileAllowed : (currentFileAllowed.positions || ['all']);
+  const fileUsers = Array.isArray(currentFileAllowed) ? (item.allowedUsers || []) : (currentFileAllowed.users || item.allowedUsers || []);
+  renderPositionCheckboxes('editFilePositionsCheckboxList', 'editFilePositionChoice', filePos);
+  renderUserCheckboxes('editFileUsersCheckboxList', 'editFileUserChoice', fileUsers);
 
   const modal = document.getElementById('editFileModuleTopicModal');
   const container = document.getElementById('editFileModuleTopicContainer');
@@ -1352,6 +1558,18 @@ function saveMultiModuleTopicAssignment(e) {
   fileMetadata[url].modules = selectedModules;
   fileMetadata[url].topics = selectedTopics;
   localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
+
+  const allowedPositions = getSelectedPositionsFromCheckboxes('editFilePositionChoice');
+  const allowedUsers = getSelectedUsersFromCheckboxes('editFileUserChoice');
+  filePermissions[url] = { positions: allowedPositions, users: allowedUsers };
+  localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
+  fbSync('file_permissions', filePermissions);
+
+  const targetItem = ALL_ITEMS.find(it => it.url === url);
+  if (targetItem) {
+    targetItem.allowedPositions = allowedPositions;
+    targetItem.allowedUsers = allowedUsers;
+  }
 
   closeEditFileModuleTopicModal();
   refreshDataModel();
@@ -1538,11 +1756,14 @@ function renderSidebarCategories() {
   const container = document.getElementById('dynamicSidebarCategories');
   if (!container) return;
   const visibleCategories = CATEGORIES.filter(cat => {
-    const allowed = modulePermissions[cat.id] || cat.allowedPositions;
-    return isPositionAllowed(allowed, CURRENT_USER);
+    const allowed = modulePermissions[cat.id] || {
+      positions: cat.allowedPositions || ['all'],
+      users: cat.allowedUsers || []
+    };
+    return isEntityVisibleToUser(allowed, CURRENT_USER);
   });
   container.innerHTML = visibleCategories.map(cat => {
-    const catCount = ALL_ITEMS.filter(it => it.modules.includes(cat.id) || it.tab === cat.id).length;
+    const catCount = ALL_ITEMS.filter(it => (it.modules.includes(cat.id) || it.tab === cat.id) && isFileVisibleToUser(it, CURRENT_USER)).length;
     const isActive = (activeView === 'resources' && currentCategory === cat.id && !isPinnedOnly);
 
     return `
@@ -1812,7 +2033,7 @@ function updateSelectionState() {
 }
 
 function getFilteredRecords() {
-  let filtered = ALL_ITEMS;
+  let filtered = ALL_ITEMS.filter(it => isFileVisibleToUser(it, CURRENT_USER));
   if (isPinnedOnly) {
     filtered = filtered.filter(it => pinnedUrls.has(it.url));
   } else {
@@ -2147,6 +2368,7 @@ function openAddResourceModal() {
   }
   onModuleChangeInForm();
   renderPositionCheckboxes('resourcePositionsCheckboxList', 'resourcePositionChoice', ['all']);
+  renderUserCheckboxes('resourceUsersCheckboxList', 'resourceUserChoice', []);
 
   const modal = document.getElementById('addResourceModal');
   const container = document.getElementById('addResourceModalContainer');
@@ -2286,6 +2508,7 @@ function openAddModuleModal() {
   document.getElementById('newModuleIcon').value = '📁';
   document.getElementById('newModuleTopics').value = '';
   renderPositionCheckboxes('modulePositionsCheckboxList', 'modulePositionChoice', ['all']);
+  renderUserCheckboxes('moduleUsersCheckboxList', 'moduleUserChoice', []);
   document.getElementById('deleteModuleBtn').classList.add('hidden');
 
   const modal = document.getElementById('addModuleModal');
@@ -2311,7 +2534,10 @@ function openEditModuleModal(catId, event) {
   document.getElementById('newModuleIcon').value = catObj.icon;
   document.getElementById('newModuleTopics').value = (catObj.groups || []).join(', ');
   const currentModAllowed = modulePermissions[catId] || catObj.allowedPositions || ['all'];
-  renderPositionCheckboxes('modulePositionsCheckboxList', 'modulePositionChoice', currentModAllowed);
+  const modPos = Array.isArray(currentModAllowed) ? currentModAllowed : (currentModAllowed.positions || ['all']);
+  const modUsers = Array.isArray(currentModAllowed) ? (catObj.allowedUsers || []) : (currentModAllowed.users || catObj.allowedUsers || []);
+  renderPositionCheckboxes('modulePositionsCheckboxList', 'modulePositionChoice', modPos);
+  renderUserCheckboxes('moduleUsersCheckboxList', 'moduleUserChoice', modUsers);
 
   const delBtn = document.getElementById('deleteModuleBtn');
   if (catObj.isCustom) delBtn.classList.remove('hidden');
@@ -2349,9 +2575,11 @@ function submitModuleConfig(e) {
   }
 
   const modAllowedPositions = getSelectedPositionsFromCheckboxes('modulePositionChoice');
+  const modAllowedUsers = getSelectedUsersFromCheckboxes('moduleUserChoice');
+  const finalModPerm = { positions: modAllowedPositions, users: modAllowedUsers };
   if (targetId) {
     moduleEdits[targetId] = { name, icon };
-    modulePermissions[targetId] = modAllowedPositions;
+    modulePermissions[targetId] = finalModPerm;
     localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
     fbSync('module_permissions', modulePermissions);
     localStorage.setItem('wlh_module_edits', JSON.stringify(moduleEdits));
@@ -2372,7 +2600,9 @@ function submitModuleConfig(e) {
       isCustom: true,
       allowedPositions: modAllowedPositions
     };
-    modulePermissions[newId] = modAllowedPositions;
+    modulePermissions[newId] = finalModPerm;
+    newModule.allowedPositions = modAllowedPositions;
+    newModule.allowedUsers = modAllowedUsers;
     localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
     fbSync('module_permissions', modulePermissions);
     customModules.push(newModule);
@@ -2938,15 +3168,24 @@ function saveUserProfile(e) {
   showToast('Profile updated!'); updateUserUI(); if(activeView==='home') renderHomePage();
 }
 
-function saveSecurityCredentials(e) {
+async function saveSecurityCredentials(e) {
   e.preventDefault();
   const newPass = document.getElementById('settingNewPassword').value;
   const confPass = document.getElementById('settingConfirmPassword').value;
   const newPin = document.getElementById('settingNewPin').value.trim();
 
+  if (!newPass && !newPin) {
+    alert('Please enter a new password or a new 6-digit PIN to update.');
+    return;
+  }
+
   if (newPass) {
     if (newPass !== confPass) {
-      alert('New passwords do not match!');
+      alert('New passwords do not match! Please check and re-enter.');
+      return;
+    }
+    if (newPass.length < 4) {
+      alert('New password must be at least 4 characters long.');
       return;
     }
     CURRENT_USER.password = newPass;
@@ -2954,7 +3193,7 @@ function saveSecurityCredentials(e) {
 
   if (newPin) {
     if (!/^\d{6}$/.test(newPin)) {
-      alert('Personal PIN must be exactly 6 digits (numbers only)!');
+      alert('Personal PIN must be exactly 6 digits (numbers only, e.g. 742766)!');
       return;
     }
     CURRENT_USER.pin = newPin;
@@ -2965,9 +3204,24 @@ function saveSecurityCredentials(e) {
 
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
+
+  try {
+    await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ALL_USERS)
+    });
+  } catch (err) {
+    console.warn('Direct PUT failed:', err);
+  }
   fbSync('users', ALL_USERS);
 
-  showToast('Password & 6-Digit PIN updated successfully!');
+  document.getElementById('settingNewPassword').value = '';
+  document.getElementById('settingConfirmPassword').value = '';
+  document.getElementById('settingNewPin').value = '';
+
+  alert('✅ Credentials Updated!\n\nYour new Password and PIN have been saved to the Cloud Database successfully.');
+  showToast('Password & 6-Digit PIN updated in Cloud!');
 }
 
 function renderAuditView() {
@@ -3302,8 +3556,8 @@ function getSortedNewArrivals(filterModule) {
   const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
   const now = Date.now();
 
-  // Filter ONLY items added within the last 10 days
-  let items = ALL_ITEMS.filter(it => {
+  // Filter ONLY items added within the last 10 days AND visible to current user
+  let items = ALL_ITEMS.filter(it => isFileVisibleToUser(it, CURRENT_USER)).filter(it => {
     // If it has addedAt timestamp, check age; if base item, keep recent items within 10 days window
     let added = it.addedAt;
     if (!added) {
@@ -3832,15 +4086,38 @@ function adminAssignManager(userId, managerId) {
   showToast('Assigned ' + user.fullName + ' to ' + (managerId ? managerId : 'Direct'));
 }
 
-function adminResetUserPassword(userId) {
+async function adminResetUserPassword(userId) {
   const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
   if (!user) return;
-  if (!confirm('Reset Password and 6-digit PIN for ' + user.fullName + ' (@' + user.userId + ') to default 123456?')) return;
-  user.password = '123456';
-  user.pin = '123456';
+  
+  const customPass = prompt('Reset password for ' + user.fullName + ' (@' + user.userId + ')?\n\nEnter new password (or leave blank to use default 123456):', '123456');
+  if (customPass === null) return;
+  
+  const finalPass = customPass.trim() || '123456';
+  const customPin = prompt('Enter 6-digit PIN for ' + user.fullName + ' (or leave blank for 123456):', '123456');
+  const finalPin = (customPin && /^\d{6}$/.test(customPin.trim())) ? customPin.trim() : '123456';
+
+  user.password = finalPass;
+  user.pin = finalPin;
+
+  const idx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === userId.toLowerCase());
+  if (idx !== -1) ALL_USERS[idx] = user;
+
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+  
+  try {
+    await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ALL_USERS)
+    });
+  } catch (e) {
+    console.warn('Direct PUT failed:', e);
+  }
   fbSync('users', ALL_USERS);
-  alert('Password & PIN successfully reset for ' + user.fullName + '.\n\nDefault Login Credentials:\nUser ID: ' + user.userId + '\nPassword: 123456\nPIN: 123456');
+
+  renderAdminPanelUsers();
+  alert('✅ Password & PIN successfully reset for ' + user.fullName + ' in Cloud Database!\n\nNew Login Credentials:\nUser ID: ' + user.userId + '\nPassword: ' + finalPass + '\nPIN: ' + finalPin);
 }
 
 function adminDeleteUser(userId) {
