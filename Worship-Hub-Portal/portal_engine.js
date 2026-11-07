@@ -2,7 +2,12 @@
 // THEME MANAGEMENT (LIGHT & DARK MODE)
 // ========================================================
 function initTheme() {
-  const saved = localStorage.getItem('wlh_theme') || 'dark';
+  let saved = localStorage.getItem('wlh_theme_v3');
+  if (!saved) {
+    saved = 'light';
+    localStorage.setItem('wlh_theme_v3', 'light');
+    localStorage.setItem('wlh_theme', 'light');
+  }
   applyTheme(saved);
 }
 
@@ -19,7 +24,7 @@ function applyTheme(theme) {
     if (txt) txt.textContent = 'Dark';
     if (btn) {
       btn.title = 'Switch to Dark Mode';
-      btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-300 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition shadow-xs flex-shrink-0';
+      btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs font-bold transition shadow-xs flex-shrink-0';
     }
   } else {
     html.classList.remove('light-mode');
@@ -32,10 +37,11 @@ function applyTheme(theme) {
     }
   }
   localStorage.setItem('wlh_theme', theme);
+  localStorage.setItem('wlh_theme_v3', theme);
 }
 
 function toggleTheme() {
-  const current = localStorage.getItem('wlh_theme') || 'dark';
+  const current = localStorage.getItem('wlh_theme_v3') || localStorage.getItem('wlh_theme') || 'light';
   const next = current === 'dark' ? 'light' : 'dark';
   applyTheme(next);
 }
@@ -53,7 +59,6 @@ const ALL_POSITIONS = [
   'PBCL',
   'Group Leader',
   'Unit Leader',
-  'IUnit Leader',
   'Co-Worker',
   'Evangelist',
   'Member'
@@ -242,13 +247,31 @@ function saveTopicPermissions(e) {
   showToast('Position access updated for topic "' + topicName + '"!');
 }
 
-function adminChangeUserPosition(userId, newPos) {
+async function adminChangeUserPosition(userId, newPos) {
   const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
   if (!user) return;
   user.position = newPos;
+
+  if (CURRENT_USER && CURRENT_USER.userId && CURRENT_USER.userId.toLowerCase() === userId.toLowerCase()) {
+    CURRENT_USER.position = newPos;
+    localStorage.setItem('wlh_user', JSON.stringify(CURRENT_USER));
+  }
+
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
-  fbSync('users', ALL_USERS);
-  showToast(user.fullName + ' position updated to ' + newPos + '!');
+
+  if (typeof fbSync === 'function') {
+    fbSync('users', ALL_USERS);
+  }
+
+  try {
+    fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ALL_USERS)
+    }).catch(e => console.warn('Direct RTDB sync error:', e));
+  } catch(e) {}
+
+  showToast((user.fullName || user.userId) + ' category updated to ' + newPos + '!', 'success');
   renderStarMembersGrid();
 }
 
@@ -3980,6 +4003,16 @@ function renderStarMembersGrid(filterQuery) {
               </div>
             </div>
             <div class="flex-shrink-0">${roleBadge}</div>
+          </div>
+
+          <!-- Category / Position Selector for Admin -->
+          <div class="flex items-center justify-between text-xs bg-indigo-50/70 dark:bg-slate-950/60 px-3 py-2 rounded-xl border border-indigo-200/80 dark:border-slate-800 shadow-xs">
+            <span class="text-indigo-900 dark:text-indigo-300 text-[11px] font-black flex items-center gap-1.5">
+              <i class="fa-solid fa-id-badge text-indigo-500"></i> Category / Position:
+            </span>
+            <select onchange="adminChangeUserPosition('${u.userId}', this.value)" class="bg-white dark:bg-slate-900 border border-indigo-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 text-[11px] font-bold px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-xs">
+              ${ALL_POSITIONS.map(pos => `<option value="${pos}" ${((u.position || 'Member').toLowerCase() === pos.toLowerCase()) ? 'selected' : ''}>${pos}</option>`).join('')}
+            </select>
           </div>
 
           <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800/80">
