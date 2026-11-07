@@ -454,15 +454,13 @@ async function adminChangeUserPosition(userId, newPos) {
   }
   const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
   if (!user) return;
+  const oldPos = user.position || 'Member';
   user.position = newPos;
 
-  if (CURRENT_USER && CURRENT_USER.userId && CURRENT_USER.userId.toLowerCase() === userId.toLowerCase()) {
-    CURRENT_USER.position = newPos;
-    localStorage.setItem('wlh_user', JSON.stringify(CURRENT_USER));
-  }
+  // Process live update immediately on this device
+  processLiveUsersUpdate(ALL_USERS);
 
-  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
-
+  // Broadcast to Firebase Realtime Database
   if (typeof fbSync === 'function') {
     fbSync('users', ALL_USERS);
   }
@@ -475,10 +473,9 @@ async function adminChangeUserPosition(userId, newPos) {
     }).catch(e => console.warn('Direct RTDB sync error:', e));
   } catch(e) {}
 
-  showToast((user.fullName || user.userId) + ' category updated to ' + newPos + '!', 'success');
-  renderStarMembersGrid();
+  showToast((user.fullName || user.userId) + ' category updated to "' + newPos + '"!', 'success');
+  if (typeof renderStarMembersGrid === 'function') renderStarMembersGrid();
 }
-
 
 // ========================================================
 // LIVE USER PRESENCE TRACKING (STAR GALAXY STYLE)
@@ -5058,93 +5055,190 @@ function deleteNotice(id) {
 // ========================================================
 // DUAL-CHANNEL REALTIME SYNC ENGINE (WEBSOCKET + 15S BACKGROUND POLLER)
 // ========================================================
+
+// ========================================================
+// INSTANT REALTIME STATE & DATA PROCESSORS (ZERO RELOGIN NEEDED)
+// ========================================================
+function processLiveUsersUpdate(newUsersList) {
+  if (!Array.isArray(newUsersList) || newUsersList.length === 0) return;
+  ALL_USERS = newUsersList;
+  localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+
+  if (typeof updateApprovalCountBadge === 'function') updateApprovalCountBadge();
+  if (typeof updateStarAdminBadges === 'function') updateStarAdminBadges();
+
+  // INSTANT LIVE SYNC FOR CURRENT LOGGED IN USER
+  if (CURRENT_USER && CURRENT_USER.userId) {
+    const freshMe = ALL_USERS.find(u => u && u.userId && u.userId.toLowerCase() === CURRENT_USER.userId.toLowerCase());
+    if (freshMe) {
+      const posChanged = (freshMe.position || 'Member') !== (CURRENT_USER.position || 'Member');
+      const roleChanged = (freshMe.role || 'member') !== (CURRENT_USER.role || 'member');
+      const statusChanged = (freshMe.status || 'approved') !== (CURRENT_USER.status || 'approved');
+      const datesChanged = freshMe.viewPastDates !== CURRENT_USER.viewPastDates;
+
+      if (posChanged || roleChanged || statusChanged || datesChanged) {
+        console.log('⚡ [Live Instant Sync] User updated:', freshMe.fullName, 'Position:', freshMe.position, 'Role:', freshMe.role);
+        const oldPos = CURRENT_USER.position || 'Member';
+        CURRENT_USER = Object.assign({}, CURRENT_USER, freshMe);
+        localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
+        localStorage.setItem('wlh_user', JSON.stringify(CURRENT_USER));
+
+        // Immediately update all UI elements in real-time
+        if (typeof updateUserUI === 'function') updateUserUI();
+        if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+        if (typeof renderSubgroupTabs === 'function') renderSubgroupTabs();
+        if (typeof renderRecords === 'function') renderRecords();
+        if (typeof updateTotalCounts === 'function') updateTotalCounts();
+        if (typeof renderHomeNewArrivals === 'function') renderHomeNewArrivals();
+        if (typeof renderHomePage === 'function' && activeView === 'home') renderHomePage();
+        if (typeof renderMyRoomTimeline === 'function' && activeView === 'myroom') renderMyRoomTimeline();
+
+        if (posChanged) {
+          showToast('Live Update: Your category changed to ' + (freshMe.position || 'Member') + '!', 'info');
+        } else if (roleChanged) {
+          showToast('Live Update: Your role changed to ' + (freshMe.role || 'member') + '!', 'info');
+        }
+      }
+    }
+  }
+
+  // Live Refresh Admin Panel Views
+  if (CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.userId.toLowerCase() === 'surya11008')) {
+    if (typeof renderStarMembersGrid === 'function' && typeof currentAdminTab !== 'undefined' && currentAdminTab === 'members') {
+      renderStarMembersGrid();
+    }
+    if (typeof renderStarApprovalsList === 'function' && typeof currentAdminTab !== 'undefined' && currentAdminTab === 'approvals') {
+      renderStarApprovalsList();
+    }
+    if (typeof renderStarManagersList === 'function' && typeof currentAdminTab !== 'undefined' && currentAdminTab === 'managers') {
+      renderStarManagersList();
+    }
+  }
+}
+
+function processLiveResourcesUpdate(newResources) {
+  if (!Array.isArray(newResources)) return;
+  const currentStr = JSON.stringify(customItems);
+  const newStr = JSON.stringify(newResources);
+  if (currentStr !== newStr) {
+    console.log('⚡ [Live Instant Sync] Resources updated. Count:', newResources.length);
+    customItems = newResources;
+    localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
+    if (typeof refreshDataModel === 'function') refreshDataModel();
+    if (typeof renderRecords === 'function') renderRecords();
+    if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+    if (typeof renderSubgroupTabs === 'function') renderSubgroupTabs();
+    if (typeof renderHomeNewArrivals === 'function') renderHomeNewArrivals();
+    if (typeof updateTotalCounts === 'function') updateTotalCounts();
+  }
+}
+
+function processLivePermissionsUpdate(modPerms, topicPerms, filePerms) {
+  let changed = false;
+  if (modPerms && typeof modPerms === 'object' && JSON.stringify(modulePermissions) !== JSON.stringify(modPerms)) {
+    modulePermissions = modPerms;
+    localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
+    changed = true;
+  }
+  if (topicPerms && typeof topicPerms === 'object' && JSON.stringify(topicPermissions) !== JSON.stringify(topicPerms)) {
+    topicPermissions = topicPerms;
+    localStorage.setItem('wlh_topic_permissions', JSON.stringify(topicPermissions));
+    changed = true;
+  }
+  if (filePerms && typeof filePerms === 'object' && JSON.stringify(filePermissions) !== JSON.stringify(filePerms)) {
+    filePermissions = filePerms;
+    localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
+    changed = true;
+  }
+  if (changed) {
+    console.log('⚡ [Live Instant Sync] Permissions updated');
+    if (typeof renderSidebarCategories === 'function') renderSidebarCategories();
+    if (typeof renderSubgroupTabs === 'function') renderSubgroupTabs();
+    if (typeof renderRecords === 'function') renderRecords();
+  }
+}
+
 function startBackgroundLivePoller() {
+  // Ultra-fast 2.5s Realtime Cloud Polling for instant zero-refresh synchronization
   setInterval(() => {
     if (!CURRENT_USER) return;
     fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support.json')
       .then(r => r.json())
       .then(data => {
         if (!data) return;
-        let usersChanged = false;
 
-        // 1. Users sync
+        // 1. Instant User Updates
         if (data.users) {
           let uList = data.users;
           if (!Array.isArray(uList) && typeof uList === 'object') uList = Object.values(uList);
           if (Array.isArray(uList)) {
-            const currentStr = JSON.stringify(ALL_USERS);
-            const remoteStr = JSON.stringify(uList);
-            if (currentStr !== remoteStr) {
-              ALL_USERS = uList;
-              localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
-              usersChanged = true;
-            }
+            processLiveUsersUpdate(uList);
           }
         }
 
-        // 2. Downloads permission sync
+        // 2. Instant Resources / Files Updates
+        if (data.custom_resources) {
+          let rList = data.custom_resources;
+          if (!Array.isArray(rList) && typeof rList === 'object') rList = Object.values(rList);
+          if (Array.isArray(rList)) {
+            processLiveResourcesUpdate(rList);
+          }
+        }
+
+        // 3. Instant Permissions Updates
+        processLivePermissionsUpdate(data.module_permissions, data.topic_permissions, data.file_permissions);
+
+        // 4. Instant UI Custom Texts Updates
+        if (data.custom_ui_texts && typeof data.custom_ui_texts === 'object') {
+          if (JSON.stringify(UI_CUSTOM_TEXTS) !== JSON.stringify(data.custom_ui_texts)) {
+            UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS, data.custom_ui_texts);
+            localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+            if (typeof applyCustomUiTexts === 'function') applyCustomUiTexts();
+          }
+        }
+
+        // 5. Downloads Permission Sync
         if (data.downloads_enabled !== undefined && data.downloads_enabled !== DOWNLOADS_ENABLED) {
           DOWNLOADS_ENABLED = data.downloads_enabled;
           localStorage.setItem('wlh_downloads_enabled', JSON.stringify(DOWNLOADS_ENABLED));
-          updateTopDownloadBtn();
-          renderRecords();
+          if (typeof updateTopDownloadBtn === 'function') updateTopDownloadBtn();
+          if (typeof renderRecords === 'function') renderRecords();
           if (typeof renderStarMemberPerms === 'function') renderStarMemberPerms();
         }
 
-        // 3. Notices sync
+        // 6. Notices Live Sync
         if (data.notices) {
           let nList = data.notices;
           if (!Array.isArray(nList) && typeof nList === 'object') nList = Object.values(nList);
           if (Array.isArray(nList) && JSON.stringify(nList) !== JSON.stringify(NOTICES_LIST)) {
             NOTICES_LIST = nList;
             localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
-            renderHomeNotices();
+            if (typeof renderHomeNotices === 'function') renderHomeNotices();
+            if (typeof renderAdminPanelNotices === 'function') renderAdminPanelNotices();
           }
         }
 
-        // 4. Schedules sync
+        // 7. Schedules Live Sync
         if (data.schedules) {
           let sList = data.schedules;
           if (!Array.isArray(sList) && typeof sList === 'object') sList = Object.values(sList);
           if (Array.isArray(sList) && JSON.stringify(sList) !== JSON.stringify(SCHEDULES_LIST)) {
             SCHEDULES_LIST = sList;
             localStorage.setItem('l_support_schedules', JSON.stringify(SCHEDULES_LIST));
-            renderHomeSchedule();
+            if (typeof renderHomeSchedule === 'function') renderHomeSchedule();
           }
         }
 
-        // 5. Presence sync
+        // 8. Presence Live Sync
         if (data.presence && typeof data.presence === 'object') {
           PRESENCE_DATA = data.presence;
-          if (typeof renderStarOnlineGrid === 'function' && currentAdminTab === 'online') {
+          if (typeof renderStarOnlineGrid === 'function' && typeof currentAdminTab !== 'undefined' && currentAdminTab === 'online') {
             renderStarOnlineGrid();
-          }
-        }
-
-        // 6. Permissions sync
-        if (data.module_permissions && typeof data.module_permissions === 'object') {
-          modulePermissions = data.module_permissions;
-          localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
-        }
-        if (data.topic_permissions && typeof data.topic_permissions === 'object') {
-          topicPermissions = data.topic_permissions;
-          localStorage.setItem('wlh_topic_permissions', JSON.stringify(topicPermissions));
-        }
-        if (data.file_permissions && typeof data.file_permissions === 'object') {
-          filePermissions = data.file_permissions;
-          localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
-        }
-
-        if (usersChanged) {
-          if (typeof updateStarAdminBadges === 'function') updateStarAdminBadges();
-          if (CURRENT_USER.role === 'admin') {
-            if (typeof renderStarApprovalsList === 'function') renderStarApprovalsList();
-            if (typeof renderStarMembersGrid === 'function') renderStarMembersGrid();
           }
         }
       })
       .catch(() => {});
-  }, 12000); // Polls every 12 seconds as a secondary fallback
+  }, 2500); // 2.5 seconds frequency for instant zero-delay updates!
 }
 
 // ========================================================
@@ -5251,6 +5345,15 @@ function setupRealtimeListeners() {
   if (!IS_FIREBASE_CONNECTED || !FIREBASE_DB) return;
 
   // 0. Sync Schedules Live
+  FIREBASE_DB.ref('l_support/custom_ui_texts').on('value', snap => {
+    const val = snap.val();
+    if (val && typeof val === 'object') {
+      UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS, val);
+      localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+      if (typeof applyCustomUiTexts === 'function') applyCustomUiTexts();
+    }
+  });
+
   FIREBASE_DB.ref('l_support/schedules').on('value', snap => {
     let val = snap.val();
     if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
@@ -5290,7 +5393,6 @@ function setupRealtimeListeners() {
     let val = snap.val();
     if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
     if (val && Array.isArray(val)) {
-      // Smart Auto-Recovery: Merge any local pending users created on this device that are missing in Firebase
       let merged = [...val];
       try {
         const localUsers = JSON.parse(localStorage.getItem('wlh_users') || '[]');
@@ -5303,21 +5405,7 @@ function setupRealtimeListeners() {
         }
       } catch (e) {}
 
-      const prevPendingCount = ALL_USERS.filter(u => u.status === 'pending').length;
-      ALL_USERS = merged;
-      localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
-      updateApprovalCountBadge();
-
-      if (CURRENT_USER && CURRENT_USER.role === 'admin') {
-        renderAdminPanelApprovals();
-        renderAdminPanelUsers();
-        renderPendingUsersList();
-
-        const pending = ALL_USERS.filter(u => u.status === 'pending');
-        if (pending.length > 0) {
-          openPendingApprovalsModal();
-        }
-      }
+      processLiveUsersUpdate(merged);
     }
   });
 
@@ -5334,13 +5422,10 @@ function setupRealtimeListeners() {
 
   // 5. Sync Custom Resources Live
   FIREBASE_DB.ref('l_support/custom_resources').on('value', snap => {
-    const val = snap.val();
+    let val = snap.val();
+    if (val && !Array.isArray(val) && typeof val === 'object') val = Object.values(val);
     if (val && Array.isArray(val)) {
-      customItems = val;
-      localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
-      refreshDataModel();
-      renderRecords();
-      renderHomeNewArrivals();
+      processLiveResourcesUpdate(val);
     }
   });
 
