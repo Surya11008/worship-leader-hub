@@ -109,6 +109,14 @@ async function loadCloudUiTexts() {
   } catch(e) {}
 }
 
+// Master Admin Security Helper: Full admin authority for admin role or master userId
+function isAdminUser() {
+  if (!CURRENT_USER) return false;
+  const role = (CURRENT_USER.role || '').toLowerCase();
+  const uid = (CURRENT_USER.userId || '').toLowerCase();
+  return role === 'admin' || uid === 'surya11008';
+}
+
 function toggleLiveTextEditMode() {
   if (!CURRENT_USER || (CURRENT_USER.role !== 'admin' && CURRENT_USER.userId.toLowerCase() !== 'surya11008')) {
     alert('Live text editing is exclusive to Portal Admins.');
@@ -717,7 +725,12 @@ function getDynamicRoomName(user) {
 }
 
 function refreshDataModel() {
-  CATEGORIES = [...BASE_CATEGORIES, ...customModules].map(cat => {
+  let hiddenCats = [];
+  try { hiddenCats = JSON.parse(localStorage.getItem('wlh_hidden_categories') || '[]'); } catch(e) {}
+
+  CATEGORIES = [...BASE_CATEGORIES, ...customModules]
+    .filter(cat => !hiddenCats.includes(cat.id))
+    .map(cat => {
     const edit = moduleEdits[cat.id];
     let groups = [...(cat.groups || [])];
     if (topicEdits[cat.id]) {
@@ -915,36 +928,53 @@ function updateUserUI() {
   if (myRoomTitle) myRoomTitle.textContent = roomTitle;
   const welcomeH1 = document.getElementById('homeWelcomeHeading'); if (welcomeH1) welcomeH1.innerHTML = 'Welcome to L Support! 👋';
 
-  // Role Permissions: Admin vs Regular Viewers
-  const isAdmin = CURRENT_USER.role === 'admin';
-  const dlWrapper = document.getElementById('downloadToggleWrapper');
-  const approvalTopBtn = document.getElementById('adminApprovalsTopBtn');
-  const topAdminPanelBtn = document.getElementById('topAdminPanelBtn');
-  const btnAdminAddNotice = document.getElementById('btnAdminAddNotice');
-  const moduleEditTrigger = document.getElementById('moduleEditTrigger');
+  // Role Permissions: Strict Admin Visibility Lockdown
+  const isAdmin = isAdminUser();
+  if (isAdmin) {
+    document.documentElement.classList.add('is-admin-active');
+  } else {
+    document.documentElement.classList.remove('is-admin-active');
+  }
+
+  // Toggle all elements with class .admin-only-control
+  document.querySelectorAll('.admin-only-control').forEach(el => {
+    el.classList.toggle('hidden', !isAdmin);
+    if (!isAdmin) {
+      el.classList.remove('flex', 'sm:flex', 'md:flex', 'lg:flex', 'inline-flex', 'block');
+    }
+  });
+
+  // Explicit IDs protection
+  const adminIds = [
+    'btnAdminAddSchedule',
+    'btnAdminAddNotice',
+    'btnAdminAddCategory',
+    'btnAdminAddResource',
+    'adminLiveTextEditBtn',
+    'topAdminPanelBtn',
+    'adminApprovalsTopBtn',
+    'downloadToggleWrapper',
+    'btnAdminCenterSidebar',
+    'moduleEditTrigger',
+    'bulkActionsBar'
+  ];
+  adminIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.toggle('hidden', !isAdmin);
+      if (!isAdmin) {
+        el.classList.remove('flex', 'sm:flex', 'md:flex', 'lg:flex', 'inline-flex', 'block');
+      }
+    }
+  });
+
   const addResourceBtn = document.querySelector('button[onclick="openAddResourceModal()"]');
   const addModuleBtn = document.querySelector('button[onclick="openAddModuleModal()"]');
+  if (addResourceBtn) addResourceBtn.classList.toggle('hidden', !isAdmin);
+  if (addModuleBtn) addModuleBtn.classList.toggle('hidden', !isAdmin);
 
-  const btnAdminCenterSidebar = document.getElementById('btnAdminCenterSidebar');
   if (isAdmin) {
-    if (btnAdminCenterSidebar) { btnAdminCenterSidebar.classList.remove('hidden'); btnAdminCenterSidebar.classList.add('flex'); }
-    if (dlWrapper) dlWrapper.classList.remove('hidden');
-    if (approvalTopBtn) approvalTopBtn.classList.remove('hidden');
-    if (topAdminPanelBtn) topAdminPanelBtn.classList.remove('hidden');
-    if (btnAdminAddNotice) btnAdminAddNotice.classList.remove('hidden');
-    if (moduleEditTrigger) moduleEditTrigger.classList.remove('hidden');
-    if (addResourceBtn) addResourceBtn.classList.remove('hidden');
-    if (addModuleBtn) addModuleBtn.classList.remove('hidden');
     updateApprovalCountBadge();
-  } else {
-    if (btnAdminCenterSidebar) { btnAdminCenterSidebar.classList.add('hidden'); btnAdminCenterSidebar.classList.remove('flex'); }
-    if (dlWrapper) dlWrapper.classList.add('hidden');
-    if (approvalTopBtn) approvalTopBtn.classList.add('hidden');
-    if (topAdminPanelBtn) topAdminPanelBtn.classList.add('hidden');
-    if (btnAdminAddNotice) btnAdminAddNotice.classList.add('hidden');
-    if (moduleEditTrigger) moduleEditTrigger.classList.add('hidden');
-    if (addResourceBtn) addResourceBtn.classList.add('hidden');
-    if (addModuleBtn) addModuleBtn.classList.add('hidden');
   }
 }
 
@@ -1989,49 +2019,112 @@ function updatePinnedBadge() {
 function renderSidebarCategories() {
   const container = document.getElementById('dynamicSidebarCategories');
   if (!container) return;
+
+  const hiddenCats = (() => {
+    try { return JSON.parse(localStorage.getItem('wlh_hidden_categories') || '[]'); } catch(e) { return []; }
+  })();
+
   const visibleCategories = CATEGORIES.filter(cat => {
+    if (hiddenCats.includes(cat.id)) return false;
     const allowed = modulePermissions[cat.id] || {
       positions: cat.allowedPositions || ['all'],
       users: cat.allowedUsers || []
     };
     return isEntityVisibleToUser(allowed, CURRENT_USER);
   });
+
+  const isAdmin = isAdminUser();
+
   container.innerHTML = visibleCategories.map(cat => {
     const catCount = ALL_ITEMS.filter(it => (it.modules.includes(cat.id) || it.tab === cat.id) && isFileVisibleToUser(it, CURRENT_USER)).length;
     const isActive = (activeView === 'resources' && currentCategory === cat.id && !isPinnedOnly);
 
+    const adminActionsHtml = isAdmin ? `
+      <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition mr-1">
+        <button 
+          onclick="openEditModuleModal('${cat.id}', event)" 
+          title="Edit Category: ${escapeHtml(cat.name)}"
+          class="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-xs transition"
+        >
+          <i class="fa-solid fa-pen text-[10px]"></i>
+        </button>
+        <button 
+          onclick="adminDeleteCategory('${cat.id}', event)" 
+          title="Remove Category: ${escapeHtml(cat.name)}"
+          class="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded text-xs transition"
+        >
+          <i class="fa-solid fa-trash-can text-[10px]"></i>
+        </button>
+      </div>
+    ` : '';
+
     return `
-      <div class="relative group">
+      <div class="relative group flex items-center">
         <button 
           onclick="switchToResourcesTab('${cat.id}')" 
           id="cat-btn-${cat.id}"
           class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
             isActive 
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
-              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' 
+              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-white'
           }"
         >
           <div class="flex items-center gap-2.5 truncate">
-            <span class="text-base flex-shrink-0">${cat.icon}</span>
-            <span class="truncate">${cat.name}</span>
+            <span class="text-base flex-shrink-0">${cat.icon || '📁'}</span>
+            <span class="truncate">${escapeHtml(cat.name)}</span>
           </div>
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            ${adminActionsHtml}
             <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${
-              isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400 group-hover:text-slate-200'
+              isActive ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'
             }">${catCount}</span>
           </div>
-        </button>
-
-        <button 
-          onclick="openEditModuleModal('${cat.id}', event)" 
-          title="Edit module name, emoji, or topics"
-          class="absolute right-7 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-400 p-1 opacity-0 group-hover:opacity-100 transition text-[11px]"
-        >
-          <i class="fa-solid fa-pen"></i>
         </button>
       </div>
     `;
   }).join('');
+}
+
+function adminDeleteCategory(catId, event) {
+  if (event) event.stopPropagation();
+  if (!isAdminUser()) return;
+  const catObj = CATEGORIES.find(c => c.id === catId);
+  const catName = catObj ? catObj.name : catId;
+
+  if (!confirm('Are you sure you want to delete category "' + catName + '"?')) return;
+
+  customModules = customModules.filter(m => m.id !== catId);
+  localStorage.setItem('wlh_custom_modules', JSON.stringify(customModules));
+  fbSync('custom_modules', customModules);
+
+  let hiddenCats = [];
+  try { hiddenCats = JSON.parse(localStorage.getItem('wlh_hidden_categories') || '[]'); } catch(e) {}
+  if (!hiddenCats.includes(catId)) {
+    hiddenCats.push(catId);
+    localStorage.setItem('wlh_hidden_categories', JSON.stringify(hiddenCats));
+    fbSync('hidden_categories', hiddenCats);
+  }
+
+  delete moduleEdits[catId];
+  delete topicEdits[catId];
+  delete modulePermissions[catId];
+  localStorage.setItem('wlh_module_edits', JSON.stringify(moduleEdits));
+  localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
+  localStorage.setItem('wlh_module_permissions', JSON.stringify(modulePermissions));
+  fbSync('module_edits', moduleEdits);
+  fbSync('topic_edits', topicEdits);
+  fbSync('module_permissions', modulePermissions);
+
+  refreshDataModel();
+  updateTotalCounts();
+  renderSidebarCategories();
+  populateAddResourceModules();
+  if (currentCategory === catId) {
+    selectCategory('all');
+  } else {
+    renderRecords();
+  }
+  showToast('Category "' + catName + '" deleted.');
 }
 
 function selectCategory(catId) {
@@ -3879,32 +3972,69 @@ function renderHomeNotices() {
     return;
   }
 
+  const isAdmin = isAdminUser();
+
   container.innerHTML = NOTICES_LIST.map(n => {
     const colorClasses = n.color === 'rose' 
-      ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' 
+      ? 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300' 
       : n.color === 'amber' 
-      ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
       : n.color === 'emerald'
-      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-      : 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300';
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+      : 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300';
+
+    // Admin-only controls
+    const adminControlsHtml = isAdmin ? `
+      <div class="flex items-center gap-1 flex-shrink-0">
+        <button onclick="openEditNoticeModal('${n.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-xs" title="Edit Notice">
+          <i class="fa-solid fa-pen text-[10px]"></i>
+        </button>
+        <button onclick="deleteNotice('${n.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition text-xs" title="Delete Notice">
+          <i class="fa-solid fa-trash-can text-[10px]"></i>
+        </button>
+      </div>
+    ` : '';
+
+    // Embed Link (YouTube or Web URL)
+    let embedHtml = '';
+    const targetLink = n.embedLink || n.link;
+    if (targetLink) {
+      const ytMatch = targetLink.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|live\/))([\w-]{11})/);
+      if (ytMatch) {
+        embedHtml = `
+          <div class="mt-2.5 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black aspect-video relative shadow-xs">
+            <iframe class="w-full h-full" src="https://www.youtube-nocookie.com/embed/${ytMatch[1]}" title="${escapeHtml(n.title)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          </div>
+        `;
+      } else {
+        embedHtml = `
+          <div class="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <a href="${targetLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white border border-slate-200 dark:border-slate-700 text-xs font-bold transition shadow-xs">
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-indigo-500"></i>
+              <span class="truncate max-w-[240px]">Open Link: ${escapeHtml(targetLink)}</span>
+            </a>
+          </div>
+        `;
+      }
+    }
 
     // Render attachments if any
     let attachHtml = '';
     if (n.attachments && n.attachments.length > 0) {
       attachHtml = `
-        <div class="pt-2 border-t border-slate-800/80 space-y-1">
-          <div class="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-            <i class="fa-solid fa-paperclip text-rose-400"></i> Attached Files (${n.attachments.length})
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-1">
+          <div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            <i class="fa-solid fa-paperclip text-rose-500"></i> Attached Files (${n.attachments.length})
           </div>
           <div class="flex flex-wrap gap-1.5">
             ${n.attachments.map(att => {
-              const icon = att.type && att.type.includes('pdf') ? 'fa-file-pdf text-rose-400'
-                : att.type && att.type.includes('audio') ? 'fa-file-audio text-purple-400'
-                : att.type && att.type.includes('video') ? 'fa-file-video text-cyan-400'
-                : att.type && att.type.includes('image') ? 'fa-file-image text-emerald-400'
-                : 'fa-file-lines text-indigo-400';
+              const icon = att.type && att.type.includes('pdf') ? 'fa-file-pdf text-rose-500'
+                : att.type && att.type.includes('audio') ? 'fa-file-audio text-purple-500'
+                : att.type && att.type.includes('video') ? 'fa-file-video text-cyan-500'
+                : att.type && att.type.includes('image') ? 'fa-file-image text-emerald-500'
+                : 'fa-file-lines text-indigo-500';
               return `
-                <a href="${att.url}" target="_blank" download="${att.name || 'document'}" class="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-[11px] text-slate-200 flex items-center gap-1.5 transition">
+                <a href="${att.url}" target="_blank" download="${att.name || 'document'}" class="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 text-[11px] text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition shadow-xs">
                   <i class="fa-solid ${icon}"></i>
                   <span class="truncate max-w-[150px]">${att.name || 'Attached File'}</span>
                   <i class="fa-solid fa-arrow-down text-[9px] text-slate-400 ml-0.5"></i>
@@ -3917,40 +4047,21 @@ function renderHomeNotices() {
     }
 
     return `
-      <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2 shadow-sm">
+      <div class="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-2.5 shadow-xs hover:shadow-sm transition">
         <div class="flex items-center justify-between text-xs">
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${colorClasses}">${n.category}</span>
-          <span class="text-slate-500 text-[10px] font-mono">${n.date}</span>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${colorClasses}">${escapeHtml(n.category)}</span>
+            <span class="text-slate-400 text-[10px] font-mono">${n.date}</span>
+          </div>
+          ${adminControlsHtml}
         </div>
-        <h4 class="font-bold text-white text-xs">${n.title}</h4>
-        <p class="text-slate-300 text-[11px] leading-relaxed whitespace-pre-line">${n.content}</p>
+        <h4 class="font-extrabold text-slate-800 dark:text-white text-xs">${escapeHtml(n.title)}</h4>
+        <p class="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed whitespace-pre-line">${escapeHtml(n.content)}</p>
+        ${embedHtml}
         ${attachHtml}
       </div>
     `;
   }).join('');
-}
-
-function renderHomeSchedule() {
-  const container = document.getElementById('homeScheduleContainer');
-  if (!container) return;
-
-  container.innerHTML = WORSHIP_SCHEDULE.map(s => `
-    <div class="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-base flex-shrink-0">
-          ${s.icon}
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h4 class="font-extrabold text-white text-xs">${s.day}</h4>
-            <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-800 text-slate-300 border border-slate-700">${s.badge}</span>
-          </div>
-          <p class="text-[11px] text-slate-400 mt-0.5">${s.desc}</p>
-        </div>
-      </div>
-      <span class="text-xs font-mono font-bold text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-500/20 flex-shrink-0">${s.time}</span>
-    </div>
-  `).join('');
 }
 
 // New Arrivals Modal
@@ -4942,14 +5053,67 @@ function loadFirebasePanelData() { renderStarFirebaseTab(); }
 
 
 
-// Post Notice Form
+// Post / Edit Notice Form
 function openAddNoticeModal() {
+  const targetIdInput = document.getElementById('editNoticeTargetId');
+  const titleInput = document.getElementById('noticeTitleInput');
+  const contentInput = document.getElementById('noticeContentInput');
+  const embedInput = document.getElementById('noticeEmbedLinkInput');
+  const linkInput = document.getElementById('noticeLinkInput');
+  const modalTitle = document.getElementById('noticeModalTitle');
+  const submitText = document.getElementById('noticeModalSubmitText');
+
+  if (targetIdInput) targetIdInput.value = '';
+  if (titleInput) titleInput.value = '';
+  if (contentInput) contentInput.value = '';
+  if (embedInput) embedInput.value = '';
+  if (linkInput) linkInput.value = '';
+  if (modalTitle) modalTitle.textContent = 'Post New Notice';
+  if (submitText) submitText.textContent = 'Publish Notice';
+
+  pendingNoticeAttachments = [];
+  const container = document.getElementById('noticeSelectedFilesContainer');
+  if (container) container.innerHTML = '';
+
   const modal = document.getElementById('addNoticeModal');
-  const container = document.getElementById('addNoticeModalContainer');
-  if (!modal || !container) return;
+  const modalContainer = document.getElementById('addNoticeModalContainer');
+  if (!modal || !modalContainer) return;
   modal.classList.remove('opacity-0', 'pointer-events-none');
-  container.classList.remove('scale-95');
-  container.classList.add('scale-100');
+  modalContainer.classList.remove('scale-95');
+  modalContainer.classList.add('scale-100');
+}
+
+function openEditNoticeModal(id) {
+  const n = NOTICES_LIST.find(item => item.id === id);
+  if (!n) return;
+
+  const targetIdInput = document.getElementById('editNoticeTargetId');
+  const titleInput = document.getElementById('noticeTitleInput');
+  const catInput = document.getElementById('noticeCategoryInput');
+  const colorInput = document.getElementById('noticeColorInput');
+  const contentInput = document.getElementById('noticeContentInput');
+  const embedInput = document.getElementById('noticeEmbedLinkInput');
+  const modalTitle = document.getElementById('noticeModalTitle');
+  const submitText = document.getElementById('noticeModalSubmitText');
+
+  if (targetIdInput) targetIdInput.value = n.id;
+  if (titleInput) titleInput.value = n.title || '';
+  if (catInput) catInput.value = n.category || 'Important';
+  if (colorInput) colorInput.value = n.color || 'indigo';
+  if (contentInput) contentInput.value = n.content || '';
+  if (embedInput) embedInput.value = n.embedLink || n.link || '';
+  if (modalTitle) modalTitle.textContent = 'Edit Notice';
+  if (submitText) submitText.textContent = 'Update Notice';
+
+  pendingNoticeAttachments = n.attachments ? [...n.attachments] : [];
+  renderNoticeAttachmentPills();
+
+  const modal = document.getElementById('addNoticeModal');
+  const modalContainer = document.getElementById('addNoticeModalContainer');
+  if (!modal || !modalContainer) return;
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+  modalContainer.classList.remove('scale-95');
+  modalContainer.classList.add('scale-100');
 }
 
 function closeAddNoticeModal() {
@@ -4960,7 +5124,6 @@ function closeAddNoticeModal() {
   container.classList.remove('scale-100');
   container.classList.add('scale-95');
 }
-
 
 function handleNoticeFileSelect(input) {
   const container = document.getElementById('noticeSelectedFilesContainer');
@@ -4985,10 +5148,10 @@ function renderNoticeAttachmentPills() {
   const container = document.getElementById('noticeSelectedFilesContainer');
   if (!container) return;
   container.innerHTML = pendingNoticeAttachments.map((att, i) => `
-    <span class="px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-[10px] text-slate-300 flex items-center gap-1">
-      <i class="fa-solid fa-file text-rose-400 text-[9px]"></i>
+    <span class="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] text-slate-700 dark:text-slate-300 flex items-center gap-1">
+      <i class="fa-solid fa-file text-rose-500 text-[9px]"></i>
       <span class="truncate max-w-[120px]">${att.name}</span>
-      <button type="button" onclick="removeNoticeAttachment(${i})" class="text-slate-400 hover:text-rose-400 ml-1">×</button>
+      <button type="button" onclick="removeNoticeAttachment(${i})" class="text-slate-400 hover:text-rose-500 ml-1">×</button>
     </span>
   `).join('');
 }
@@ -5000,10 +5163,12 @@ function removeNoticeAttachment(index) {
 
 function handleSaveNotice(e) {
   e.preventDefault();
+  const targetId = document.getElementById('editNoticeTargetId') ? document.getElementById('editNoticeTargetId').value : '';
   const title = document.getElementById('noticeTitleInput').value.trim();
   const category = document.getElementById('noticeCategoryInput').value;
   const color = document.getElementById('noticeColorInput').value;
   const content = document.getElementById('noticeContentInput').value.trim();
+  const embedLink = document.getElementById('noticeEmbedLinkInput') ? document.getElementById('noticeEmbedLinkInput').value.trim() : '';
 
   const linkUrl = document.getElementById('noticeLinkInput') ? document.getElementById('noticeLinkInput').value.trim() : '';
   const finalAttachments = [...pendingNoticeAttachments];
@@ -5016,31 +5181,51 @@ function handleSaveNotice(e) {
     });
   }
 
-  const newNotice = {
-    id: 'not_' + Date.now(),
-    title,
-    category,
-    color,
-    content,
-    attachments: finalAttachments,
-    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    author: CURRENT_USER.fullName || 'Admin'
-  };
+  if (targetId) {
+    const idx = NOTICES_LIST.findIndex(n => n.id === targetId);
+    if (idx !== -1) {
+      NOTICES_LIST[idx] = {
+        ...NOTICES_LIST[idx],
+        title,
+        category,
+        color,
+        content,
+        embedLink,
+        attachments: finalAttachments,
+        updatedAt: new Date().toISOString()
+      };
+    }
+    showToast('Notice updated successfully!');
+  } else {
+    const newNotice = {
+      id: 'not_' + Date.now(),
+      title,
+      category,
+      color,
+      content,
+      embedLink,
+      attachments: finalAttachments,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      author: CURRENT_USER ? (CURRENT_USER.fullName || 'Admin') : 'Admin'
+    };
+    NOTICES_LIST.unshift(newNotice);
+    showToast('Notice published successfully!');
+  }
+
   pendingNoticeAttachments = [];
   if (document.getElementById('noticeSelectedFilesContainer')) {
     document.getElementById('noticeSelectedFilesContainer').innerHTML = '';
   }
 
-  NOTICES_LIST.unshift(newNotice);
   localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
   fbSync('notices', NOTICES_LIST);
   closeAddNoticeModal();
   renderHomeNotices();
   renderAdminPanelNotices();
-  showToast('Notice published successfully!');
 }
 
 function deleteNotice(id) {
+  if (!isAdminUser()) return;
   if (!confirm('Are you sure you want to delete this notice?')) return;
   NOTICES_LIST = NOTICES_LIST.filter(n => n.id !== id);
   localStorage.setItem('l_support_notices', JSON.stringify(NOTICES_LIST));
@@ -5486,11 +5671,32 @@ function setupRealtimeListeners() {
 // ========================================================
 // INTERACTIVE SCHEDULE & CALENDAR LOGIC
 // ========================================================
+let activeScheduleFilter = 'all';
+
+function setScheduleFilter(filter) {
+  activeScheduleFilter = filter;
+  renderHomeSchedule();
+}
+
+function toggleScheduleEmbed(id) {
+  const el = document.getElementById('schedEmbed_' + id);
+  if (el) el.classList.toggle('hidden');
+}
+
+function copyScheduleLink(link) {
+  if (!link) return;
+  navigator.clipboard.writeText(link).then(() => {
+    showToast('Link copied to clipboard!');
+  }).catch(() => {
+    showToast('Link: ' + link);
+  });
+}
+
 function renderHomeSchedule() {
   const container = document.getElementById('homeScheduleContainer');
   if (!container) return;
 
-  const isAdmin = CURRENT_USER && CURRENT_USER.role === 'admin';
+  const isAdmin = isAdminUser();
   const btnAdd = document.getElementById('btnAdminAddSchedule');
   if (btnAdd) btnAdd.classList.toggle('hidden', !isAdmin);
 
@@ -5506,63 +5712,141 @@ function renderHomeSchedule() {
     events = events.filter(e => e.date === activeCalendarSelectedDate);
   }
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Apply tab filters
+  if (activeScheduleFilter === 'upcoming') {
+    events = events.filter(e => (e.date || '') >= todayStr);
+  } else if (activeScheduleFilter === 'live') {
+    events = events.filter(e => e.date === todayStr);
+  } else if (activeScheduleFilter === 'repeating') {
+    events = events.filter(e => e.repeat && e.repeat !== 'none');
+  }
+
   const calendarStripHtml = `
-    <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2 mb-3">
+    <div class="p-3 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-2 mb-3 shadow-xs">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-bold text-white">${monthStr}</span>
-          ${activeCalendarSelectedDate ? `<button onclick="clearScheduleDateFilter()" class="text-[10px] text-sky-400 hover:underline">Show All</button>` : ''}
+          <span class="text-xs font-extrabold text-slate-800 dark:text-white">${monthStr}</span>
+          ${activeCalendarSelectedDate ? `<button onclick="clearScheduleDateFilter()" class="text-[10px] text-sky-600 dark:text-sky-400 font-bold hover:underline">Show All Dates</button>` : ''}
         </div>
         <div class="flex items-center gap-1">
-          <button onclick="changeCalendarMonth(-1)" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">‹</button>
-          <button onclick="changeCalendarMonth(1)" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">›</button>
+          <button onclick="changeCalendarMonth(-1)" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition flex items-center justify-center">‹</button>
+          <button onclick="changeCalendarMonth(1)" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition flex items-center justify-center">›</button>
         </div>
       </div>
-      <div class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400 font-bold">
+      <div class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400 font-bold uppercase">
         <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
       </div>
       <div class="grid grid-cols-7 gap-1" id="calendarDaysGrid">
         ${generateCalendarDaysHtml()}
       </div>
     </div>
+
+    <!-- Schedule Filter Pills -->
+    <div class="flex items-center gap-1.5 pb-2 mb-2 border-b border-slate-100 dark:border-slate-800 overflow-x-auto custom-scrollbar">
+      <button onclick="setScheduleFilter('all')" class="px-2.5 py-1 rounded-xl text-xs font-bold transition ${activeScheduleFilter === 'all' ? 'bg-sky-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}">All</button>
+      <button onclick="setScheduleFilter('upcoming')" class="px-2.5 py-1 rounded-xl text-xs font-bold transition ${activeScheduleFilter === 'upcoming' ? 'bg-sky-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}">Upcoming</button>
+      <button onclick="setScheduleFilter('live')" class="px-2.5 py-1 rounded-xl text-xs font-bold transition ${activeScheduleFilter === 'live' ? 'bg-sky-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}">🔴 Live / Today</button>
+      <button onclick="setScheduleFilter('repeating')" class="px-2.5 py-1 rounded-xl text-xs font-bold transition ${activeScheduleFilter === 'repeating' ? 'bg-sky-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}">🔁 Repeating</button>
+    </div>
   `;
 
   let eventsListHtml = '';
   if (events.length === 0) {
-    eventsListHtml = '<div class="py-6 text-center text-slate-500 text-xs">No services scheduled for this selection.</div>';
+    eventsListHtml = '<div class="py-6 text-center text-slate-500 text-xs font-medium">No services scheduled for this filter.</div>';
   } else {
     eventsListHtml = events.map(s => {
-      const isPast = s.date && new Date(s.date + 'T23:59:59') < new Date();
+      const isToday = s.date === todayStr;
+      const isPast = s.date && s.date < todayStr;
+      const isUpcoming = s.date && s.date > todayStr;
+
+      let statusBadgeHtml = '';
+      if (isToday) {
+        statusBadgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-50 text-red-600 border border-red-200 flex items-center gap-1 animate-pulse"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Live / Today</span>`;
+      } else if (isUpcoming) {
+        statusBadgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">Upcoming</span>`;
+      } else {
+        statusBadgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">Completed</span>`;
+      }
+
+      let repeatBadgeHtml = '';
+      if (s.repeat && s.repeat !== 'none') {
+        const repLabel = s.repeat.charAt(0).toUpperCase() + s.repeat.slice(1);
+        repeatBadgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1"><i class="fa-solid fa-arrows-rotate text-[9px]"></i> ${repLabel}</span>`;
+      }
+
+      let linkSectionHtml = '';
+      if (s.link) {
+        const ytMatch = s.link.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|live\/))([\w-]{11})/);
+        if (ytMatch) {
+          linkSectionHtml = `
+            <div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
+              <a href="${s.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs border border-red-200 transition shadow-xs">
+                <i class="fa-brands fa-youtube text-red-600 text-sm"></i> Watch Stream / Video
+                <i class="fa-solid fa-arrow-up-right-from-square text-[9px] ml-0.5"></i>
+              </a>
+              <button onclick="toggleScheduleEmbed('${s.id}')" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition flex items-center gap-1">
+                <i class="fa-solid fa-play text-[9px]"></i> Preview
+              </button>
+              <button onclick="copyScheduleLink('${escapeHtml(s.link)}')" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 text-xs transition" title="Copy Link">
+                <i class="fa-regular fa-copy text-[11px]"></i>
+              </button>
+            </div>
+            <div id="schedEmbed_${s.id}" class="hidden mt-2 rounded-2xl overflow-hidden border border-slate-200 bg-black aspect-video relative shadow-xs">
+              <iframe class="w-full h-full" src="https://www.youtube-nocookie.com/embed/${ytMatch[1]}" title="${escapeHtml(s.title)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+          `;
+        } else {
+          linkSectionHtml = `
+            <div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
+              <a href="${s.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs border border-sky-200 transition shadow-xs">
+                <i class="fa-solid fa-video text-sky-600 text-xs"></i> Join Meeting / Stream
+                <i class="fa-solid fa-arrow-up-right-from-square text-[9px] ml-0.5"></i>
+              </a>
+              <button onclick="copyScheduleLink('${escapeHtml(s.link)}')" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 text-xs transition" title="Copy Link">
+                <i class="fa-regular fa-copy text-[11px]"></i>
+              </button>
+            </div>
+          `;
+        }
+      }
+
       return `
-        <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between gap-3 shadow-sm hover:border-sky-500/30 transition">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-base flex-shrink-0">
-              ${s.icon || '⛪'}
+        <div class="p-3.5 bg-white dark:bg-slate-950/80 rounded-2xl border border-slate-200/90 dark:border-slate-800 flex flex-col gap-2 shadow-xs hover:border-sky-300 transition">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30 flex items-center justify-center text-lg flex-shrink-0">
+                ${s.icon || '⛪'}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="font-extrabold text-slate-800 dark:text-white text-xs truncate">${escapeHtml(s.title)}</h4>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${escapeHtml(s.category || 'Service')}</span>
+                  ${repeatBadgeHtml}
+                  ${statusBadgeHtml}
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
+                  <span><i class="fa-solid fa-calendar-day text-[10px] mr-1 text-slate-400"></i>${s.date}</span>
+                  <span>•</span>
+                  <span class="text-sky-700 dark:text-sky-300 font-mono font-bold">${s.time}</span>
+                </div>
+              </div>
             </div>
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <h4 class="font-extrabold text-white text-xs truncate">${s.title}</h4>
-                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-800 text-slate-300 border border-slate-700">${s.category || 'Service'}</span>
-              </div>
-              <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
-                <span><i class="fa-solid fa-calendar-day text-[10px] mr-1 text-slate-500"></i>${s.date}</span>
-                <span>•</span>
-                <span class="text-sky-300 font-mono font-semibold">${s.time}</span>
-              </div>
-              ${s.notes ? `<p class="text-[10px] text-slate-400 mt-1 line-clamp-1 italic">${s.notes}</p>` : ''}
+            
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              ${isAdmin ? `
+                <button onclick="editScheduleEvent('${s.id}')" class="p-1.5 text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition text-xs" title="Edit Event">
+                  <i class="fa-solid fa-pen text-[10px]"></i>
+                </button>
+                <button onclick="deleteScheduleEvent('${s.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition text-xs" title="Delete Event">
+                  <i class="fa-solid fa-trash-can text-[10px]"></i>
+                </button>
+              ` : ''}
             </div>
           </div>
-          
-          <div class="flex items-center gap-1.5 flex-shrink-0">
-            ${isAdmin ? `
-              <button onclick="editScheduleEvent('${s.id}')" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition text-xs" title="Edit">
-                <i class="fa-solid fa-pen text-[10px]"></i>
-              </button>
-              <button onclick="deleteScheduleEvent('${s.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition text-xs" title="Delete">
-                <i class="fa-solid fa-trash-can text-[10px]"></i>
-              </button>
-            ` : ''}
-          </div>
+          ${s.notes ? `<p class="text-[11px] text-slate-600 dark:text-slate-400 pl-13 italic">${escapeHtml(s.notes)}</p>` : ''}
+          ${linkSectionHtml}
         </div>
       `;
     }).join('');
@@ -5591,17 +5875,17 @@ function generateCalendarDaysHtml() {
     if (isSelected) {
       cls += 'bg-sky-600 text-white shadow-sm';
     } else if (isToday) {
-      cls += 'bg-slate-800 text-amber-300 border border-amber-500/40';
+      cls += 'bg-amber-50 text-amber-800 border border-amber-300 dark:bg-slate-800 dark:text-amber-300';
     } else if (hasEvent) {
-      cls += 'bg-slate-850 text-slate-200 hover:bg-slate-800 border border-slate-700/60';
+      cls += 'bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200 dark:bg-slate-800 dark:text-slate-200';
     } else {
-      cls += 'text-slate-400 hover:bg-slate-800/60';
+      cls += 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/60';
     }
 
     html += `
       <button type="button" onclick="selectCalendarDate('${dStr}')" class="${cls}">
         ${d}
-        ${hasEvent && !isSelected ? '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-sky-400"></span>' : ''}
+        ${hasEvent && !isSelected ? '<span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-sky-500"></span>' : ''}
       </button>
     `;
   }
@@ -5635,13 +5919,25 @@ function clearScheduleDateFilter() {
 }
 
 function openAddScheduleModal() {
-  document.getElementById('editScheduleTargetId').value = '';
-  document.getElementById('scheduleModalTitle').textContent = 'Add Worship Event';
-  document.getElementById('schedTitleInput').value = '';
-  document.getElementById('schedDateInput').value = new Date().toISOString().split('T')[0];
-  document.getElementById('schedTimeInput').value = '07:30 PM';
-  document.getElementById('schedDescInput').value = '';
-  document.getElementById('schedIconInput').value = '⛪';
+  const targetInput = document.getElementById('editScheduleTargetId');
+  const titleText = document.getElementById('scheduleModalTitle');
+  const titleInput = document.getElementById('schedTitleInput');
+  const dateInput = document.getElementById('schedDateInput');
+  const timeInput = document.getElementById('schedTimeInput');
+  const repeatInput = document.getElementById('schedRepeatInput');
+  const linkInput = document.getElementById('schedLinkInput');
+  const descInput = document.getElementById('schedDescInput');
+  const iconInput = document.getElementById('schedIconInput');
+
+  if (targetInput) targetInput.value = '';
+  if (titleText) titleText.textContent = 'Add Schedule Event';
+  if (titleInput) titleInput.value = '';
+  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+  if (timeInput) timeInput.value = '07:30 PM';
+  if (repeatInput) repeatInput.value = 'none';
+  if (linkInput) linkInput.value = '';
+  if (descInput) descInput.value = '';
+  if (iconInput) iconInput.value = '⛪';
 
   const modal = document.getElementById('addScheduleModal');
   const container = document.getElementById('addScheduleModalContainer');
@@ -5668,14 +5964,16 @@ function handleSaveSchedule(e) {
   const icon = document.getElementById('schedIconInput').value.trim() || '⛪';
   const date = document.getElementById('schedDateInput').value;
   const time = document.getElementById('schedTimeInput').value.trim();
+  const repeat = document.getElementById('schedRepeatInput') ? document.getElementById('schedRepeatInput').value : 'none';
+  const link = document.getElementById('schedLinkInput') ? document.getElementById('schedLinkInput').value.trim() : '';
   const notes = document.getElementById('schedDescInput').value.trim();
 
   if (targetId) {
     const idx = SCHEDULES_LIST.findIndex(s => s.id === targetId);
     if (idx !== -1) {
-      SCHEDULES_LIST[idx] = { ...SCHEDULES_LIST[idx], title, category, icon, date, time, notes };
+      SCHEDULES_LIST[idx] = { ...SCHEDULES_LIST[idx], title, category, icon, date, time, repeat, link, notes };
     }
-    showToast('Event updated!');
+    showToast('Schedule event updated!');
   } else {
     const newEvent = {
       id: 'sch_' + Date.now(),
@@ -5684,8 +5982,10 @@ function handleSaveSchedule(e) {
       icon,
       date,
       time,
+      repeat,
+      link,
       notes,
-      author: CURRENT_USER.fullName || 'Admin'
+      author: CURRENT_USER ? (CURRENT_USER.fullName || 'Admin') : 'Admin'
     };
     SCHEDULES_LIST.push(newEvent);
     showToast('Event added to schedule!');
@@ -5701,23 +6001,38 @@ function editScheduleEvent(id) {
   const item = SCHEDULES_LIST.find(s => s.id === id);
   if (!item) return;
 
-  document.getElementById('editScheduleTargetId').value = item.id;
-  document.getElementById('scheduleModalTitle').textContent = 'Edit Worship Event';
-  document.getElementById('schedTitleInput').value = item.title;
-  document.getElementById('schedTypeInput').value = item.category || 'Tuesday Service';
-  document.getElementById('schedIconInput').value = item.icon || '⛪';
-  document.getElementById('schedDateInput').value = item.date;
-  document.getElementById('schedTimeInput').value = item.time;
-  document.getElementById('schedDescInput').value = item.notes || '';
+  const targetInput = document.getElementById('editScheduleTargetId');
+  const titleText = document.getElementById('scheduleModalTitle');
+  const titleInput = document.getElementById('schedTitleInput');
+  const typeInput = document.getElementById('schedTypeInput');
+  const iconInput = document.getElementById('schedIconInput');
+  const dateInput = document.getElementById('schedDateInput');
+  const timeInput = document.getElementById('schedTimeInput');
+  const repeatInput = document.getElementById('schedRepeatInput');
+  const linkInput = document.getElementById('schedLinkInput');
+  const descInput = document.getElementById('schedDescInput');
+
+  if (targetInput) targetInput.value = item.id;
+  if (titleText) titleText.textContent = 'Edit Schedule Event';
+  if (titleInput) titleInput.value = item.title;
+  if (typeInput) typeInput.value = item.category || 'Tuesday Service';
+  if (iconInput) iconInput.value = item.icon || '⛪';
+  if (dateInput) dateInput.value = item.date;
+  if (timeInput) timeInput.value = item.time;
+  if (repeatInput) repeatInput.value = item.repeat || 'none';
+  if (linkInput) linkInput.value = item.link || '';
+  if (descInput) descInput.value = item.notes || '';
 
   const modal = document.getElementById('addScheduleModal');
   const container = document.getElementById('addScheduleModalContainer');
+  if (!modal || !container) return;
   modal.classList.remove('opacity-0', 'pointer-events-none');
   container.classList.remove('scale-95');
   container.classList.add('scale-100');
 }
 
 function deleteScheduleEvent(id) {
+  if (!isAdminUser()) return;
   if (!confirm('Are you sure you want to remove this event from the schedule?')) return;
   SCHEDULES_LIST = SCHEDULES_LIST.filter(s => s.id !== id);
   localStorage.setItem('l_support_schedules', JSON.stringify(SCHEDULES_LIST));
