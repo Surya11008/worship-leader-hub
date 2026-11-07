@@ -320,28 +320,32 @@
   <!-- ======================================================== -->
   <!-- PORTAL APPLICATION WRAPPER (HIDDEN UNTIL AUTHENTICATED)  -->
   <!-- ======================================================== -->
-  <div id="portalAppRoot" class="hidden h-full flex flex-1 overflow-hidden w-full" style="display: none;">
+  <div id="portalAppRoot" class="hidden h-full flex flex-col flex-1 overflow-hidden w-full" style="display: none;">
+    <!-- Top Rainbow Aesthetic Accent Bar -->
+    <div class="h-1.5 w-full bg-gradient-to-r from-pink-500 via-purple-500 via-indigo-500 via-cyan-400 via-emerald-400 via-yellow-400 to-rose-400 flex-shrink-0 animate-pulse shadow-xs"></div>
+
+    <div class="flex flex-1 h-[calc(100%-6px)] overflow-hidden w-full">
   <!-- ======================================================== -->
   <!-- COLLAPSIBLE SIDEBAR                                     -->
   <!-- ======================================================== -->
-  <aside id="mainSidebar" class="sidebar-transition w-72 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 z-40 fixed inset-y-0 left-0 md:static md:translate-x-0 -translate-x-full overflow-hidden">
+  <aside id="mainSidebar" class="sidebar-transition w-72 bg-white dark:bg-slate-900 border-r border-slate-200/90 dark:border-slate-800 flex flex-col flex-shrink-0 z-40 fixed inset-y-0 left-0 md:static md:translate-x-0 -translate-x-full overflow-hidden shadow-xs">
     
     <!-- App Branding -->
-    <div class="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950/60 flex-shrink-0">
+    <div class="h-16 flex items-center justify-between px-4 border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-950/60 flex-shrink-0">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 flex-shrink-0 text-lg border border-white/30">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 flex-shrink-0 text-lg border border-white/40">
           <i class="fa-solid fa-hands-holding-child"></i>
         </div>
         <div class="min-w-0 truncate">
-          <h1 class="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white leading-tight truncate flex items-center gap-1.5">
-            <span class="app-brand-title" data-ui-key="siteTitle">Support</span>
-            <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 font-bold border border-indigo-500/30 uppercase tracking-widest" data-ui-key="brandBadge">PORTAL</span>
+          <h1 class="font-black text-sm tracking-tight leading-tight truncate flex items-center gap-1.5">
+            <span class="app-brand-title bg-gradient-to-r from-violet-600 via-indigo-600 to-pink-500 bg-clip-text text-transparent font-black" data-ui-key="siteTitle">Support</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300 font-extrabold border border-indigo-200/80 dark:border-indigo-500/30 uppercase tracking-widest" data-ui-key="brandBadge">PORTAL</span>
           </h1>
-          <p class="text-[10px] font-medium text-slate-400 truncate" id="sidebarUserBranch">Central Portal</p>
+          <p class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate" id="sidebarUserBranch">Central Portal</p>
         </div>
       </div>
       
-      <button onclick="toggleSidebar()" class="relative text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 transition border border-slate-700" title="Toggle Sidebar">
+      <button onclick="toggleSidebar()" class="relative text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white p-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700 transition border border-slate-200/80 dark:border-slate-700 shadow-2xs" title="Toggle Sidebar">
         <i class="fa-solid fa-angles-left text-xs"></i>
         <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -350,29 +354,29 @@
       </button>
     </div>
 
-    <!-- Active User & Status Card -->
+    <!-- Active User & Status Card (Daylight Fresh & Cute) -->
     <div class="p-3.5 flex-shrink-0">
-      <div class="p-3 rounded-2xl bg-gradient-to-br from-slate-800/90 to-slate-800/40 border border-slate-700/60 shadow-inner">
+      <div class="p-3 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-pink-50/40 dark:from-slate-800/90 dark:to-slate-800/40 border border-indigo-100/90 dark:border-slate-700/60 shadow-xs">
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider" id="sidebarUserRole">Admin Online</span>
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider" id="sidebarUserRole">Admin Online</span>
           </div>
-          <button onclick="openSettingsModal('audit')" class="text-[10px] text-slate-400 hover:text-slate-200 flex items-center gap-1" title="View online users">
+          <button onclick="openSettingsModal('audit')" class="text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1 font-semibold" title="View online users">
             <i class="fa-solid fa-users text-[10px]"></i>
             <span id="sidebarOnlineBadge">1 Online</span>
           </button>
         </div>
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-xs font-bold text-white truncate" id="sidebarUserName">Surya</div>
-            <div class="text-[10px] text-slate-400 truncate" id="sidebarUserZion"></div>
+            <div class="text-xs font-bold text-slate-800 dark:text-white truncate" id="sidebarUserName">Surya</div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate font-medium" id="sidebarUserZion"></div>
           </div>
           <div class="flex items-center gap-1">
-            <button onclick="openSettingsModal('profile')" class="text-xs p-1.5 rounded-lg bg-slate-700/60 hover:bg-indigo-600 text-slate-300 hover:text-white transition" title="User Settings">
+            <button onclick="openSettingsModal('profile')" class="text-xs p-1.5 rounded-lg bg-white dark:bg-slate-700/60 hover:bg-indigo-600 text-slate-600 hover:text-white border border-slate-200 dark:border-transparent transition shadow-2xs" title="User Settings">
               <i class="fa-solid fa-gear"></i>
             </button>
-            <button onclick="handleLogout()" class="text-xs p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition" title="Log Out">
+            <button onclick="handleLogout()" class="text-xs p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition shadow-2xs" title="Log Out">
               <i class="fa-solid fa-right-from-bracket"></i>
             </button>
           </div>
@@ -386,58 +390,58 @@
       <button 
         onclick="switchView('home')" 
         id="btnHomeSidebar"
-        class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-slate-800 hover:bg-slate-750 border border-slate-700/80 text-white shadow-sm group"
+        class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-slate-100/90 hover:bg-indigo-50 border border-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-750 dark:border-slate-700/80 text-slate-800 dark:text-white shadow-2xs group"
       >
         <div class="flex items-center gap-2.5">
-          <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm group-hover:scale-110 transition">
+          <div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 flex items-center justify-center text-sm group-hover:scale-110 transition shadow-2xs">
             <i class="fa-solid fa-house"></i>
           </div>
           <span class="font-bold">Home</span>
         </div>
-        <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold uppercase">Main</span>
+        <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 font-extrabold uppercase">Main</span>
       </button>
 
       <!-- 3. ADMIN MANAGEMENT CENTER BUTTON (Admin Only) -->
       <button 
         onclick="openAdminControlPanel()" 
         id="btnAdminCenterSidebar"
-        class="hidden w-full items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-purple-800/80 hover:from-purple-800 hover:to-indigo-800 border border-purple-500/40 text-white shadow-md group cursor-pointer"
+        class="hidden w-full items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 border border-amber-300 text-white shadow-md shadow-orange-500/20 group cursor-pointer"
         title="Open Admin Management Center"
       >
         <div class="flex items-center gap-2.5">
-          <div class="w-7 h-7 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center text-sm group-hover:scale-110 transition flex-shrink-0">
-            <i class="fa-solid fa-crown text-amber-300"></i>
+          <div class="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center text-sm group-hover:scale-110 transition flex-shrink-0">
+            <i class="fa-solid fa-crown"></i>
           </div>
           <div class="text-left min-w-0">
             <div class="leading-tight font-extrabold truncate">Admin Center</div>
-            <div class="text-[9px] text-purple-200/90 truncate">Management Hub</div>
+            <div class="text-[9px] text-amber-100 truncate">Management Hub</div>
           </div>
         </div>
-        <span class="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-rose-500 text-white flex-shrink-0 hidden" id="sidebarPendingCountBadge">0</span>
+        <span class="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-white text-rose-600 flex-shrink-0 hidden" id="sidebarPendingCountBadge">0</span>
       </button>
 
       <!-- 2. DYNAMIC USER ROOM (e.g. Admin Room, David Room, Peter Room) -->
       <button 
         onclick="switchToMyRoom()" 
         id="btnMyRoomSidebar"
-        class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-gradient-to-r from-purple-950/70 to-indigo-950/70 hover:from-purple-900/80 hover:to-indigo-900/80 border border-purple-500/30 text-white shadow-sm group"
+        class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-gradient-to-r from-purple-50 hover:from-purple-100 to-indigo-50 hover:to-indigo-100 text-purple-900 dark:from-purple-950/70 dark:to-indigo-950/70 dark:text-white border border-purple-200 dark:border-purple-500/30 shadow-2xs group"
       >
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="w-7 h-7 rounded-lg bg-purple-500/30 text-purple-300 flex items-center justify-center text-sm group-hover:scale-110 transition flex-shrink-0">
+          <div class="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-500/30 dark:text-purple-300 flex items-center justify-center text-sm group-hover:scale-110 transition flex-shrink-0">
             <i class="fa-solid fa-book-bookmark"></i>
           </div>
           <div class="text-left min-w-0 truncate">
             <div class="leading-tight font-extrabold truncate" id="sidebarRoomBtnText">Admin Room</div>
-            <div class="text-[9px] text-purple-300/80 font-normal truncate">Ministry Journal</div>
+            <div class="text-[9px] text-purple-600 dark:text-purple-300/80 font-normal truncate">Ministry Journal</div>
           </div>
         </div>
-        <span class="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/30 flex-shrink-0" id="myRoomRecordsBadge">0</span>
+        <span class="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-purple-200 text-purple-800 dark:bg-purple-500/30 dark:text-purple-200 border border-purple-300 dark:border-purple-400/30 flex-shrink-0" id="myRoomRecordsBadge">0</span>
       </button>
     </div>
 
-    <!-- Categories Header with Actions -->
+    <!-- Modules & Categories Header with Actions -->
     <div class="px-4 pb-2 flex items-center justify-between flex-shrink-0">
-      <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Categories</span>
+      <span class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5"><i class="fa-solid fa-layer-group text-xs text-indigo-500"></i> Modules & Categories</span>
       <div class="flex items-center gap-1">
         <button 
           id="btnAdminAddCategory"
@@ -457,13 +461,13 @@
       <button 
         onclick="switchToResourcesTab('all')" 
         id="cat-btn-all"
-        class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition group bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+        class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 hover:scale-[1.015] active:scale-95 group bg-gradient-to-r from-violet-600 via-indigo-600 to-pink-500 text-white shadow-md shadow-indigo-600/25 border border-indigo-400/40"
       >
         <div class="flex items-center gap-2.5">
-          <span class="text-base">📋</span>
-          <span>All Resources</span>
+          <span class="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center text-sm shadow-2xs">📋</span>
+          <span class="font-extrabold tracking-wide">All Resources</span>
         </div>
-        <span class="text-[11px] px-2 py-0.5 rounded-full font-extrabold bg-white/20 text-white" id="allCountBadge">468</span>
+        <span class="text-[11px] px-2.5 py-0.5 rounded-full font-black bg-white/25 text-white shadow-2xs" id="allCountBadge">468</span>
       </button>
 
       <!-- Dynamic Categories populated via JS -->
@@ -473,12 +477,12 @@
     </nav>
 
     <!-- Sidebar Bottom Strip with Direct Logout -->
-    <div class="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-[11px] text-slate-400 flex-shrink-0">
-      <button onclick="openSettingsModal('profile')" class="hover:text-white flex items-center gap-1.5 transition">
-        <i class="fa-solid fa-sliders text-xs"></i>
+    <div class="p-3 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 flex-shrink-0">
+      <button onclick="openSettingsModal('profile')" class="hover:text-indigo-600 dark:hover:text-white flex items-center gap-1.5 transition font-semibold">
+        <i class="fa-solid fa-sliders text-xs text-indigo-500"></i>
         <span>Settings & Pin</span>
       </button>
-      <button onclick="handleLogout()" class="text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 transition" title="Log out">
+      <button onclick="handleLogout()" class="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-extrabold flex items-center gap-1 transition" title="Log out">
         <i class="fa-solid fa-right-from-bracket text-xs"></i>
         <span>Logout</span>
       </button>
@@ -491,24 +495,24 @@
   <!-- ======================================================== -->
   <!-- MAIN WORKSPACE & CONTENT AREA                           -->
   <!-- ======================================================== -->
-  <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-900 min-w-0">
+  <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-slate-900 min-w-0">
     
     <!-- Top Management Navbar -->
-    <header class="h-16 bg-slate-900 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-3 flex-shrink-0 z-20">
+    <header class="h-16 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-3 flex-shrink-0 z-20">
       
       <!-- Left: Toggle Sidebar Button & Breadcrumb -->
       <div class="flex items-center gap-3 min-w-0">
         <button 
           onclick="toggleSidebar()" 
-          class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+          class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 dark:hover:text-white transition shadow-2xs"
           title="Open / Close Sidebar"
         >
           <i class="fa-solid fa-bars text-sm"></i>
         </button>
         
-        <div class="flex items-center gap-2 text-xs font-medium text-slate-400 truncate">
-          <span class="font-bold text-white truncate" id="breadcrumbCurrent">All Resources (468)</span>
-          <span class="hidden lg:inline-flex items-center gap-1 text-[10px] bg-slate-800 px-2 py-0.5 rounded-full text-slate-400 border border-slate-700">
+        <div class="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
+          <span class="font-extrabold text-slate-800 dark:text-white truncate" id="breadcrumbCurrent">All Resources (468)</span>
+          <span class="hidden lg:inline-flex items-center gap-1 text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
             <span id="selectedCounterPill">0 selected</span>
           </span>
         </div>
@@ -658,16 +662,16 @@
     </header>
 
     <!-- Subgroups & Topics Filter Bar with Multi-Select by Topic -->
-    <div id="subgroupStripWrapper" class="bg-slate-900/90 border-b border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-shrink-0 overflow-x-auto custom-scrollbar">
+    <div id="subgroupStripWrapper" class="bg-white/95 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-shrink-0 overflow-x-auto custom-scrollbar">
       <div class="flex items-center gap-1.5 flex-nowrap" id="subgroupTabsContainer">
         <!-- Rendered by renderSubgroupTabs() -->
       </div>
       
-      <div class="text-[11px] font-medium text-slate-400 flex-shrink-0 flex items-center gap-2">
-        <button id="moduleEditTrigger" onclick="openEditCurrentModuleModal()" class="hidden text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+      <div class="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex-shrink-0 flex items-center gap-2">
+        <button id="moduleEditTrigger" onclick="openEditCurrentModuleModal()" class="hidden text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 font-bold">
           <i class="fa-solid fa-pen-to-square"></i> Edit Module
         </button>
-        <span>Total: <strong id="recordCountLabel" class="font-bold text-white">468</strong> items</span>
+        <span>Total: <strong id="recordCountLabel" class="font-extrabold text-slate-800 dark:text-white">468</strong> items</span>
       </div>
     </div>
 
@@ -2899,6 +2903,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=5.8"></script>
+  <script src="portal_engine.js?v=5.9"></script>
 </body>
 </html>
