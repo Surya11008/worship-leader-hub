@@ -24,7 +24,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
     <!-- Firebase Realtime Sync SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -42,8 +42,7 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
-            telugu: ['"Noto Sans Telugu"', 'sans-serif']
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif']
           },
           colors: {
             brand: {
@@ -1164,7 +1163,7 @@
         <div class="pt-2 border-t border-slate-800">
           <div class="flex items-center justify-between mb-1.5">
             <label class="block font-bold text-slate-300">
-              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> 3. Allowed Positions (ఎవరికి కనిపించాలి) *
+              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> 3. Allowed Positions *
             </label>
             <div class="flex items-center gap-2">
               <button type="button" onclick="toggleSelectAllPositions('editFilePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
@@ -1181,7 +1180,7 @@
         <div class="pt-2 border-t border-slate-800">
           <div class="flex items-center justify-between mb-1.5">
             <label class="block font-bold text-slate-300">
-              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> 4. Allowed Specific Members (వ్యక్తిగత సభ్యుల అనుమతి)
+              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> 4. Allowed Specific Members
             </label>
             <div class="flex items-center gap-2">
               <button type="button" onclick="toggleSelectAllUsers('editFileUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">Select All</button>
@@ -1312,7 +1311,7 @@
             </button>
           </div>
 
-          <!-- DIRECT DOWNLOAD BUTTON (🔥 డౌన్‌లోడ్ బటన్ - నేరుగా ఫైల్ డౌన్‌లోడ్ అవుతుంది) -->
+          <!-- DIRECT DOWNLOAD BUTTON -->
           <button 
             id="modalDownloadBtn" 
             onclick="triggerCurrentModalDirectDownload()"
@@ -1503,7 +1502,7 @@
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold text-slate-300">
-              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> Visible to Positions (ఎవరికి కనిపించాలి)
+              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> Visible to Positions
             </label>
             <div class="flex items-center gap-2">
               <button type="button" onclick="toggleSelectAllPositions('resourcePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
@@ -1520,7 +1519,7 @@
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold text-slate-300">
-              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Visible to Specific Members (వ్యక్తిగత సభ్యుల అనుమతి)
+              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Visible to Specific Members
             </label>
             <div class="flex items-center gap-2">
               <button type="button" onclick="toggleSelectAllUsers('resourceUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">Select All</button>
@@ -1623,7 +1622,7 @@
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold text-slate-300">
-              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> Visible to Positions (ఎవరికి కనిపించాలి)
+              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> Visible to Positions
             </label>
             <div class="flex items-center gap-2">
               <button type="button" onclick="toggleSelectAllPositions('modulePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
@@ -1640,7 +1639,7 @@
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold text-slate-300">
-              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Visible to Specific Members (వ్యక్తిగత సభ్యుల అనుమతి)
+              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Visible to Specific Members
             </label>
             <div class="flex items-center gap-2">
               <button type="button" onclick="toggleSelectAllUsers('moduleUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">Select All</button>
@@ -1731,7 +1730,7 @@
                 <input type="text" id="settingArea" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none">
               </div>
               <div class="col-span-2">
-                <label class="block font-bold text-slate-300 mb-1">Position (పదవి / బాధ్యత)</label>
+                <label class="block font-bold text-slate-300 mb-1">Position / Category</label>
                 <select id="settingPosition" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none">
 
             <option value="" disabled selected>Select Position</option>
@@ -2008,7 +2007,7 @@
         </button>
         <div class="flex items-center justify-between pt-2 text-[11px]">
           <button type="button" onclick="switchAuthMode('forgot')" class="text-indigo-400 hover:text-indigo-300 font-bold hover:underline">
-            Forgot Password / PIN? (రీసెట్)
+            Forgot Password / PIN? (Reset)
           </button>
           <button type="button" onclick="switchAuthMode('register')" class="text-slate-400 hover:text-white font-medium">
             New User? Register
@@ -2119,7 +2118,7 @@
           </div>
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-slate-300 mb-1">Position (పదవి / బాధ్యత) *</label>
+          <label class="block text-[11px] font-bold text-slate-300 mb-1">Position / Category *</label>
           <select id="regPosition" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
 
             <option value="" disabled selected>Select Position</option>
@@ -2565,7 +2564,7 @@
                   <input type="text" id="recoverPassword" placeholder="123456" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white font-mono">
                 </div>
                 <div>
-                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Position (పదవి / బాధ్యత) *</label>
+                  <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Position / Category *</label>
                   <select id="recoverPosition" class="w-full px-3 py-2 rounded-xl border border-slate-700 text-xs font-semibold focus:outline-indigo-500 bg-slate-800 text-white">
 
             <option value="" disabled selected>Select Position</option>
@@ -2809,7 +2808,7 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="block font-bold text-slate-300">
-              Allowed Positions for this Topic (ఎవరికి కనిపించాలి):
+              Allowed Positions for this Topic:
             </label>
             <div class="flex items-center gap-2">
               <button type="button" onclick="toggleSelectAllPositions('topicPositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
@@ -2836,6 +2835,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=5.4"></script>
+  <script src="portal_engine.js?v=5.5"></script>
 </body>
 </html>
