@@ -18,7 +18,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>L Support</title>
+  <title>Support</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%234f46e5'/%3E%3Cstop offset='50%25' stop-color='%237c3aed'/%3E%3Cstop offset='100%25' stop-color='%23db2777'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='28' fill='url(%23g)'/%3E%3Ccircle cx='50' cy='36' r='14' fill='%23ffffff'/%3E%3Cpath d='M22 78 C22 58 35 50 50 50 C65 50 78 58 78 78' fill='none' stroke='%23ffffff' stroke-width='9' stroke-linecap='round'/%3E%3Cpath d='M44 68 L50 74 L62 62' fill='none' stroke='%2338bdf8' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,7 +70,7 @@
 
     
     /* ========================================================
-       SUPERIOR LIGHT & BRIGHT THEME STYLES (DAYLIGHT CLEAN)
+       SUPERIOR LIGHT & BRIGHT THEME STYLES (PURE DAYLIGHT)
        ======================================================== */
     html.light-mode {
       background-color: #f8fafc !important;
@@ -79,6 +80,38 @@
     html.light-mode body {
       background-color: #f8fafc !important;
       color: #0f172a !important;
+    }
+
+    /* All dark slate backgrounds converted to crisp bright colors */
+    html.light-mode [class*="bg-slate-950"],
+    html.light-mode [class*="bg-slate-900"],
+    html.light-mode [class*="bg-slate-850"] {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+    }
+    
+    html.light-mode [class*="bg-slate-800"] {
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+    }
+
+    html.light-mode [class*="bg-slate-950/60"],
+    html.light-mode [class*="bg-slate-950/50"],
+    html.light-mode [class*="bg-slate-950/40"],
+    html.light-mode [class*="bg-slate-950/30"] {
+      background-color: #f8fafc !important;
+    }
+
+    /* Borders */
+    html.light-mode [class*="border-slate-800"],
+    html.light-mode [class*="border-slate-700"] {
+      border-color: #e2e8f0 !important;
+    }
+
+    /* Hover States */
+    html.light-mode [class*="hover:bg-slate-800"]:hover,
+    html.light-mode [class*="hover:bg-slate-700"]:hover {
+      background-color: #f1f5f9 !important;
     }
 
     /* Header & Navigation */
@@ -103,58 +136,7 @@
       background-color: #f8fafc !important;
     }
 
-    /* Cards & Panels */
-    html.light-mode .bg-slate-900,
-    html.light-mode .bg-slate-900/95,
-    html.light-mode .bg-slate-900/90,
-    html.light-mode .bg-slate-900/80,
-    html.light-mode .bg-slate-900/70,
-    html.light-mode .bg-slate-900/60,
-    html.light-mode .bg-slate-900/50,
-    html.light-mode .bg-slate-900/40 {
-      background-color: #ffffff !important;
-      color: #0f172a !important;
-      border-color: #e2e8f0 !important;
-      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
-    }
-
-    /* Inset Containers & Sub-boxes */
-    html.light-mode .bg-slate-950,
-    html.light-mode .bg-slate-950/95,
-    html.light-mode .bg-slate-950/90,
-    html.light-mode .bg-slate-950/80,
-    html.light-mode .bg-slate-950/70,
-    html.light-mode .bg-slate-950/60,
-    html.light-mode .bg-slate-950/50,
-    html.light-mode .bg-slate-950/40,
-    html.light-mode .bg-slate-950/30 {
-      background-color: #f1f5f9 !important;
-      color: #0f172a !important;
-      border-color: #cbd5e1 !important;
-    }
-
-    /* Tertiary / Accent Containers */
-    html.light-mode .bg-slate-800,
-    html.light-mode .bg-slate-800/90,
-    html.light-mode .bg-slate-800/80,
-    html.light-mode .bg-slate-800/70,
-    html.light-mode .bg-slate-800/60,
-    html.light-mode .bg-slate-800/50,
-    html.light-mode .bg-slate-800/40 {
-      background-color: #e2e8f0 !important;
-      color: #0f172a !important;
-      border-color: #cbd5e1 !important;
-    }
-
-    /* Hover States */
-    html.light-mode .hover:bg-slate-800:hover,
-    html.light-mode .hover:bg-slate-800/60:hover,
-    html.light-mode .hover:bg-slate-700:hover,
-    html.light-mode .hover:bg-slate-700/60:hover {
-      background-color: #f1f5f9 !important;
-    }
-
-    /* Text Colors & Readability */
+    /* Text Colors & Hierarchy */
     html.light-mode h1,
     html.light-mode h2,
     html.light-mode h3,
@@ -164,21 +146,21 @@
       color: #0f172a !important;
     }
     
-    html.light-mode .text-slate-100,
-    html.light-mode .text-slate-200,
-    html.light-mode .text-slate-300 {
+    html.light-mode [class*="text-slate-100"],
+    html.light-mode [class*="text-slate-200"],
+    html.light-mode [class*="text-slate-300"] {
       color: #1e293b !important;
     }
     
-    html.light-mode .text-slate-400 {
+    html.light-mode [class*="text-slate-400"] {
       color: #475569 !important;
     }
 
-    html.light-mode .text-slate-500 {
+    html.light-mode [class*="text-slate-500"] {
       color: #64748b !important;
     }
 
-    /* Crisp White Text for Buttons, Badges, Gradients */
+    /* Crisp White Text for Colored Buttons & Gradients */
     html.light-mode button.text-white,
     html.light-mode a.text-white,
     html.light-mode [class*="bg-purple-600"] *,
@@ -196,16 +178,6 @@
 
     html.light-mode .text-white:not(button):not(button *):not(a):not(a *):not([class*="bg-purple-"]):not([class*="bg-indigo-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="from-"]) {
       color: #0f172a !important;
-    }
-
-    /* Borders */
-    html.light-mode .border-slate-800,
-    html.light-mode .border-slate-800/80,
-    html.light-mode .border-slate-800/50,
-    html.light-mode .border-slate-700,
-    html.light-mode .border-slate-700/80,
-    html.light-mode .border-slate-700/50 {
-      border-color: #e2e8f0 !important;
     }
 
     /* Form Controls */
@@ -250,6 +222,47 @@
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
     }
 
+    /* Dedicated Auth & Lock Screens */
+    html.light-mode #authModal {
+      background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #faf5ff 100%) !important;
+    }
+    html.light-mode #authModalContainer {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.15), 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    html.light-mode #lockScreenModal {
+      background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #faf5ff 100%) !important;
+    }
+    html.light-mode #lockScreenModal > div {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.15) !important;
+    }
+
+    /* Live Text Edit Mode Highlight */
+    .admin-edit-highlight {
+      outline: 2px dashed #f59e0b !important;
+      cursor: pointer !important;
+      position: relative !important;
+    }
+    .admin-edit-highlight:hover::after {
+      content: "✏️ Click to edit";
+      position: absolute;
+      top: -24px;
+      left: 0;
+      background: #78350f;
+      color: #fef3c7;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: bold;
+      z-index: 100;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
     /* Scrollbars */
     html.light-mode ::-webkit-scrollbar-track { background: #f1f5f9; }
     html.light-mode ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
@@ -271,7 +284,7 @@
     .wave-bar:nth-child(6) { animation-delay: 0.35s; }
   </style>
 </head>
-<body class="h-full font-sans antialiased bg-slate-950 text-slate-100 flex overflow-hidden select-none">
+<body class="h-full font-sans antialiased bg-slate-50 text-slate-900 flex overflow-hidden select-none">
 
   <!-- Embedded Initial Application Data -->
   <script id="initial-app-data" type="application/json">
@@ -290,13 +303,13 @@
     <!-- App Branding -->
     <div class="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950/60 flex-shrink-0">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-amber-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 flex-shrink-0 font-black text-xl tracking-tighter border border-white/20">
-          L
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 flex-shrink-0 text-lg border border-white/30">
+          <i class="fa-solid fa-hands-holding-child"></i>
         </div>
         <div class="min-w-0 truncate">
-          <h1 class="font-extrabold text-sm tracking-tight text-white leading-tight truncate flex items-center gap-1.5">
-            L Support
-            <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30 uppercase tracking-widest">PRO</span>
+          <h1 class="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white leading-tight truncate flex items-center gap-1.5">
+            <span class="app-brand-title" data-ui-key="siteTitle">Support</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 font-bold border border-indigo-500/30 uppercase tracking-widest" data-ui-key="brandBadge">PORTAL</span>
           </h1>
           <p class="text-[10px] font-medium text-slate-400 truncate" id="sidebarUserBranch">Central Portal</p>
         </div>
@@ -572,6 +585,17 @@
           </button>
         </div>
 
+        <!-- Live Text Edit Mode Button for Admin -->
+        <button 
+          id="adminLiveTextEditBtn"
+          onclick="toggleLiveTextEditMode()" 
+          class="hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition shadow-xs flex-shrink-0"
+          title="Click to edit buttons and text labels directly on screen"
+        >
+          <i class="fa-solid fa-pen-to-square text-amber-600 text-xs"></i>
+          <span id="liveTextEditLabel" class="hidden sm:inline">Edit Text</span>
+        </button>
+
         <!-- Top Light / Dark Mode Toggle Button -->
         <button 
           id="themeToggleBtn"
@@ -630,45 +654,31 @@
       <!-- ======================================================== -->
       <div id="homeViewContainer" class="space-y-6">
         
-        <!-- Hero Welcome Banner -->
-        <div class="relative bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 border border-indigo-500/30 p-6 sm:p-8 rounded-3xl shadow-2xl overflow-hidden">
-          <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold mb-3">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>L Support Central Portal</span>
-              </div>
-              <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight" id="homeWelcomeHeading">
-                Welcome to L Support! 👋
-              </h1>
-              <p class="text-xs sm:text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
-                Access your sermons, study files, announcements, and personal ministry records in one unified workspace.
-              </p>
-            </div>
-
-            <!-- Quick Action Buttons -->
-            <div class="flex flex-wrap items-center gap-3 flex-shrink-0">
-              <button 
-                onclick="toggleSidebar(true)" 
-                class="relative px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 group"
-                title="Click to browse modules and study library"
-              >
-                <i class="fa-solid fa-layer-group text-sm group-hover:scale-110 transition"></i>
-                <span>Browse Library</span>
-                <span class="relative flex h-2.5 w-2.5 ml-1">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400"></span>
-                </span>
-              </button>
-
-              <button 
-                onclick="switchToMyRoom()" 
-                class="px-4 py-2.5 rounded-2xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-xs transition flex items-center gap-2"
-              >
-                <i class="fa-solid fa-book-bookmark text-sm text-purple-400"></i>
-                <span id="homeRoomBtnText">Admin Room</span>
-              </button>
-            </div>
+        <!-- Top Quick Action Bar (Light & Clean) -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              <span class="app-brand-title" data-ui-key="siteTitle">Support</span> <span data-ui-key="siteSubtitle">Central Portal</span>
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Unified Ministry, Media & Study Workspace</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button 
+              onclick="toggleSidebar(true)" 
+              class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5"
+              data-ui-key="btnBrowse"
+            >
+              <i class="fa-solid fa-layer-group text-xs"></i>
+              <span>Browse Library</span>
+            </button>
+            <button 
+              onclick="switchToMyRoom()" 
+              class="px-3.5 py-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700 font-bold text-xs transition flex items-center gap-1.5"
+              data-ui-key="btnMyRoom"
+            >
+              <i class="fa-solid fa-book-bookmark text-xs"></i>
+              <span id="homeRoomBtnText">Admin Room</span>
+            </button>
           </div>
         </div>
 
@@ -1375,7 +1385,7 @@
                 🎵
               </div>
               <h4 id="audioPlayerTitle" class="text-base font-bold text-white truncate mb-1">Song / Audio Title</h4>
-              <p id="audioPlayerSubtitle" class="text-xs text-purple-300 font-medium">L Support Media</p>
+              <p id="audioPlayerSubtitle" class="text-xs text-purple-300 font-medium">Support Media</p>
             </div>
 
             <audio id="nativeAudioElement" class="w-full rounded-xl bg-slate-800/80 mb-3" controls></audio>
@@ -1957,10 +1967,10 @@
       
       <!-- Brand Logo -->
       <div class="text-center mb-6">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-amber-400 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-indigo-500/20 mx-auto mb-3 border border-white/20">
-          L
+        <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white text-3xl shadow-xl shadow-indigo-500/25 mx-auto mb-3 border border-white/40">
+          <i class="fa-solid fa-hands-holding-child"></i>
         </div>
-        <h2 class="text-xl font-extrabold text-white tracking-tight">L Support</h2>
+        <h2 class="text-2xl font-black text-slate-900 tracking-tight" data-ui-key="siteTitle">Support</h2>
         <p class="text-xs text-slate-400 mt-0.5">Secure Management Portal</p>
       </div>
 
@@ -1991,15 +2001,7 @@
           </div>
         </div>
 
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">6-Digit Personal PIN *</label>
-          <div class="relative">
-            <input type="password" id="loginPin" required maxlength="6" pattern="[0-9]{6}" placeholder="••••••" class="w-full pl-3.5 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-center text-base tracking-widest text-white outline-none font-bold">
-            <button type="button" onclick="togglePasswordVisibility('loginPin', 'eyeLoginPin')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1" title="Show/Hide PIN">
-              <i id="eyeLoginPin" class="fa-solid fa-eye text-xs"></i>
-            </button>
-          </div>
-        </div>
+
 
         <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-indigo-600/30 mt-2">
           Sign In to Portal
@@ -2164,7 +2166,7 @@
       </div>
 
       <h2 class="text-lg font-extrabold text-white" id="pinLockGreeting">Welcome back!</h2>
-      <p class="text-xs text-slate-400 mt-1 mb-5">Screen locked for security. Enter your 6-digit Personal PIN to unlock L Support.</p>
+      <p class="text-xs text-slate-400 mt-1 mb-5">Screen locked for security. Enter your 6-digit Personal PIN to unlock Support.</p>
 
       <div class="relative mb-4">
         <input 
@@ -2189,7 +2191,7 @@
         onclick="unlockAppWithPin()" 
         class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-indigo-600/30 mb-3"
       >
-        <i class="fa-solid fa-lock-open mr-1.5"></i> Unlock L Support
+        <i class="fa-solid fa-lock-open mr-1.5"></i> Unlock Support
       </button>
 
       <button 
@@ -2421,7 +2423,11 @@
         </button>
 
         <!-- Tab 7: Firebase Live Sync -->
-        <button onclick="switchAdminPanelTab('firebase')" id="admtab-firebase" class="px-3.5 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
+        <button onclick="switchAdminPanelTab('uitext')" id="admtab-uitext" class="px-4 py-2 rounded-2xl whitespace-nowrap text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800">
+            <i class="fa-solid fa-pen-to-square text-amber-400"></i>
+            <span>UI Text & Buttons</span>
+          </button>
+          <button onclick="switchAdminPanelTab('firebase')" id="admtab-firebase" class="px-3.5 py-2 rounded-2xl whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-slate-800 text-slate-400 hover:text-white border border-slate-700">
           <i class="fa-solid fa-fire text-amber-400 text-xs"></i>
           <span>Firebase</span>
         </button>
@@ -2474,7 +2480,7 @@
               </div>
               <div>
                 <h3 class="text-base sm:text-lg font-black tracking-wide" id="starOnlineHeaderTitle">Live Online Members (1)</h3>
-                <p class="text-xs text-emerald-100 font-bold mt-0.5">Real-time active users across L Support (Visible exclusively to Admin)</p>
+                <p class="text-xs text-emerald-100 font-bold mt-0.5">Real-time active users across Support (Visible exclusively to Admin)</p>
               </div>
             </div>
             <span class="bg-white/20 text-white text-xs font-black px-3.5 py-1.5 rounded-2xl shadow-xs flex items-center gap-1.5">
@@ -2830,6 +2836,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=5.3"></script>
+  <script src="portal_engine.js?v=5.4"></script>
 </body>
 </html>
