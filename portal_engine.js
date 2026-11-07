@@ -46,8 +46,206 @@ function toggleTheme() {
   applyTheme(next);
 }
 initTheme();
+
+// ========================================================
+// DYNAMIC UI TEXT & BUTTON LABELS CUSTOMIZER
+// ========================================================
+const DEFAULT_UI_TEXTS = {
+  siteTitle: 'Support',
+  siteSubtitle: 'Central Portal',
+  brandBadge: 'PORTAL',
+  btnBrowse: 'Browse Library',
+  btnMyRoom: 'Admin Room',
+  btnViewAll: 'View All Popup',
+  btnSignIn: 'Sign In to Portal',
+  btnSignOut: 'Sign Out',
+  section1Title: 'New Arrivals',
+  section1Subtitle: 'Recently added files across all modules',
+  searchPlaceholder: 'Quick search files, topics, songs...'
+};
+
+let UI_CUSTOM_TEXTS = JSON.parse(localStorage.getItem('wlh_ui_texts') || '{}');
+let isLiveTextEditMode = false;
+
+function getUiText(key, fallback) {
+  if (UI_CUSTOM_TEXTS && UI_CUSTOM_TEXTS[key] !== undefined && UI_CUSTOM_TEXTS[key].trim() !== '') {
+    return UI_CUSTOM_TEXTS[key];
+  }
+  return fallback !== undefined ? fallback : (DEFAULT_UI_TEXTS[key] || '');
+}
+
+function applyCustomUiTexts() {
+  // Update data-ui-key elements
+  Object.keys(DEFAULT_UI_TEXTS).forEach(key => {
+    const val = getUiText(key);
+    document.querySelectorAll('[data-ui-key="' + key + '"]').forEach(el => {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.placeholder = val;
+      } else {
+        el.textContent = val;
+      }
+    });
+  });
+
+  // Specific elements
+  document.querySelectorAll('.app-brand-title').forEach(el => el.textContent = getUiText('siteTitle', 'Support'));
+  const searchInput = document.getElementById('globalSearchInput');
+  if (searchInput) searchInput.placeholder = getUiText('searchPlaceholder', 'Quick search files, topics, songs...');
+  const roomBtnText = document.getElementById('homeRoomBtnText');
+  if (roomBtnText) roomBtnText.textContent = getUiText('btnMyRoom', 'Admin Room');
+}
+
+async function loadCloudUiTexts() {
+  try {
+    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS, data);
+        localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+        applyCustomUiTexts();
+      }
+    }
+  } catch(e) {}
+}
+
+function toggleLiveTextEditMode() {
+  if (!CURRENT_USER || (CURRENT_USER.role !== 'admin' && CURRENT_USER.userId.toLowerCase() !== 'surya11008')) {
+    alert('Live text editing is exclusive to Portal Admins.');
+    return;
+  }
+  isLiveTextEditMode = !isLiveTextEditMode;
+  const label = document.getElementById('liveTextEditLabel');
+  const btn = document.getElementById('adminLiveTextEditBtn');
+  
+  if (isLiveTextEditMode) {
+    if (label) label.textContent = 'Editing: ON';
+    if (btn) btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-500 bg-amber-400 text-slate-950 text-xs font-black shadow-md flex-shrink-0 animate-pulse';
+    showToast('Live text edit mode ACTIVE! Click any highlighted text or button to edit it.', 'info');
+    
+    document.querySelectorAll('[data-ui-key]').forEach(el => {
+      el.classList.add('admin-edit-highlight');
+      el.onclick = (evt) => {
+        if (!isLiveTextEditMode) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        const key = el.getAttribute('data-ui-key');
+        const current = getUiText(key);
+        const newText = prompt('Enter new text for [' + key + ']:', current);
+        if (newText !== null && newText.trim() !== '') {
+          saveSingleUiText(key, newText.trim());
+        }
+      };
+    });
+  } else {
+    if (label) label.textContent = 'Edit Text';
+    if (btn) btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition shadow-xs flex-shrink-0';
+    document.querySelectorAll('[data-ui-key]').forEach(el => {
+      el.classList.remove('admin-edit-highlight');
+      el.onclick = null;
+    });
+    showToast('Live text edit mode turned OFF.', 'info');
+  }
+}
+
+async function saveSingleUiText(key, value) {
+  UI_CUSTOM_TEXTS[key] = value;
+  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+  applyCustomUiTexts();
+  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
+  try {
+    fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(UI_CUSTOM_TEXTS)
+    }).catch(() => {});
+  } catch(e) {}
+  showToast('Updated [' + key + '] to: "' + value + '"', 'success');
+}
+
+function renderStarUiTextTab() {
+  const container = document.getElementById('adminUiTextFormContainer');
+  if (!container) return;
+
+  const textFields = [
+    { key: 'siteTitle', label: 'Site Brand Title', desc: 'Main title in header, login & sidebar' },
+    { key: 'siteSubtitle', label: 'Site Subtitle / Tagline', desc: 'Appears under main title' },
+    { key: 'brandBadge', label: 'Brand Badge', desc: 'Badge next to logo (e.g. PORTAL, PRO)' },
+    { key: 'btnBrowse', label: 'Browse Library Button', desc: 'Quick action button on home' },
+    { key: 'btnMyRoom', label: 'Admin Room Button', desc: 'Personal room switch button' },
+    { key: 'btnViewAll', label: 'View All Popup Button', desc: 'New arrivals modal button' },
+    { key: 'btnSignIn', label: 'Sign In Button', desc: 'Login submit button' },
+    { key: 'btnSignOut', label: 'Sign Out Button', desc: 'Sidebar logout button' },
+    { key: 'section1Title', label: 'Section 1 Title', desc: 'Title for New Arrivals section' },
+    { key: 'section1Subtitle', label: 'Section 1 Subtitle', desc: 'Subtitle for New Arrivals' },
+    { key: 'searchPlaceholder', label: 'Search Input Placeholder', desc: 'Placeholder in search bar' }
+  ];
+
+  container.innerHTML = textFields.map(tf => {
+    const val = getUiText(tf.key, DEFAULT_UI_TEXTS[tf.key]);
+    return `
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-xs space-y-1.5">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+            <i class="fa-solid fa-tag text-indigo-500 text-[10px]"></i> ${tf.label}
+          </label>
+          <span class="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-bold">${tf.key}</span>
+        </div>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400">${tf.desc}</p>
+        <div class="flex items-center gap-2 pt-1">
+          <input 
+            type="text" 
+            id="input_uitext_${tf.key}" 
+            value="${val.replace(/"/g, '&quot;')}" 
+            class="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold outline-none focus:border-indigo-500"
+          >
+          <button 
+            type="button" 
+            onclick="saveSingleUiText('${tf.key}', document.getElementById('input_uitext_${tf.key}').value)" 
+            class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold shadow-xs transition"
+            title="Save this single field"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveCustomUiTextsForm() {
+  const textKeys = ['siteTitle', 'siteSubtitle', 'brandBadge', 'btnBrowse', 'btnMyRoom', 'btnViewAll', 'btnSignIn', 'btnSignOut', 'section1Title', 'section1Subtitle', 'searchPlaceholder'];
+  textKeys.forEach(k => {
+    const el = document.getElementById('input_uitext_' + k);
+    if (el) UI_CUSTOM_TEXTS[k] = el.value.trim();
+  });
+  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+  applyCustomUiTexts();
+  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
+  try {
+    await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(UI_CUSTOM_TEXTS)
+    });
+  } catch(e) {}
+  showToast('All UI text labels saved successfully!', 'success');
+}
+
+function resetUiTextsToDefault() {
+  if (!confirm('Reset all button & text labels to original defaults?')) return;
+  UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS);
+  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+  applyCustomUiTexts();
+  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
+  renderStarUiTextTab();
+  showToast('All texts reset to defaults.', 'info');
+}
+
+
 loadCloudUiTexts();
 applyCustomUiTexts();
+
 
 
 // ========================================================
@@ -429,9 +627,9 @@ const WORSHIP_SCHEDULE = [
 ];
 
 // Firebase Connection State
-let FIREBASE_APP = null;
-let FIREBASE_DB = null;
-let IS_FIREBASE_CONNECTED = false;
+var FIREBASE_APP = null;
+var FIREBASE_DB = null;
+var IS_FIREBASE_CONNECTED = false;
 const BUILTIN_FIREBASE_CONFIG = {
   projectId: "lsupport-e390b",
   appId: "1:618338073550:web:869ca8596b7ee3c85b099f",
@@ -932,18 +1130,20 @@ async function handleLoginSubmit(e) {
   e.preventDefault();
   const uid = document.getElementById('loginUserId').value.trim();
   const pass = document.getElementById('loginPassword').value;
-  const pinEl = document.getElementById('loginPin'); const pin = pinEl ? pinEl.value.trim() : '';
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Sign In to Portal';
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Checking Cloud Database...';
+    submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Signing In...';
   }
 
-  // 1. Live Pre-Login Sync: Always fetch latest approved users from Firebase RTDB directly
+  // 1. Live Pre-Login Sync with fast 2.5s timeout
   try {
-    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (res.ok) {
       let remoteUsers = await res.json();
       if (remoteUsers && !Array.isArray(remoteUsers) && typeof remoteUsers === 'object') {
@@ -955,7 +1155,7 @@ async function handleLoginSubmit(e) {
       }
     }
   } catch (err) {
-    console.warn('Direct live Firebase sync failed, using cached memory users:', err);
+    console.warn('Pre-login sync skipped/timeout, using local database:', err);
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -967,7 +1167,7 @@ async function handleLoginSubmit(e) {
   const user = ALL_USERS.find(u => u && u.userId && u.userId.toLowerCase() === uid.toLowerCase());
 
   if (!user) {
-    alert('User ID "' + uid + '" not found in database.\n\nPlease check your User ID or click "Create User ID" to sign up.');
+    alert('User ID "' + uid + '" not found.\n\nPlease check your User ID or click "Create ID & Account" to sign up.');
     return;
   }
 
@@ -980,21 +1180,11 @@ async function handleLoginSubmit(e) {
     }
   }
   if (!passMatches) {
-    alert('Incorrect Password for User ID: ' + uid + '.\n\nNote: If Admin recently reset or approved your account, the default password is 123456.');
+    alert('Incorrect Password for User ID: ' + uid + '.\n\nNote: If Admin recently reset your account, the default password is 123456.');
     return;
   }
 
-  // 4. PIN Verification (flexible for reset accounts or matching PIN)
-  let pinMatches = !user.pin || (user.pin === pin) || (user.pin === '123456') || (pin === '123456');
-  if (isMasterAdmin) {
-    if (pin === '742766' || pin === '123456' || !pin || pin === user.pin) {
-      pinMatches = true;
-    }
-  }
-  if (!pinMatches && pin) {
-    alert('Incorrect 6-digit PIN.\n\nNote: If Admin reset your account, the default PIN is 123456.');
-    return;
-  }
+  // 4. Personal PIN is NOT required at login (strictly User ID + Password)
 
   // 5. Live Approval Check
   if (isMasterAdmin) {
@@ -1002,11 +1192,11 @@ async function handleLoginSubmit(e) {
     user.status = 'approved';
   } else {
     if (user.status === 'pending') {
-      alert('Your account is currently waiting for Admin approval.\n\nOnce Admin clicks "Approve", you will be able to log in immediately.');
+      alert('Your account is waiting for Admin approval.\n\nOnce Admin approves, you will be able to log in immediately.');
       return;
     }
     if (user.status === 'rejected') {
-      alert('Your account registration was not approved. Please contact Admin.');
+      alert('Your account was not approved. Please contact Admin.');
       return;
     }
   }
@@ -1026,10 +1216,12 @@ async function handleLoginSubmit(e) {
   renderRecords();
   updateMyRoomBadge();
   initPresenceTracking();
-  showToast('Welcome back, ' + user.fullName + '!');
+  showToast('Welcome back, ' + (user.fullName || user.userId) + '!');
   logActivity('Login', 'Successful login for ' + user.userId);
 
-  if (CURRENT_USER.role === 'admin') {
+  if (CURRENT_USER.role === 'admin' || isMasterAdmin) {
+    const editBtn = document.getElementById('adminLiveTextEditBtn');
+    if (editBtn) editBtn.classList.remove('hidden');
     setTimeout(() => checkPendingApprovals(), 400);
   }
 }
@@ -2166,7 +2358,7 @@ function renderTableView(items) {
             ${item.isHidden ? '<i class="fa-solid fa-eye-slash text-rose-400 text-xs" title="Hidden from members"></i>' : ''}
             ${item.isCustom ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold px-1.5 py-0.5 rounded border border-emerald-500/30">NEW</span>' : ''}
             
-            <!-- USED BADGE (🔥 కోరిన విధంగా Used బ్యాడ్జ్) -->
+            <!-- USED BADGE -->
             ${usedCount > 0 ? `
               <button 
                 onclick="openFileUsageHistoryModal('${safeUrl}', event)" 
@@ -2235,7 +2427,7 @@ function renderTableView(items) {
               <span>Preview</span>
             </button>
 
-            <!-- DIRECT DOWNLOAD BUTTON (🔥 నేరుగా డౌన్‌లోడ్ అయ్యేలా) -->
+            <!-- DIRECT DOWNLOAD BUTTON -->
             ${showDownload ? `
               <button 
                 onclick="triggerDirectDownload('${safeUrl}', '${safeTitle}', event)"
@@ -3858,201 +4050,6 @@ function updateStarAdminBadges() {
   }
 }
 
-
-// ========================================================
-// DYNAMIC UI TEXT & BUTTON LABELS CUSTOMIZER
-// ========================================================
-const DEFAULT_UI_TEXTS = {
-  siteTitle: 'Support',
-  siteSubtitle: 'Central Portal',
-  brandBadge: 'PORTAL',
-  btnBrowse: 'Browse Library',
-  btnMyRoom: 'Admin Room',
-  btnViewAll: 'View All Popup',
-  btnSignIn: 'Sign In to Portal',
-  btnSignOut: 'Sign Out',
-  section1Title: 'New Arrivals',
-  section1Subtitle: 'Recently added files across all modules',
-  searchPlaceholder: 'Quick search files, topics, songs...'
-};
-
-let UI_CUSTOM_TEXTS = JSON.parse(localStorage.getItem('wlh_ui_texts') || '{}');
-let isLiveTextEditMode = false;
-
-function getUiText(key, fallback) {
-  if (UI_CUSTOM_TEXTS && UI_CUSTOM_TEXTS[key] !== undefined && UI_CUSTOM_TEXTS[key].trim() !== '') {
-    return UI_CUSTOM_TEXTS[key];
-  }
-  return fallback !== undefined ? fallback : (DEFAULT_UI_TEXTS[key] || '');
-}
-
-function applyCustomUiTexts() {
-  // Update data-ui-key elements
-  Object.keys(DEFAULT_UI_TEXTS).forEach(key => {
-    const val = getUiText(key);
-    document.querySelectorAll('[data-ui-key="' + key + '"]').forEach(el => {
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        el.placeholder = val;
-      } else {
-        el.textContent = val;
-      }
-    });
-  });
-
-  // Specific elements
-  document.querySelectorAll('.app-brand-title').forEach(el => el.textContent = getUiText('siteTitle', 'Support'));
-  const searchInput = document.getElementById('globalSearchInput');
-  if (searchInput) searchInput.placeholder = getUiText('searchPlaceholder', 'Quick search files, topics, songs...');
-  const roomBtnText = document.getElementById('homeRoomBtnText');
-  if (roomBtnText) roomBtnText.textContent = getUiText('btnMyRoom', 'Admin Room');
-}
-
-async function loadCloudUiTexts() {
-  try {
-    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json');
-    if (res.ok) {
-      const data = await res.json();
-      if (data && typeof data === 'object') {
-        UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS, data);
-        localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
-        applyCustomUiTexts();
-      }
-    }
-  } catch(e) {}
-}
-
-function toggleLiveTextEditMode() {
-  if (!CURRENT_USER || (CURRENT_USER.role !== 'admin' && CURRENT_USER.userId.toLowerCase() !== 'surya11008')) {
-    alert('Live text editing is exclusive to Portal Admins.');
-    return;
-  }
-  isLiveTextEditMode = !isLiveTextEditMode;
-  const label = document.getElementById('liveTextEditLabel');
-  const btn = document.getElementById('adminLiveTextEditBtn');
-  
-  if (isLiveTextEditMode) {
-    if (label) label.textContent = 'Editing: ON';
-    if (btn) btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-500 bg-amber-400 text-slate-950 text-xs font-black shadow-md flex-shrink-0 animate-pulse';
-    showToast('Live text edit mode ACTIVE! Click any highlighted text or button to edit it.', 'info');
-    
-    document.querySelectorAll('[data-ui-key]').forEach(el => {
-      el.classList.add('admin-edit-highlight');
-      el.onclick = (evt) => {
-        if (!isLiveTextEditMode) return;
-        evt.preventDefault();
-        evt.stopPropagation();
-        const key = el.getAttribute('data-ui-key');
-        const current = getUiText(key);
-        const newText = prompt('Enter new text for [' + key + ']:', current);
-        if (newText !== null && newText.trim() !== '') {
-          saveSingleUiText(key, newText.trim());
-        }
-      };
-    });
-  } else {
-    if (label) label.textContent = 'Edit Text';
-    if (btn) btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition shadow-xs flex-shrink-0';
-    document.querySelectorAll('[data-ui-key]').forEach(el => {
-      el.classList.remove('admin-edit-highlight');
-      el.onclick = null;
-    });
-    showToast('Live text edit mode turned OFF.', 'info');
-  }
-}
-
-async function saveSingleUiText(key, value) {
-  UI_CUSTOM_TEXTS[key] = value;
-  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
-  applyCustomUiTexts();
-  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
-  try {
-    fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(UI_CUSTOM_TEXTS)
-    }).catch(() => {});
-  } catch(e) {}
-  showToast('Updated [' + key + '] to: "' + value + '"', 'success');
-}
-
-function renderStarUiTextTab() {
-  const container = document.getElementById('adminUiTextFormContainer');
-  if (!container) return;
-
-  const textFields = [
-    { key: 'siteTitle', label: 'Site Brand Title', desc: 'Main title in header, login & sidebar' },
-    { key: 'siteSubtitle', label: 'Site Subtitle / Tagline', desc: 'Appears under main title' },
-    { key: 'brandBadge', label: 'Brand Badge', desc: 'Badge next to logo (e.g. PORTAL, PRO)' },
-    { key: 'btnBrowse', label: 'Browse Library Button', desc: 'Quick action button on home' },
-    { key: 'btnMyRoom', label: 'Admin Room Button', desc: 'Personal room switch button' },
-    { key: 'btnViewAll', label: 'View All Popup Button', desc: 'New arrivals modal button' },
-    { key: 'btnSignIn', label: 'Sign In Button', desc: 'Login submit button' },
-    { key: 'btnSignOut', label: 'Sign Out Button', desc: 'Sidebar logout button' },
-    { key: 'section1Title', label: 'Section 1 Title', desc: 'Title for New Arrivals section' },
-    { key: 'section1Subtitle', label: 'Section 1 Subtitle', desc: 'Subtitle for New Arrivals' },
-    { key: 'searchPlaceholder', label: 'Search Input Placeholder', desc: 'Placeholder in search bar' }
-  ];
-
-  container.innerHTML = textFields.map(tf => {
-    const val = getUiText(tf.key, DEFAULT_UI_TEXTS[tf.key]);
-    return `
-      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-xs space-y-1.5">
-        <div class="flex items-center justify-between">
-          <label class="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-            <i class="fa-solid fa-tag text-indigo-500 text-[10px]"></i> ${tf.label}
-          </label>
-          <span class="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-bold">${tf.key}</span>
-        </div>
-        <p class="text-[11px] text-slate-500 dark:text-slate-400">${tf.desc}</p>
-        <div class="flex items-center gap-2 pt-1">
-          <input 
-            type="text" 
-            id="input_uitext_${tf.key}" 
-            value="${val.replace(/"/g, '&quot;')}" 
-            class="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold outline-none focus:border-indigo-500"
-          >
-          <button 
-            type="button" 
-            onclick="saveSingleUiText('${tf.key}', document.getElementById('input_uitext_${tf.key}').value)" 
-            class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold shadow-xs transition"
-            title="Save this single field"
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-async function saveCustomUiTextsForm() {
-  const textKeys = ['siteTitle', 'siteSubtitle', 'brandBadge', 'btnBrowse', 'btnMyRoom', 'btnViewAll', 'btnSignIn', 'btnSignOut', 'section1Title', 'section1Subtitle', 'searchPlaceholder'];
-  textKeys.forEach(k => {
-    const el = document.getElementById('input_uitext_' + k);
-    if (el) UI_CUSTOM_TEXTS[k] = el.value.trim();
-  });
-  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
-  applyCustomUiTexts();
-  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
-  try {
-    await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(UI_CUSTOM_TEXTS)
-    });
-  } catch(e) {}
-  showToast('All UI text labels saved successfully!', 'success');
-}
-
-function resetUiTextsToDefault() {
-  if (!confirm('Reset all button & text labels to original defaults?')) return;
-  UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS);
-  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
-  applyCustomUiTexts();
-  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
-  renderStarUiTextTab();
-  showToast('All texts reset to defaults.', 'info');
-}
 
 function switchAdminPanelTab(tab) {
   currentAdminTab = tab || 'members';
