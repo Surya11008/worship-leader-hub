@@ -68,6 +68,33 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 
     
+    /* Bulletproof Admin Visibility Protection: regular users never see admin options */
+    html:not(.is-admin-active) .admin-only-control,
+    html:not(.is-admin-active) [data-admin-only="true"],
+    html:not(.is-admin-active) #topAdminPanelBtn,
+    html:not(.is-admin-active) #adminApprovalsTopBtn,
+    html:not(.is-admin-active) #downloadToggleWrapper,
+    html:not(.is-admin-active) #btnAdminAddResource,
+    html:not(.is-admin-active) #adminLiveTextEditBtn,
+    html:not(.is-admin-active) #btnAdminCenterSidebar,
+    html:not(.is-admin-active) #btnAdminAddSchedule,
+    html:not(.is-admin-active) #btnAdminAddNotice,
+    html:not(.is-admin-active) #btnAdminAddCategory,
+    html:not(.is-admin-active) #moduleEditTrigger,
+    html:not(.is-admin-active) #bulkActionsBar {
+      display: none !important;
+    }
+
+    /* Dynamic, Modern, Professional Typography */
+    body, input, button, select, textarea {
+      font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      letter-spacing: -0.012em;
+    }
+    h1, h2, h3, h4, h5, h6, .font-heading {
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+      letter-spacing: -0.025em;
+    }
+
     /* ========================================================
        SUPERIOR LIGHT & BRIGHT THEME STYLES (PURE DAYLIGHT)
        ======================================================== */
@@ -408,17 +435,18 @@
       </button>
     </div>
 
-    <!-- Modules Header with Actions -->
+    <!-- Categories Header with Actions -->
     <div class="px-4 pb-2 flex items-center justify-between flex-shrink-0">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Modules</span>
+      <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Categories</span>
       <div class="flex items-center gap-1">
         <button 
+          id="btnAdminAddCategory"
           onclick="openAddModuleModal()" 
-          class="text-[11px] font-bold text-indigo-400 hover:text-white bg-slate-800 hover:bg-indigo-600 px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-slate-700/60"
-          title="Create a new custom module"
+          class="admin-only-control hidden text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-white bg-indigo-50 hover:bg-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-600 px-2.5 py-1 rounded-xl transition flex items-center gap-1 border border-indigo-200 dark:border-slate-700/60 shadow-xs"
+          title="Add New Category"
         >
           <i class="fa-solid fa-plus text-[10px]"></i>
-          <span>Module</span>
+          <span>Add Category</span>
         </button>
       </div>
     </div>
@@ -508,22 +536,22 @@
         <button 
           onclick="openPendingApprovalsModal()" 
           id="adminApprovalsTopBtn"
-          class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold transition"
+          class="admin-only-control hidden items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-300 text-xs font-bold transition shadow-xs"
           title="New User Approvals"
         >
-          <i class="fa-solid fa-user-check text-xs text-amber-400"></i>
+          <i class="fa-solid fa-user-check text-xs text-amber-500"></i>
           <span>Approvals</span>
-          <span id="topApprovalCountBadge" class="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950">0</span>
+          <span id="topApprovalCountBadge" class="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500 text-white">0</span>
         </button>
 
         <!-- Top Home Shortcut -->
         <button 
           onclick="switchView('home')" 
           id="btnHomeTop"
-          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition"
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition"
           title="Go to Home"
         >
-          <i class="fa-solid fa-house text-xs text-indigo-400"></i>
+          <i class="fa-solid fa-house text-xs text-indigo-500"></i>
           <span>Home</span>
         </button>
 
@@ -531,10 +559,10 @@
         <button 
           onclick="switchToMyRoom()" 
           id="btnMyRoomTop"
-          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-bold transition"
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-500/40 bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-xs font-bold transition"
           title="Open Room Journal"
         >
-          <i class="fa-solid fa-book-bookmark text-xs text-purple-400"></i>
+          <i class="fa-solid fa-book-bookmark text-xs text-purple-500"></i>
           <span id="topRoomBtnText">Admin Room</span>
         </button>
 
@@ -542,20 +570,20 @@
         <button 
           onclick="openAdminControlPanel()" 
           id="topAdminPanelBtn"
-          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold transition"
+          class="admin-only-control hidden items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/40 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-bold transition shadow-xs"
           title="Open Dedicated Admin Panel"
         >
-          <i class="fa-solid fa-shield-halved text-xs text-rose-400"></i>
+          <i class="fa-solid fa-shield-halved text-xs text-rose-500"></i>
           <span>Admin Panel</span>
-          <span id="adminPanelBadge" class="hidden text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950">0</span>
+          <span id="adminPanelBadge" class="hidden text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-rose-500 text-white">0</span>
         </button>
 
         <!-- Master Download Permission Toggle (Admin Controlled) -->
-        <div class="hidden sm:flex items-center" id="downloadToggleWrapper">
+        <div class="admin-only-control hidden items-center" id="downloadToggleWrapper">
           <button 
             onclick="openAdminManagementModal()" 
             id="masterDownloadBtn"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition border border-rose-200 dark:border-rose-500/30 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:text-rose-400 shadow-xs"
             title="Admin Management (Downloads & Folder Permissions)"
           >
             <i class="fa-solid fa-shield-halved text-[10px]" id="downloadLockIcon"></i>
@@ -563,10 +591,11 @@
           </button>
         </div>
 
-        <!-- + ADD NEW RESOURCE BUTTON -->
+        <!-- + ADD NEW RESOURCE BUTTON (ADMIN ONLY) -->
         <button 
+          id="btnAdminAddResource"
           onclick="openAddResourceModal()"
-          class="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-md hover:shadow-emerald-600/30 active:scale-95 flex-shrink-0"
+          class="admin-only-control hidden flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-md hover:shadow-emerald-600/30 active:scale-95 flex-shrink-0"
           title="Add a new resource, document, or link"
         >
           <i class="fa-solid fa-plus text-xs"></i>
@@ -588,7 +617,7 @@
         <button 
           id="adminLiveTextEditBtn"
           onclick="toggleLiveTextEditMode()" 
-          class="hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition shadow-xs flex-shrink-0"
+          class="admin-only-control hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition shadow-xs flex-shrink-0"
           title="Click to edit buttons and text labels directly on screen"
         >
           <i class="fa-solid fa-pen-to-square text-amber-600 text-xs"></i>
@@ -682,18 +711,18 @@
         </div>
 
         <!-- Section 1: NEW ARRIVALS -->
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg">
+              <div class="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg">
                 <i class="fa-solid fa-sparkles"></i>
               </div>
               <div>
-                <h2 class="text-base font-extrabold text-white flex items-center gap-2">
+                <h2 class="text-base font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
                   New Arrivals
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">Latest Added</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">Latest Added</span>
                 </h2>
-                <p class="text-[11px] text-slate-400">Recently added files across all modules</p>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Recently added files across all categories</p>
               </div>
             </div>
 
@@ -701,14 +730,14 @@
               <select 
                 id="homeNewArrivalsFilter" 
                 onchange="filterHomeNewArrivals(this.value)" 
-                class="bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500"
+                class="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500"
               >
-                <option value="all">All Modules</option>
+                <option value="all">All Categories</option>
               </select>
 
               <button 
                 onclick="openNewArrivalsModal()" 
-                class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-white text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5"
+                class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5 shadow-xs"
                 title="Open New Arrivals in Popup"
               >
                 <i class="fa-solid fa-up-right-from-square text-[10px]"></i>
@@ -723,25 +752,25 @@
           </div>
         </div>
 
-        <!-- Grid with 2 Columns: NOTICES & WORSHIP SCHEDULE -->
+        <!-- Grid with 2 Columns: NOTICES & SCHEDULE -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           <!-- NOTICES & ANNOUNCEMENTS -->
-          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
-            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4 flex-shrink-0">
+          <div class="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4 flex-shrink-0">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center text-lg">
+                <div class="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center justify-center text-lg">
                   <i class="fa-solid fa-bullhorn"></i>
                 </div>
                 <div>
-                  <h2 class="text-base font-extrabold text-white">Notices & Announcements</h2>
-                  <p class="text-[11px] text-slate-400">Important church updates and announcements</p>
+                  <h2 class="text-base font-extrabold text-slate-800 dark:text-white" data-ui-key="noticesHeading">Notices & Announcements</h2>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Important church updates and announcements</p>
                 </div>
               </div>
               <button 
                 id="btnAdminAddNotice" 
                 onclick="openAddNoticeModal()" 
-                class="hidden px-2.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs rounded-xl border border-rose-500/30 transition flex items-center gap-1.5"
+                class="admin-only-control hidden px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300 font-bold text-xs rounded-xl border border-rose-200 dark:border-rose-500/30 transition flex items-center gap-1.5 shadow-xs"
               >
                 <i class="fa-solid fa-plus text-[10px]"></i> Post Notice
               </button>
@@ -752,27 +781,27 @@
             </div>
           </div>
 
-          <!-- WORSHIP & MINISTRY SCHEDULE -->
-          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
-            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4 flex-shrink-0">
+          <!-- SCHEDULE -->
+          <div class="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4 flex-shrink-0">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-lg">
+                <div class="w-10 h-10 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 flex items-center justify-center text-lg">
                   <i class="fa-solid fa-calendar-days"></i>
                 </div>
                 <div>
-                  <h2 class="text-base font-extrabold text-white">Worship Schedule</h2>
-                  <p class="text-[11px] text-slate-400">Service times, feasts, and church calendar</p>
+                  <h2 class="text-base font-extrabold text-slate-800 dark:text-white" data-ui-key="scheduleHeading">Schedule</h2>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Service times, events, and ministry calendar</p>
                 </div>
               </div>
               <div class="flex items-center gap-2">
                 <button 
                   id="btnAdminAddSchedule" 
                   onclick="openAddScheduleModal()" 
-                  class="hidden px-2.5 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold text-xs rounded-xl border border-sky-500/30 transition flex items-center gap-1.5"
+                  class="admin-only-control hidden px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 font-bold text-xs rounded-xl border border-sky-200 dark:border-sky-500/30 transition flex items-center gap-1.5 shadow-xs"
                 >
                   <i class="fa-solid fa-plus text-[10px]"></i> Add Event
                 </button>
-                <span class="text-[11px] font-bold text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-500/20">Calendar</span>
+                <span class="text-[11px] font-bold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-200 dark:border-sky-500/20">Calendar</span>
               </div>
             </div>
 
@@ -1553,21 +1582,21 @@
   </div>
 
   <!-- ======================================================== -->
-  <!-- MODAL: ADD / EDIT MODULE                                 -->
+  <!-- MODAL: ADD / EDIT CATEGORY                                -->
   <!-- ======================================================== -->
-  <div id="addModuleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
-    <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300" id="addModuleModalContainer">
-      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
+  <div id="addModuleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300" id="addModuleModalContainer">
+      <div class="h-16 px-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
+          <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center font-bold">
             <i class="fa-solid fa-folder-gear"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-white" id="moduleModalTitle">Module Settings</h3>
-            <p class="text-[11px] text-slate-400">Rename, change emoji, or manage topics</p>
+            <h3 class="text-base font-bold text-slate-800 dark:text-white" id="moduleModalTitle">Category Settings</h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Rename, change emoji, or manage topics</p>
           </div>
         </div>
-        <button onclick="closeAddModuleModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+        <button onclick="closeAddModuleModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white flex items-center justify-center text-sm transition">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -1575,99 +1604,99 @@
       <form id="addModuleForm" onsubmit="submitModuleConfig(event)" class="p-6 space-y-4">
         <input type="hidden" id="editModuleTargetId" value="">
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">Module Name *</label>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Category Name *</label>
           <input 
             type="text" 
             id="newModuleName" 
             required 
             placeholder="e.g. Youth Fellowship, Choir Archive..."
-            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition"
           >
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">Module Icon / Emoji *</label>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Category Icon / Emoji *</label>
           <div class="flex items-center gap-2">
             <input 
               type="text" 
               id="newModuleIcon" 
               required 
               value="📁"
-              class="w-16 px-3 py-2 text-center text-lg bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-white outline-none transition"
+              class="w-16 px-3 py-2 text-center text-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-xl text-slate-900 dark:text-white outline-none transition"
             >
             <div class="flex flex-wrap gap-1.5 text-base">
-              <button type="button" onclick="selectEmoji('🎵')" class="p-1 hover:bg-slate-800 rounded-lg">🎵</button>
-              <button type="button" onclick="selectEmoji('📖')" class="p-1 hover:bg-slate-800 rounded-lg">📖</button>
-              <button type="button" onclick="selectEmoji('🎬')" class="p-1 hover:bg-slate-800 rounded-lg">🎬</button>
-              <button type="button" onclick="selectEmoji('🌟')" class="p-1 hover:bg-slate-800 rounded-lg">🌟</button>
-              <button type="button" onclick="selectEmoji('📁')" class="p-1 hover:bg-slate-800 rounded-lg">📁</button>
-              <button type="button" onclick="selectEmoji('⛪')" class="p-1 hover:bg-slate-800 rounded-lg">⛪</button>
-              <button type="button" onclick="selectEmoji('🕊️')" class="p-1 hover:bg-slate-800 rounded-lg">🕊️</button>
-              <button type="button" onclick="selectEmoji('📚')" class="p-1 hover:bg-slate-800 rounded-lg">📚</button>
-              <button type="button" onclick="selectEmoji('✝️')" class="p-1 hover:bg-slate-800 rounded-lg">✝️</button>
+              <button type="button" onclick="selectEmoji('🎵')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">🎵</button>
+              <button type="button" onclick="selectEmoji('📖')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">📖</button>
+              <button type="button" onclick="selectEmoji('🎬')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">🎬</button>
+              <button type="button" onclick="selectEmoji('🌟')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">🌟</button>
+              <button type="button" onclick="selectEmoji('📁')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">📁</button>
+              <button type="button" onclick="selectEmoji('⛪')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">⛪</button>
+              <button type="button" onclick="selectEmoji('🕊️')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">🕊️</button>
+              <button type="button" onclick="selectEmoji('📚')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">📚</button>
+              <button type="button" onclick="selectEmoji('✝️')" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">✝️</button>
             </div>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">Topics / Subgroups (comma-separated)</label>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Topics / Subgroups (comma-separated)</label>
           <textarea 
             id="newModuleTopics" 
             rows="3"
             placeholder="e.g. Passover, Unleavened Bread, Level 1, Audio..."
-            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none transition resize-none"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-slate-900 dark:text-white outline-none transition resize-none"
           ></textarea>
         </div>
 
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-xs font-bold text-slate-300">
-              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> Visible to Positions
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              <i class="fa-solid fa-users-viewfinder text-indigo-500 mr-1"></i> Visible to Positions
             </label>
             <div class="flex items-center gap-2">
-              <button type="button" onclick="toggleSelectAllPositions('modulePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
-              <span class="text-slate-600 text-[10px]">•</span>
-              <button type="button" onclick="toggleSelectAllPositions('modulePositionChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+              <button type="button" onclick="toggleSelectAllPositions('modulePositionChoice', true)" class="text-[10px] text-indigo-500 hover:underline">Select All</button>
+              <span class="text-slate-400 text-[10px]">•</span>
+              <button type="button" onclick="toggleSelectAllPositions('modulePositionChoice', false)" class="text-[10px] text-slate-500 hover:underline">Clear</button>
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="modulePositionsCheckboxList">
+          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800" id="modulePositionsCheckboxList">
             <!-- Populated via JS -->
           </div>
-          <p class="text-[10px] text-slate-500 mt-1">If all or none selected, module is visible to all members.</p>
+          <p class="text-[10px] text-slate-500 mt-1">If all or none selected, category is visible to all members.</p>
         </div>
 
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-xs font-bold text-slate-300">
-              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Visible to Specific Members
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              <i class="fa-solid fa-user-check text-purple-500 mr-1"></i> Visible to Specific Members
             </label>
             <div class="flex items-center gap-2">
-              <button type="button" onclick="toggleSelectAllUsers('moduleUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">Select All</button>
-              <span class="text-slate-600 text-[10px]">•</span>
-              <button type="button" onclick="toggleSelectAllUsers('moduleUserChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+              <button type="button" onclick="toggleSelectAllUsers('moduleUserChoice', true)" class="text-[10px] text-purple-500 hover:underline">Select All</button>
+              <span class="text-slate-400 text-[10px]">•</span>
+              <button type="button" onclick="toggleSelectAllUsers('moduleUserChoice', false)" class="text-[10px] text-slate-500 hover:underline">Clear</button>
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="moduleUsersCheckboxList">
+          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800" id="moduleUsersCheckboxList">
             <!-- Populated via JS -->
           </div>
-          <p class="text-[10px] text-slate-500 mt-1">Select individual members to give them access to this module.</p>
+          <p class="text-[10px] text-slate-500 mt-1">Select individual members to give them access to this category.</p>
         </div>
 
-        <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <button 
             type="button" 
             id="deleteModuleBtn"
             onclick="deleteCurrentTargetModule()"
-            class="hidden px-3 py-2 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition"
+            class="hidden px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 transition"
           >
-            <i class="fa-solid fa-trash-can"></i> Delete
+            <i class="fa-solid fa-trash-can"></i> Delete Category
           </button>
           
           <div class="flex items-center gap-2.5 ml-auto">
             <button 
               type="button" 
               onclick="closeAddModuleModal()"
-              class="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition"
+              class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition"
             >
               Cancel
             </button>
@@ -1675,6 +1704,10 @@
               type="submit"
               class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-sm hover:shadow-md"
             >
+              Save Category
+            </button>
+          </div>
+        </div>
               Save Configuration
             </button>
           </div>
@@ -2279,27 +2312,28 @@
   </div>
 
   <!-- ======================================================== -->
-  <!-- MODAL: POST NEW NOTICE (ADMIN ONLY)                      -->
+  <!-- MODAL: POST / EDIT NOTICE (ADMIN ONLY)                    -->
   <!-- ======================================================== -->
-  <div id="addNoticeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
-    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700 p-6 transform scale-95 transition-transform duration-300" id="addNoticeModalContainer">
-      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-bullhorn text-rose-400"></i> Post New Notice
+  <div id="addNoticeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 p-6 transform scale-95 transition-transform duration-300" id="addNoticeModalContainer">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+          <i class="fa-solid fa-bullhorn text-rose-500"></i> <span id="noticeModalTitle">Post New Notice</span>
         </h3>
-        <button onclick="closeAddNoticeModal()" class="text-slate-400 hover:text-white">
+        <button onclick="closeAddNoticeModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white flex items-center justify-center transition">
           <i class="fa-solid fa-xmark text-sm"></i>
         </button>
       </div>
       <form onsubmit="handleSaveNotice(event)" class="pt-4 space-y-3.5">
+        <input type="hidden" id="editNoticeTargetId" value="">
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Notice Title *</label>
-          <input type="text" id="noticeTitleInput" required placeholder="e.g. Special Service Timing Change" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Notice Title *</label>
+          <input type="text" id="noticeTitleInput" required placeholder="e.g. Special Service Timing Change" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Category</label>
-            <select id="noticeCategoryInput" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Category</label>
+            <select id="noticeCategoryInput" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
               <option value="Important">Important</option>
               <option value="Worship Update">Worship Update</option>
               <option value="Feast Notice">Feast Notice</option>
@@ -2307,8 +2341,8 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Badge Color</label>
-            <select id="noticeColorInput" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Badge Color</label>
+            <select id="noticeColorInput" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
               <option value="rose">Red / Urgent</option>
               <option value="amber">Amber / Alert</option>
               <option value="indigo">Indigo / Info</option>
@@ -2317,32 +2351,43 @@
           </div>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Content / Message *</label>
-          <textarea id="noticeContentInput" required rows="3" placeholder="Write announcement details here..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none resize-none"></textarea>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Content / Message *</label>
+          <textarea id="noticeContentInput" required rows="3" placeholder="Write announcement details here..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <i class="fa-solid fa-link mr-1 text-rose-500"></i> Embed Link / Media URL (YouTube, Zoom, Drive, Website)
+          </label>
+          <input 
+            type="url" 
+            id="noticeEmbedLinkInput" 
+            placeholder="https://youtube.com/... or https://zoom.us/... or Google Docs" 
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none"
+          >
         </div>
         <!-- ATTACH FILES (ALL KINDS, NO LIMIT) -->
-        <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-2">
-          <label class="block text-xs font-bold text-slate-300">
-            <i class="fa-solid fa-paperclip mr-1 text-rose-400"></i> Attach Files & Documents (All formats, No limit)
+        <div class="p-3 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+            <i class="fa-solid fa-paperclip mr-1 text-rose-500"></i> Attach Files & Documents (All formats, No limit)
           </label>
           <input 
             type="file" 
             id="noticeFileInput" 
             multiple 
             onchange="handleNoticeFileSelect(this)" 
-            class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-rose-300 hover:file:bg-slate-700 cursor-pointer"
+            class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-rose-600 hover:file:bg-slate-200 cursor-pointer"
           >
           <input 
             type="url" 
             id="noticeLinkInput" 
             placeholder="Or attach Google Docs, Drive, or Audio/Video link" 
-            class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none"
+            class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none"
           >
           <div id="noticeSelectedFilesContainer" class="flex flex-wrap gap-1.5 pt-1"></div>
         </div>
         <div class="flex items-center justify-end gap-2 pt-2">
-          <button type="button" onclick="closeAddNoticeModal()" class="px-3 py-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs">Cancel</button>
-          <button type="submit" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs">Publish Notice</button>
+          <button type="button" onclick="closeAddNoticeModal()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition">Cancel</button>
+          <button type="submit" id="noticeModalSubmitBtn" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md"><span id="noticeModalSubmitText">Publish Notice</span></button>
         </div>
       </form>
     </div>
@@ -2716,56 +2761,77 @@
   </div>
   <!-- MODAL: ADD / EDIT SCHEDULE EVENT (ADMIN ONLY)            -->
   <!-- ======================================================== -->
-  <div id="addScheduleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
-    <div class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-700 p-6 transform scale-95 transition-transform duration-300" id="addScheduleModalContainer">
-      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-calendar-plus text-sky-400"></i> <span id="scheduleModalTitle">Add Worship Event</span>
+  <div id="addScheduleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 p-6 transform scale-95 transition-transform duration-300" id="addScheduleModalContainer">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+          <i class="fa-solid fa-calendar-plus text-sky-500"></i> <span id="scheduleModalTitle">Add Schedule Event</span>
         </h3>
-        <button onclick="closeAddScheduleModal()" class="text-slate-400 hover:text-white">
+        <button onclick="closeAddScheduleModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white flex items-center justify-center transition">
           <i class="fa-solid fa-xmark text-sm"></i>
         </button>
       </div>
       <form onsubmit="handleSaveSchedule(event)" class="pt-4 space-y-3.5">
         <input type="hidden" id="editScheduleTargetId" value="">
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Event / Service Title *</label>
-          <input type="text" id="schedTitleInput" required placeholder="e.g. Tuesday Evening Service, Holy Sabbath" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Event / Service Title *</label>
+          <input type="text" id="schedTitleInput" required placeholder="e.g. Tuesday Evening Service, Holy Sabbath" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Worship Type</label>
-            <select id="schedTypeInput" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Event Type</label>
+            <select id="schedTypeInput" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
               <option value="Tuesday Service">Tuesday Service</option>
               <option value="Sabbath Worship">Sabbath Worship</option>
               <option value="Sacred Feast">Sacred Feast</option>
               <option value="Special Prayer">Special Prayer</option>
               <option value="Bible Seminar">Bible Seminar</option>
+              <option value="Youth Fellowship">Youth Fellowship</option>
               <option value="Other Gathering">Other Gathering</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Icon / Emoji</label>
-            <input type="text" id="schedIconInput" value="⛪" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-center text-sm text-white outline-none">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Icon / Emoji</label>
+            <input type="text" id="schedIconInput" value="⛪" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-center text-sm text-slate-900 dark:text-white outline-none">
           </div>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Date *</label>
-            <input type="date" id="schedDateInput" required class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Date *</label>
+            <input type="date" id="schedDateInput" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Time *</label>
-            <input type="text" id="schedTimeInput" required placeholder="e.g. 07:30 PM, 10:00 AM" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none">
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Time *</label>
+            <input type="text" id="schedTimeInput" required placeholder="e.g. 07:30 PM, 10:00 AM" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <i class="fa-solid fa-arrows-rotate mr-1 text-sky-500"></i> Repeat Frequency
+            </label>
+            <select id="schedRepeatInput" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
+              <option value="none">Does not repeat (One-time)</option>
+              <option value="daily">Repeats Daily</option>
+              <option value="weekly">Repeats Weekly</option>
+              <option value="monthly">Repeats Monthly</option>
+              <option value="yearly">Repeats Yearly</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <i class="fa-solid fa-video mr-1 text-indigo-500"></i> Meeting / Stream Link
+            </label>
+            <input type="url" id="schedLinkInput" placeholder="Zoom, Meet, YouTube Live..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none">
           </div>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Description / Preparation Notes</label>
-          <textarea id="schedDescInput" rows="2" placeholder="e.g. Please prepare new songs #12, #45..." class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none resize-none"></textarea>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Description / Preparation Notes</label>
+          <textarea id="schedDescInput" rows="2" placeholder="e.g. Please prepare new songs #12, #45..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none resize-none"></textarea>
         </div>
         <div class="flex items-center justify-end gap-2 pt-2">
-          <button type="button" onclick="closeAddScheduleModal()" class="px-3 py-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-xl text-xs">Cancel</button>
-          <button type="submit" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs">Save to Schedule</button>
+          <button type="button" onclick="closeAddScheduleModal()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition">Cancel</button>
+          <button type="submit" id="schedModalSubmitText" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs shadow-md">Save to Schedule</button>
         </div>
       </form>
     </div>
@@ -2833,6 +2899,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=5.7"></script>
+  <script src="portal_engine.js?v=5.8"></script>
 </body>
 </html>
