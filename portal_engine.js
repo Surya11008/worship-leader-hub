@@ -448,6 +448,10 @@ function saveTopicPermissions(e) {
 }
 
 async function adminChangeUserPosition(userId, newPos) {
+  if (!CURRENT_USER || (CURRENT_USER.role !== 'admin' && CURRENT_USER.userId.toLowerCase() !== 'surya11008')) {
+    alert('Unauthorized: Only Administrator has full control to change user position/category.');
+    return;
+  }
   const user = ALL_USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase());
   if (!user) return;
   user.position = newPos;
@@ -1237,7 +1241,7 @@ async function handleRegisterSubmit(e) {
   const zion = document.getElementById('regZion').value.trim();
   const area = document.getElementById('regArea').value.trim();
   const pin = document.getElementById('regPin').value.trim();
-  const position = document.getElementById('regPosition') ? document.getElementById('regPosition').value : 'Member';
+  const position = 'Member'; // Initial registration is always Member. Only Admin can assign/change position.
 
   if (pass !== passAgain) {
     alert('Passwords do not match! Please check again.');
@@ -3374,8 +3378,26 @@ function loadSettingsFormData() {
   document.getElementById('settingArea').value = CURRENT_USER.area || '';
   document.getElementById('settingPhone').value = CURRENT_USER.phone || '';
   document.getElementById('settingEmail').value = CURRENT_USER.gmail || '';
-  if (document.getElementById('settingPosition')) {
-    document.getElementById('settingPosition').value = CURRENT_USER.position || 'Member';
+  const posSelect = document.getElementById('settingPosition');
+  const posBadge = document.getElementById('settingPositionBadge');
+  const posNote = document.getElementById('settingPositionLockNote');
+  const isAdm = CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.userId.toLowerCase() === 'surya11008');
+
+  if (posSelect) {
+    posSelect.value = CURRENT_USER.position || 'Member';
+    if (!isAdm) {
+      posSelect.disabled = true;
+      posSelect.title = 'Only Administrator has full control to change user position/category.';
+      posSelect.className = 'w-full px-3 py-2 bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-500 dark:text-slate-400 text-xs outline-none cursor-not-allowed opacity-75';
+      if (posBadge) posBadge.textContent = 'Locked (Admin Only)';
+      if (posNote) posNote.classList.remove('hidden');
+    } else {
+      posSelect.disabled = false;
+      posSelect.title = 'Administrator full control active';
+      posSelect.className = 'w-full px-3 py-2 bg-white dark:bg-slate-800 border border-indigo-400 dark:border-indigo-500 rounded-xl text-slate-900 dark:text-white text-xs outline-none cursor-pointer';
+      if (posBadge) posBadge.textContent = 'Admin Full Control';
+      if (posNote) posNote.classList.add('hidden');
+    }
   }
 }
 
@@ -3386,7 +3408,8 @@ function saveUserProfile(e) {
   CURRENT_USER.area = document.getElementById('settingArea').value.trim();
   CURRENT_USER.phone = document.getElementById('settingPhone').value.trim();
   CURRENT_USER.gmail = document.getElementById('settingEmail').value.trim();
-  if (document.getElementById('settingPosition')) {
+  const isAdmUser = CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.userId.toLowerCase() === 'surya11008');
+  if (isAdmUser && document.getElementById('settingPosition')) {
     CURRENT_USER.position = document.getElementById('settingPosition').value || 'Member';
   }
 
