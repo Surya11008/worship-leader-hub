@@ -52,6 +52,78 @@
     .custom-scrollbar::-webkit-scrollbar { width: 5px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 
+    
+    /* Comprehensive Light Mode Styles */
+    html.light-mode {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+    }
+    html.light-mode body {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+    }
+    html.light-mode .bg-slate-900,
+    html.light-mode .bg-slate-900/90,
+    html.light-mode .bg-slate-900/70,
+    html.light-mode .bg-slate-900/50 {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+    }
+    html.light-mode .bg-slate-950,
+    html.light-mode .bg-slate-950/80,
+    html.light-mode .bg-slate-950/70,
+    html.light-mode .bg-slate-950/60,
+    html.light-mode .bg-slate-950/50 {
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+    }
+    html.light-mode .bg-slate-800,
+    html.light-mode .bg-slate-800/80,
+    html.light-mode .bg-slate-800/60,
+    html.light-mode .bg-slate-800/50,
+    html.light-mode .bg-slate-800/40 {
+      background-color: #e2e8f0 !important;
+      color: #0f172a !important;
+    }
+    html.light-mode .hover:bg-slate-800:hover,
+    html.light-mode .hover:bg-slate-700:hover {
+      background-color: #cbd5e1 !important;
+    }
+    html.light-mode .text-white {
+      color: #0f172a !important;
+    }
+    html.light-mode .text-slate-200,
+    html.light-mode .text-slate-300 {
+      color: #1e293b !important;
+    }
+    html.light-mode .text-slate-400 {
+      color: #475569 !important;
+    }
+    html.light-mode .text-slate-500 {
+      color: #64748b !important;
+    }
+    html.light-mode .border-slate-800,
+    html.light-mode .border-slate-700 {
+      border-color: #cbd5e1 !important;
+    }
+    html.light-mode input,
+    html.light-mode select,
+    html.light-mode textarea {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    html.light-mode table thead tr {
+      background-color: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
+    }
+    html.light-mode table tbody tr {
+      border-color: #e2e8f0 !important;
+    }
+    html.light-mode table tbody tr:hover {
+      background-color: #f8fafc !important;
+    }
+
     .sidebar-transition {
       transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -368,6 +440,17 @@
             <i class="fa-solid fa-grip"></i>
           </button>
         </div>
+
+        <!-- Top Light / Dark Mode Toggle Button -->
+        <button 
+          id="themeToggleBtn"
+          onclick="toggleTheme()" 
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs font-bold transition shadow-xs flex-shrink-0"
+          title="Toggle Light / Dark Mode"
+        >
+          <i id="themeToggleIcon" class="fa-solid fa-sun text-xs"></i>
+          <span id="themeToggleText" class="hidden md:inline text-[11px]">Theme</span>
+        </button>
 
         <!-- Top Settings Button -->
         <button 
@@ -954,6 +1037,23 @@
           <p class="text-[10px] text-slate-500 mt-1">Only users with checked positions can view this file.</p>
         </div>
 
+        <div class="pt-2 border-t border-slate-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block font-bold text-slate-300">
+              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> 4. Allowed Specific Members (వ్యక్తిగత సభ్యుల అనుమతి)
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="toggleSelectAllUsers('editFileUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">Select All</button>
+              <span class="text-slate-600">•</span>
+              <button type="button" onclick="toggleSelectAllUsers('editFileUserChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="editFileUsersCheckboxList">
+            <!-- Populated via JS -->
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Select individual members who should have access to this file.</p>
+        </div>
+
         <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
           <button type="button" onclick="closeEditFileModuleTopicModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-xl">Cancel</button>
           <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30">
@@ -1276,6 +1376,23 @@
           <p class="text-[10px] text-slate-500 mt-1">If all or none selected, file is visible to all members.</p>
         </div>
 
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-300">
+              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Visible to Specific Members (వ్యక్తిగత సభ్యుల అనుమతి)
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="toggleSelectAllUsers('resourceUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">Select All</button>
+              <span class="text-slate-600 text-[10px]">•</span>
+              <button type="button" onclick="toggleSelectAllUsers('resourceUserChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="resourceUsersCheckboxList">
+            <!-- Populated via JS -->
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Select individual members who should have access to this file.</p>
+        </div>
+
         <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2.5">
           <button 
             type="button" 
@@ -1377,6 +1494,23 @@
             <!-- Populated via JS -->
           </div>
           <p class="text-[10px] text-slate-500 mt-1">If all or none selected, module is visible to all members.</p>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-300">
+              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Visible to Specific Members (వ్యక్తిగత సభ్యుల అనుమతి)
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="toggleSelectAllUsers('moduleUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">Select All</button>
+              <span class="text-slate-600 text-[10px]">•</span>
+              <button type="button" onclick="toggleSelectAllUsers('moduleUserChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="moduleUsersCheckboxList">
+            <!-- Populated via JS -->
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Select individual members to give them access to this module.</p>
         </div>
 
         <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
@@ -1740,6 +1874,64 @@
         <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-indigo-600/30 mt-2">
           Sign In to Portal
         </button>
+        <div class="flex items-center justify-between pt-2 text-[11px]">
+          <button type="button" onclick="switchAuthMode('forgot')" class="text-indigo-400 hover:text-indigo-300 font-bold hover:underline">
+            Forgot Password / PIN? (రీసెట్)
+          </button>
+          <button type="button" onclick="switchAuthMode('register')" class="text-slate-400 hover:text-white font-medium">
+            New User? Register
+          </button>
+        </div>
+      </form>
+
+      <!-- FORGOT / RESET PASSWORD FORM -->
+      <form id="forgotPasswordForm" onsubmit="handleForgotPasswordSubmit(event)" class="hidden space-y-3.5">
+        <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs leading-relaxed">
+          <i class="fa-solid fa-key mr-1 text-amber-400"></i> Enter your <strong>User ID</strong> and your <strong>6-Digit PIN</strong> (or registered Full Name) to set a new password.
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">User ID *</label>
+          <input type="text" id="forgotUserId" required placeholder="Your User ID" class="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">6-Digit PIN or Full Name *</label>
+          <input type="text" id="forgotSecurityCheck" required placeholder="PIN (e.g. 123456) or Full Name" class="w-full px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">New Password *</label>
+          <div class="relative">
+            <input type="password" id="forgotNewPassword" required minlength="4" placeholder="Enter new password" class="w-full pl-3.5 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
+            <button type="button" onclick="togglePasswordVisibility('forgotNewPassword', 'eyeForgotNewPass')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1">
+              <i id="eyeForgotNewPass" class="fa-solid fa-eye text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Confirm New Password *</label>
+          <div class="relative">
+            <input type="password" id="forgotConfirmPassword" required minlength="4" placeholder="Confirm new password" class="w-full pl-3.5 pr-10 py-2.5 bg-slate-800/80 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs text-white outline-none">
+            <button type="button" onclick="togglePasswordVisibility('forgotConfirmPassword', 'eyeForgotConfPass')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1">
+              <i id="eyeForgotConfPass" class="fa-solid fa-eye text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="btnForgotSubmit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-amber-600/30">
+          Reset Password & Update in Cloud
+        </button>
+
+        <div class="flex items-center justify-between pt-1 text-[11px]">
+          <button type="button" onclick="switchAuthMode('login')" class="text-indigo-400 hover:text-indigo-300 font-semibold hover:underline">
+            ← Back to Sign In
+          </button>
+          <button type="button" onclick="requestAdminPasswordReset()" class="text-rose-400 hover:text-rose-300 font-semibold hover:underline">
+            Request Admin Reset
+          </button>
+        </div>
       </form>
 
       <!-- REGISTER FORM (CLEAN PLACEHOLDERS - NO 'EXAMPLE' WORDS) -->
