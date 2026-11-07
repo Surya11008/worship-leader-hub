@@ -46,6 +46,8 @@ function toggleTheme() {
   applyTheme(next);
 }
 initTheme();
+loadCloudUiTexts();
+applyCustomUiTexts();
 
 
 // ========================================================
@@ -398,7 +400,7 @@ if (!NOTICES_LIST || NOTICES_LIST.length === 0) {
   NOTICES_LIST = [
     {
       id: 'not_1',
-      title: 'Welcome to L Support Central Portal',
+      title: 'Welcome to Support Central Portal',
       category: 'Important',
       color: 'indigo',
       content: 'Welcome to the updated ministry portal. You can now access all sermons, faith stories, and church media from your unified dashboard.',
@@ -697,8 +699,8 @@ function updateUserUI() {
   document.getElementById('sidebarUserRole').textContent = (CURRENT_USER.role === 'admin' ? 'Admin' : 'Member') + ' Online';
   
   const zionAreaText = [CURRENT_USER.zion, CURRENT_USER.area].filter(Boolean).join(' • ');
-  document.getElementById('sidebarUserZion').textContent = zionAreaText || 'L Support Member';
-  document.getElementById('sidebarUserBranch').textContent = CURRENT_USER.zion || 'L Support';
+  document.getElementById('sidebarUserZion').textContent = zionAreaText || 'Support Member';
+  document.getElementById('sidebarUserBranch').textContent = CURRENT_USER.zion || 'Support';
 
   // Dynamic Room Labels (e.g. Admin Room, David Room, Peter Room)
   const roomTitle = getDynamicRoomName();
@@ -748,7 +750,7 @@ function updateUserUI() {
 }
 
 function handleLogout() {
-  if (!confirm('Are you sure you want to log out of L Support?')) return;
+  if (!confirm('Are you sure you want to log out of Support?')) return;
   logActivity('Logout', 'User signed out');
   localStorage.removeItem('wlh_current_user');
   sessionStorage.removeItem('l_support_session_active');
@@ -930,7 +932,7 @@ async function handleLoginSubmit(e) {
   e.preventDefault();
   const uid = document.getElementById('loginUserId').value.trim();
   const pass = document.getElementById('loginPassword').value;
-  const pin = document.getElementById('loginPin').value.trim();
+  const pinEl = document.getElementById('loginPin'); const pin = pinEl ? pinEl.value.trim() : '';
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Sign In to Portal';
@@ -2828,7 +2830,7 @@ function closeMergeModal() {
 }
 
 function generateMergedStudyPack() {
-  const packTitle = document.getElementById('mergePackTitle').value.trim() || 'L Support Study Pack';
+  const packTitle = document.getElementById('mergePackTitle').value.trim() || 'Support Study Pack';
   const urls = [...selectedItemUrls];
   const items = urls.map(u => ALL_ITEMS.find(i => i.url === u)).filter(Boolean);
 
@@ -3854,6 +3856,202 @@ function updateStarAdminBadges() {
     sidebarPending.textContent = pendingCount;
     sidebarPending.classList.toggle('hidden', pendingCount === 0);
   }
+}
+
+
+// ========================================================
+// DYNAMIC UI TEXT & BUTTON LABELS CUSTOMIZER
+// ========================================================
+const DEFAULT_UI_TEXTS = {
+  siteTitle: 'Support',
+  siteSubtitle: 'Central Portal',
+  brandBadge: 'PORTAL',
+  btnBrowse: 'Browse Library',
+  btnMyRoom: 'Admin Room',
+  btnViewAll: 'View All Popup',
+  btnSignIn: 'Sign In to Portal',
+  btnSignOut: 'Sign Out',
+  section1Title: 'New Arrivals',
+  section1Subtitle: 'Recently added files across all modules',
+  searchPlaceholder: 'Quick search files, topics, songs...'
+};
+
+let UI_CUSTOM_TEXTS = JSON.parse(localStorage.getItem('wlh_ui_texts') || '{}');
+let isLiveTextEditMode = false;
+
+function getUiText(key, fallback) {
+  if (UI_CUSTOM_TEXTS && UI_CUSTOM_TEXTS[key] !== undefined && UI_CUSTOM_TEXTS[key].trim() !== '') {
+    return UI_CUSTOM_TEXTS[key];
+  }
+  return fallback !== undefined ? fallback : (DEFAULT_UI_TEXTS[key] || '');
+}
+
+function applyCustomUiTexts() {
+  // Update data-ui-key elements
+  Object.keys(DEFAULT_UI_TEXTS).forEach(key => {
+    const val = getUiText(key);
+    document.querySelectorAll('[data-ui-key="' + key + '"]').forEach(el => {
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.placeholder = val;
+      } else {
+        el.textContent = val;
+      }
+    });
+  });
+
+  // Specific elements
+  document.querySelectorAll('.app-brand-title').forEach(el => el.textContent = getUiText('siteTitle', 'Support'));
+  const searchInput = document.getElementById('globalSearchInput');
+  if (searchInput) searchInput.placeholder = getUiText('searchPlaceholder', 'Quick search files, topics, songs...');
+  const roomBtnText = document.getElementById('homeRoomBtnText');
+  if (roomBtnText) roomBtnText.textContent = getUiText('btnMyRoom', 'Admin Room');
+}
+
+async function loadCloudUiTexts() {
+  try {
+    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS, data);
+        localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+        applyCustomUiTexts();
+      }
+    }
+  } catch(e) {}
+}
+
+function toggleLiveTextEditMode() {
+  if (!CURRENT_USER || (CURRENT_USER.role !== 'admin' && CURRENT_USER.userId.toLowerCase() !== 'surya11008')) {
+    alert('Live text editing is exclusive to Portal Admins.');
+    return;
+  }
+  isLiveTextEditMode = !isLiveTextEditMode;
+  const label = document.getElementById('liveTextEditLabel');
+  const btn = document.getElementById('adminLiveTextEditBtn');
+  
+  if (isLiveTextEditMode) {
+    if (label) label.textContent = 'Editing: ON';
+    if (btn) btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-500 bg-amber-400 text-slate-950 text-xs font-black shadow-md flex-shrink-0 animate-pulse';
+    showToast('Live text edit mode ACTIVE! Click any highlighted text or button to edit it.', 'info');
+    
+    document.querySelectorAll('[data-ui-key]').forEach(el => {
+      el.classList.add('admin-edit-highlight');
+      el.onclick = (evt) => {
+        if (!isLiveTextEditMode) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        const key = el.getAttribute('data-ui-key');
+        const current = getUiText(key);
+        const newText = prompt('Enter new text for [' + key + ']:', current);
+        if (newText !== null && newText.trim() !== '') {
+          saveSingleUiText(key, newText.trim());
+        }
+      };
+    });
+  } else {
+    if (label) label.textContent = 'Edit Text';
+    if (btn) btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition shadow-xs flex-shrink-0';
+    document.querySelectorAll('[data-ui-key]').forEach(el => {
+      el.classList.remove('admin-edit-highlight');
+      el.onclick = null;
+    });
+    showToast('Live text edit mode turned OFF.', 'info');
+  }
+}
+
+async function saveSingleUiText(key, value) {
+  UI_CUSTOM_TEXTS[key] = value;
+  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+  applyCustomUiTexts();
+  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
+  try {
+    fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(UI_CUSTOM_TEXTS)
+    }).catch(() => {});
+  } catch(e) {}
+  showToast('Updated [' + key + '] to: "' + value + '"', 'success');
+}
+
+function renderStarUiTextTab() {
+  const container = document.getElementById('adminUiTextFormContainer');
+  if (!container) return;
+
+  const textFields = [
+    { key: 'siteTitle', label: 'Site Brand Title', desc: 'Main title in header, login & sidebar' },
+    { key: 'siteSubtitle', label: 'Site Subtitle / Tagline', desc: 'Appears under main title' },
+    { key: 'brandBadge', label: 'Brand Badge', desc: 'Badge next to logo (e.g. PORTAL, PRO)' },
+    { key: 'btnBrowse', label: 'Browse Library Button', desc: 'Quick action button on home' },
+    { key: 'btnMyRoom', label: 'Admin Room Button', desc: 'Personal room switch button' },
+    { key: 'btnViewAll', label: 'View All Popup Button', desc: 'New arrivals modal button' },
+    { key: 'btnSignIn', label: 'Sign In Button', desc: 'Login submit button' },
+    { key: 'btnSignOut', label: 'Sign Out Button', desc: 'Sidebar logout button' },
+    { key: 'section1Title', label: 'Section 1 Title', desc: 'Title for New Arrivals section' },
+    { key: 'section1Subtitle', label: 'Section 1 Subtitle', desc: 'Subtitle for New Arrivals' },
+    { key: 'searchPlaceholder', label: 'Search Input Placeholder', desc: 'Placeholder in search bar' }
+  ];
+
+  container.innerHTML = textFields.map(tf => {
+    const val = getUiText(tf.key, DEFAULT_UI_TEXTS[tf.key]);
+    return `
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-xs space-y-1.5">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+            <i class="fa-solid fa-tag text-indigo-500 text-[10px]"></i> ${tf.label}
+          </label>
+          <span class="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-bold">${tf.key}</span>
+        </div>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400">${tf.desc}</p>
+        <div class="flex items-center gap-2 pt-1">
+          <input 
+            type="text" 
+            id="input_uitext_${tf.key}" 
+            value="${val.replace(/"/g, '&quot;')}" 
+            class="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold outline-none focus:border-indigo-500"
+          >
+          <button 
+            type="button" 
+            onclick="saveSingleUiText('${tf.key}', document.getElementById('input_uitext_${tf.key}').value)" 
+            class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold shadow-xs transition"
+            title="Save this single field"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveCustomUiTextsForm() {
+  const textKeys = ['siteTitle', 'siteSubtitle', 'brandBadge', 'btnBrowse', 'btnMyRoom', 'btnViewAll', 'btnSignIn', 'btnSignOut', 'section1Title', 'section1Subtitle', 'searchPlaceholder'];
+  textKeys.forEach(k => {
+    const el = document.getElementById('input_uitext_' + k);
+    if (el) UI_CUSTOM_TEXTS[k] = el.value.trim();
+  });
+  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+  applyCustomUiTexts();
+  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
+  try {
+    await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(UI_CUSTOM_TEXTS)
+    });
+  } catch(e) {}
+  showToast('All UI text labels saved successfully!', 'success');
+}
+
+function resetUiTextsToDefault() {
+  if (!confirm('Reset all button & text labels to original defaults?')) return;
+  UI_CUSTOM_TEXTS = Object.assign({}, DEFAULT_UI_TEXTS);
+  localStorage.setItem('wlh_ui_texts', JSON.stringify(UI_CUSTOM_TEXTS));
+  applyCustomUiTexts();
+  if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
+  renderStarUiTextTab();
+  showToast('All texts reset to defaults.', 'info');
 }
 
 function switchAdminPanelTab(tab) {
