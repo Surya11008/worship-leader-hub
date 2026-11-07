@@ -1,5 +1,20 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-900">
+<html lang="en" class="h-full light-mode">
+<head>
+  <script>
+    (function() {
+      try {
+        var theme = localStorage.getItem('wlh_theme_v3') || 'light';
+        if (theme === 'dark') {
+          document.documentElement.classList.remove('light-mode');
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.add('light-mode');
+          document.documentElement.classList.remove('dark');
+        }
+      } catch(e) {}
+    })();
+  </script>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -53,77 +68,193 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 
     
-    /* Comprehensive Light Mode Styles */
+    /* ========================================================
+       SUPERIOR LIGHT & BRIGHT THEME STYLES (DAYLIGHT CLEAN)
+       ======================================================== */
     html.light-mode {
       background-color: #f8fafc !important;
       color: #0f172a !important;
+      color-scheme: light;
     }
     html.light-mode body {
       background-color: #f8fafc !important;
       color: #0f172a !important;
     }
+
+    /* Header & Navigation */
+    html.light-mode header,
+    html.light-mode nav.top-nav {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+    }
+
+    /* Sidebar Navigation */
+    html.light-mode aside,
+    html.light-mode #mainSidebar {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      box-shadow: 1px 0 3px 0 rgba(0, 0, 0, 0.03) !important;
+    }
+
+    /* Main Content Background */
+    html.light-mode main,
+    html.light-mode #mainContentArea {
+      background-color: #f8fafc !important;
+    }
+
+    /* Cards & Panels */
     html.light-mode .bg-slate-900,
+    html.light-mode .bg-slate-900/95,
     html.light-mode .bg-slate-900/90,
+    html.light-mode .bg-slate-900/80,
     html.light-mode .bg-slate-900/70,
-    html.light-mode .bg-slate-900/50 {
+    html.light-mode .bg-slate-900/60,
+    html.light-mode .bg-slate-900/50,
+    html.light-mode .bg-slate-900/40 {
       background-color: #ffffff !important;
       color: #0f172a !important;
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
     }
+
+    /* Inset Containers & Sub-boxes */
     html.light-mode .bg-slate-950,
+    html.light-mode .bg-slate-950/95,
+    html.light-mode .bg-slate-950/90,
     html.light-mode .bg-slate-950/80,
     html.light-mode .bg-slate-950/70,
     html.light-mode .bg-slate-950/60,
-    html.light-mode .bg-slate-950/50 {
+    html.light-mode .bg-slate-950/50,
+    html.light-mode .bg-slate-950/40,
+    html.light-mode .bg-slate-950/30 {
       background-color: #f1f5f9 !important;
       color: #0f172a !important;
+      border-color: #cbd5e1 !important;
     }
+
+    /* Tertiary / Accent Containers */
     html.light-mode .bg-slate-800,
+    html.light-mode .bg-slate-800/90,
     html.light-mode .bg-slate-800/80,
+    html.light-mode .bg-slate-800/70,
     html.light-mode .bg-slate-800/60,
     html.light-mode .bg-slate-800/50,
     html.light-mode .bg-slate-800/40 {
       background-color: #e2e8f0 !important;
       color: #0f172a !important;
+      border-color: #cbd5e1 !important;
     }
+
+    /* Hover States */
     html.light-mode .hover:bg-slate-800:hover,
-    html.light-mode .hover:bg-slate-700:hover {
-      background-color: #cbd5e1 !important;
+    html.light-mode .hover:bg-slate-800/60:hover,
+    html.light-mode .hover:bg-slate-700:hover,
+    html.light-mode .hover:bg-slate-700/60:hover {
+      background-color: #f1f5f9 !important;
     }
-    html.light-mode .text-white {
+
+    /* Text Colors & Readability */
+    html.light-mode h1,
+    html.light-mode h2,
+    html.light-mode h3,
+    html.light-mode h4,
+    html.light-mode h5,
+    html.light-mode h6 {
       color: #0f172a !important;
     }
+    
+    html.light-mode .text-slate-100,
     html.light-mode .text-slate-200,
     html.light-mode .text-slate-300 {
       color: #1e293b !important;
     }
+    
     html.light-mode .text-slate-400 {
       color: #475569 !important;
     }
+
     html.light-mode .text-slate-500 {
       color: #64748b !important;
     }
-    html.light-mode .border-slate-800,
-    html.light-mode .border-slate-700 {
-      border-color: #cbd5e1 !important;
+
+    /* Crisp White Text for Buttons, Badges, Gradients */
+    html.light-mode button.text-white,
+    html.light-mode a.text-white,
+    html.light-mode [class*="bg-purple-600"] *,
+    html.light-mode [class*="bg-indigo-600"] *,
+    html.light-mode [class*="bg-rose-600"] *,
+    html.light-mode [class*="bg-emerald-600"] *,
+    html.light-mode [class*="bg-amber-600"] *,
+    html.light-mode [class*="from-purple-"] *,
+    html.light-mode [class*="from-indigo-"] *,
+    html.light-mode [class*="from-rose-"] *,
+    html.light-mode [class*="from-amber-"] *,
+    html.light-mode [class*="from-emerald-"] * {
+      color: #ffffff;
     }
-    html.light-mode input,
+
+    html.light-mode .text-white:not(button):not(button *):not(a):not(a *):not([class*="bg-purple-"]):not([class*="bg-indigo-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="from-"]) {
+      color: #0f172a !important;
+    }
+
+    /* Borders */
+    html.light-mode .border-slate-800,
+    html.light-mode .border-slate-800/80,
+    html.light-mode .border-slate-800/50,
+    html.light-mode .border-slate-700,
+    html.light-mode .border-slate-700/80,
+    html.light-mode .border-slate-700/50 {
+      border-color: #e2e8f0 !important;
+    }
+
+    /* Form Controls */
+    html.light-mode input:not([type="checkbox"]):not([type="radio"]),
     html.light-mode select,
     html.light-mode textarea {
       background-color: #ffffff !important;
       color: #0f172a !important;
       border-color: #cbd5e1 !important;
     }
+    html.light-mode input:focus,
+    html.light-mode select:focus,
+    html.light-mode textarea:focus {
+      border-color: #6366f1 !important;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15) !important;
+    }
+    html.light-mode input::placeholder,
+    html.light-mode textarea::placeholder {
+      color: #94a3b8 !important;
+    }
+
+    /* Tables */
     html.light-mode table thead tr {
       background-color: #f1f5f9 !important;
       border-color: #cbd5e1 !important;
     }
     html.light-mode table tbody tr {
+      background-color: #ffffff !important;
       border-color: #e2e8f0 !important;
     }
     html.light-mode table tbody tr:hover {
       background-color: #f8fafc !important;
     }
 
+    /* Modals & Dialogs */
+    html.light-mode .modal-content,
+    html.light-mode [id$="Modal"] .bg-slate-900,
+    html.light-mode [id$="Modal"] > div > div {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      color: #0f172a !important;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Scrollbars */
+    html.light-mode ::-webkit-scrollbar-track { background: #f1f5f9; }
+    html.light-mode ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    html.light-mode ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
     .sidebar-transition {
       transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -445,11 +576,11 @@
         <button 
           id="themeToggleBtn"
           onclick="toggleTheme()" 
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs font-bold transition shadow-xs flex-shrink-0"
-          title="Toggle Light / Dark Mode"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs font-bold transition shadow-xs flex-shrink-0"
+          title="Switch to Dark Mode"
         >
-          <i id="themeToggleIcon" class="fa-solid fa-sun text-xs"></i>
-          <span id="themeToggleText" class="hidden md:inline text-[11px]">Theme</span>
+          <i id="themeToggleIcon" class="fa-solid fa-moon text-xs text-indigo-600"></i>
+          <span id="themeToggleText" class="hidden md:inline text-[11px]">Dark</span>
         </button>
 
         <!-- Top Settings Button -->
@@ -1601,7 +1732,6 @@
             <option value="PBCL">PBCL</option>
             <option value="Group Leader">Group Leader</option>
             <option value="Unit Leader">Unit Leader</option>
-            <option value="IUnit Leader">IUnit Leader</option>
             <option value="Co-Worker">Co-Worker</option>
             <option value="Evangelist">Evangelist</option>
             <option value="Member">Member</option>
@@ -1998,7 +2128,6 @@
             <option value="PBCL">PBCL</option>
             <option value="Group Leader">Group Leader</option>
             <option value="Unit Leader">Unit Leader</option>
-            <option value="IUnit Leader">IUnit Leader</option>
             <option value="Co-Worker">Co-Worker</option>
             <option value="Evangelist">Evangelist</option>
             <option value="Member">Member</option>
@@ -2441,7 +2570,6 @@
             <option value="PBCL">PBCL</option>
             <option value="Group Leader">Group Leader</option>
             <option value="Unit Leader">Unit Leader</option>
-            <option value="IUnit Leader">IUnit Leader</option>
             <option value="Co-Worker">Co-Worker</option>
             <option value="Evangelist">Evangelist</option>
             <option value="Member">Member</option>
@@ -2702,6 +2830,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=5.2"></script>
+  <script src="portal_engine.js?v=5.3"></script>
 </body>
 </html>
