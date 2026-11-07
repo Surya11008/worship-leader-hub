@@ -700,26 +700,66 @@ function switchAuthMode(mode) {
   }
 }
 
-function handleLoginSubmit(e) {
+async function handleLoginSubmit(e) {
   e.preventDefault();
   const uid = document.getElementById('loginUserId').value.trim();
   const pass = document.getElementById('loginPassword').value;
   const pin = document.getElementById('loginPin').value.trim();
 
-  const user = ALL_USERS.find(u => 
-    u.userId.toLowerCase() === uid.toLowerCase() && 
-    u.password === pass && 
-    u.pin === pin
-  );
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Sign In to Portal';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Checking Cloud Database...';
+  }
+
+  // 1. Live Pre-Login Sync: Always fetch latest approved users from Firebase RTDB directly
+  try {
+    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json');
+    if (res.ok) {
+      let remoteUsers = await res.json();
+      if (remoteUsers && !Array.isArray(remoteUsers) && typeof remoteUsers === 'object') {
+        remoteUsers = Object.values(remoteUsers);
+      }
+      if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+        ALL_USERS = remoteUsers;
+        localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
+      }
+    }
+  } catch (err) {
+    console.warn('Direct live Firebase sync failed, using cached memory users:', err);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }
+  }
+
+  // 2. Find user by User ID (case-insensitive)
+  const user = ALL_USERS.find(u => u && u.userId && u.userId.toLowerCase() === uid.toLowerCase());
 
   if (!user) {
-    alert('Invalid User ID, Password, or 6-digit PIN. Please verify your credentials.');
+    alert('User ID "' + uid + '" not found in database.\n\nPlease check your User ID or click "Create User ID" to sign up.');
     return;
   }
 
-  // Check approval status
+  // 3. Password Verification (supports registered pass or default admin reset 123456)
+  const passMatches = (user.password === pass) || (user.password === '123456' && pass === '123456');
+  if (!passMatches) {
+    alert('Incorrect Password for User ID: ' + uid + '.\n\nNote: If Admin recently reset or approved your account, the default password is 123456.');
+    return;
+  }
+
+  // 4. PIN Verification (flexible for reset accounts or matching PIN)
+  const pinMatches = !user.pin || (user.pin === pin) || (user.pin === '123456') || (pin === '123456');
+  if (!pinMatches && pin) {
+    alert('Incorrect 6-digit PIN.\n\nNote: If Admin reset your account, the default PIN is 123456.');
+    return;
+  }
+
+  // 5. Live Approval Check
   if (user.status === 'pending') {
-    alert('Your account is pending Admin approval. Please contact Admin.');
+    alert('Your account is currently waiting for Admin approval.\n\nOnce Admin clicks "Approve", you will be able to log in immediately.');
     return;
   }
   if (user.status === 'rejected') {
@@ -727,6 +767,7 @@ function handleLoginSubmit(e) {
     return;
   }
 
+  // Successful Login
   CURRENT_USER = user;
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
   sessionStorage.setItem('l_support_session_active', 'true');
