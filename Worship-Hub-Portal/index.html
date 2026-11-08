@@ -901,6 +901,18 @@
           </button>
         </div>
 
+        
+        <!-- Top + Add Resource Button (Admin Only) -->
+        <button 
+          onclick="openAddResourceModal()" 
+          id="btnTopAddResource"
+          class="admin-only-control hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-sm transition cursor-pointer flex-shrink-0"
+          title="Add New Resource Document / Link"
+        >
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span class="hidden sm:inline">Add Resource</span>
+        </button>
+
         <!-- Live Text Edit Mode Button for Admin -->
         <button 
           id="adminLiveTextEditBtn"
@@ -1037,6 +1049,19 @@
               class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm transition flex items-center gap-1.5"
               data-ui-key="btnBrowse"
             >
+              <i class="fa-solid fa-layer-group text-xs"></i>
+              <span>Browse Library</span>
+            </button>
+            <!-- Home View Add Resource Button -->
+            <button 
+              onclick="openAddResourceModal()" 
+              class="admin-only-control hidden px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+              title="Add New Resource"
+            >
+              <i class="fa-solid fa-plus text-xs"></i>
+              <span>Add Resource</span>
+            </button>
+
               <i class="fa-solid fa-layer-group text-xs"></i>
               <span>Browse Library</span>
             </button>
@@ -2144,11 +2169,24 @@
         </button>
       </div>
 
-      <form id="addResourceForm" onsubmit="submitNewResource(event)" class="p-6 space-y-4">
+      <form id="addResourceForm" onsubmit="submitNewResource(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+        <!-- Input Mode Switcher: Link vs Embed Code -->
+        <div>
+          <label class="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5">Embed & Resource Input Mode</label>
+          <div class="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+            <button type="button" onclick="setAddResourceInputMode('url')" id="modeBtnUrl" class="w-1/2 py-2 rounded-lg bg-indigo-600 text-white font-black shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-link text-xs"></i> <span>Direct URL Link</span>
+            </button>
+            <button type="button" onclick="setAddResourceInputMode('embed')" id="modeBtnEmbed" class="w-1/2 py-2 rounded-lg text-slate-400 hover:text-white font-bold transition flex items-center justify-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-code text-xs"></i> <span>Embed Code / Iframe</span>
+            </button>
+          </div>
+        </div>
+
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="block text-xs font-bold text-slate-300">Target Module *</label>
-            <button type="button" onclick="closeAddResourceModal(); openAddModuleModal();" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+            <button type="button" onclick="closeAddResourceModal(); openAddModuleModal();" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer">
               <i class="fa-solid fa-plus text-[10px]"></i> Create New Module
             </button>
           </div>
@@ -2156,7 +2194,7 @@
             id="newResourceModule" 
             required 
             onchange="onModuleChangeInForm()"
-            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
+            class="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition cursor-pointer"
           >
           </select>
         </div>
@@ -2167,7 +2205,7 @@
             <button 
               type="button" 
               onclick="toggleCustomTopicInput()" 
-              class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+              class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
             >
               <i class="fa-solid fa-plus text-[10px]"></i> New Topic
             </button>
@@ -2176,7 +2214,7 @@
           <select 
             id="newResourceTopicSelect" 
             onchange="onTopicSelectChange()"
-            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
+            class="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition cursor-pointer"
           >
           </select>
 
@@ -2185,7 +2223,7 @@
               type="text" 
               id="newResourceCustomTopic" 
               placeholder="Enter new topic name..."
-              class="w-full px-3 py-2 bg-indigo-950/40 border border-indigo-500/50 focus:border-indigo-400 rounded-xl text-xs sm:text-sm text-white outline-none transition"
+              class="w-full px-3.5 py-2.5 bg-indigo-950/40 border border-indigo-500/50 focus:border-indigo-400 rounded-xl text-xs sm:text-sm text-white outline-none transition"
             >
           </div>
         </div>
@@ -2196,20 +2234,55 @@
             type="text" 
             id="newResourceTitle" 
             required 
-            placeholder="e.g. 2026 Passover Order of Service"
-            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
+            placeholder="e.g. 2026 Passover Order of Service or Song Title"
+            class="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
           >
         </div>
 
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">File or Link URL *</label>
+        <!-- URL Input View -->
+        <div id="urlInputContainer">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-300">File or Link URL *</label>
+            <span class="text-[10px] text-slate-400">Google Docs, Drive, Audio, Video, YouTube</span>
+          </div>
           <input 
-            type="url" 
+            type="text" 
             id="newResourceUrl" 
-            required 
-            placeholder="https://docs.google.com/document/d/... or Drive Link"
-            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
+            placeholder="Paste Google Doc, Drive, YouTube, Audio, Video, or web link..."
+            oninput="onResourceInputLiveCheck()"
+            class="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition"
           >
+        </div>
+
+        <!-- Embed Code Textarea View -->
+        <div id="embedInputContainer" class="hidden">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold text-slate-300">Embed Code / Iframe HTML *</label>
+            <span class="text-[10px] text-indigo-400">&lt;iframe src="..."&gt;&lt;/iframe&gt;</span>
+          </div>
+          <textarea 
+            id="newResourceEmbedCode" 
+            rows="3"
+            placeholder="Paste full &lt;iframe src=&quot;https://...&quot;&gt;&lt;/iframe&gt; code here..."
+            oninput="onResourceInputLiveCheck()"
+            class="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl text-xs sm:text-sm text-white outline-none transition font-mono"
+          ></textarea>
+        </div>
+
+        <!-- LIVE INSTANT LINK / EMBED PREVIEW BOX -->
+        <div id="newResourceLivePreview" class="hidden p-3.5 bg-slate-950/95 rounded-2xl border border-indigo-500/50 space-y-2.5 transition-all">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span id="livePreviewTypeBadge" class="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Google Doc 📄</span>
+              <span class="text-[11px] text-emerald-400 font-bold flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Live Preview Ready</span>
+            </div>
+            <button type="button" onclick="testOpenPreviewInNewTab()" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 underline cursor-pointer">
+              Test Link ↗
+            </button>
+          </div>
+          <div class="w-full h-44 rounded-xl overflow-hidden bg-slate-900 border border-slate-800 relative">
+            <iframe id="newResourceMiniIframe" src="" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+          </div>
         </div>
 
         <div>
@@ -2487,17 +2560,22 @@
             </div>
           </div>
 
-          <!-- Section C: Quick Category Manager -->
-          <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <!-- Section C: Quick Category & Resource Manager -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h5 class="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-solid fa-layer-group text-purple-500"></i> Category & Module Structure
+                <i class="fa-solid fa-layer-group text-purple-500"></i> Content & Module Operations
               </h5>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400">Add new categories, edit topics or rearrange modules</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Add documents, embed links or create modules</p>
             </div>
-            <button onclick="closeSettingsModal(); openAddModuleModal();" class="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs rounded-xl shadow-xs hover:shadow-md transition flex items-center gap-1.5 cursor-pointer">
-              <i class="fa-solid fa-plus text-xs"></i> Add Module
-            </button>
+            <div class="flex items-center gap-2">
+              <button onclick="closeSettingsModal(); openAddResourceModal();" class="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-file-circle-plus text-xs"></i> + Add Resource
+              </button>
+              <button onclick="closeSettingsModal(); openAddModuleModal();" class="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-folder-plus text-xs"></i> + Add Module
+              </button>
+            </div>
           </div>
         </div>
 
@@ -3722,6 +3800,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=15.0"></script>
+  <script src="portal_engine.js?v=16.0"></script>
 </body>
 </html>
