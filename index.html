@@ -362,7 +362,8 @@
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider" id="sidebarUserRole">Admin Online</span>
           </div>
-          <button onclick="openSettingsModal('audit')" class="text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1 font-semibold" title="View online users">
+          <!-- Online Users Gated strictly to Admin Only -->
+          <button onclick="openSettingsModal('audit')" class="admin-only-control hidden text-[10px] text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1 font-semibold" title="View online users">
             <i class="fa-solid fa-users text-[10px]"></i>
             <span id="sidebarOnlineBadge">1 Online</span>
           </button>
@@ -878,72 +879,311 @@
       <div id="myRoomViewContainer" class="hidden space-y-6">
         
         <!-- Room Banner Header -->
-        <div class="bg-gradient-to-r from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-500/30 p-6 rounded-3xl shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="bg-gradient-to-r from-violet-600 via-indigo-600 to-pink-500 p-6 rounded-3xl shadow-lg shadow-indigo-500/20 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div class="flex items-center gap-4">
-            <div class="w-14 h-14 rounded-2xl bg-purple-600/30 border border-purple-500/40 text-purple-300 flex items-center justify-center text-2xl shadow-lg shadow-purple-900/30">
+            <div class="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 text-white flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
               <i class="fa-solid fa-book-bookmark"></i>
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <h2 class="text-xl font-extrabold text-white" id="myRoomTitle">My Room</h2>
-                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30">Personal Study Log</span>
+                <h2 class="text-xl sm:text-2xl font-black text-white" id="myRoomTitle">Admin Room</h2>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-white/25 text-white border border-white/30 uppercase tracking-wider">Spiritual Journal</span>
               </div>
-              <p class="text-xs text-slate-400 mt-1" id="myRoomSubtitle">Track your preached sermons, stories, service times, and spiritual realizations</p>
+              <p class="text-xs text-white/90 mt-1" id="myRoomSubtitle">Private spiritual diary, calendar, reminders, sermon realizations & study history</p>
             </div>
           </div>
 
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 flex-wrap">
             <!-- Admin User Room Selector (Admin can inspect any user's room) -->
-            <div id="adminRoomUserSelectorWrapper" class="hidden flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
-              <span class="text-[11px] font-bold text-slate-400">View Room:</span>
-              <select id="adminRoomUserSelect" onchange="onAdminRoomUserChange(this.value)" class="bg-transparent text-xs font-bold text-purple-300 outline-none">
+            <div id="adminRoomUserSelectorWrapper" class="hidden flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-xl border border-white/30 backdrop-blur-xs">
+              <span class="text-[11px] font-bold text-white">Inspect Room:</span>
+              <select id="adminRoomUserSelect" onchange="onAdminRoomUserChange(this.value)" class="bg-transparent text-xs font-bold text-white outline-none cursor-pointer">
                 <!-- Populated via JS -->
               </select>
             </div>
 
-            <!-- + Record Sermon Usage Button -->
+            <!-- Quick Action: + Record Sermon Button -->
             <button 
               onclick="openRecordUsageModal()"
-              class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-lg shadow-purple-600/30 flex items-center gap-2 flex-shrink-0"
+              class="px-4 py-2 rounded-xl bg-white text-indigo-700 hover:bg-white/95 font-black text-xs transition shadow-md flex items-center gap-2 flex-shrink-0"
             >
               <i class="fa-solid fa-plus"></i>
-              <span>Record Sermon Usage</span>
+              <span>Record Preached Sermon</span>
             </button>
           </div>
         </div>
 
-        <!-- Room Statistics Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-            <div class="text-[11px] font-bold text-slate-400 uppercase">Sermons (Used)</div>
-            <div class="text-2xl font-black text-white mt-1" id="statSermonsUsed">0</div>
-          </div>
-          <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-            <div class="text-[11px] font-bold text-slate-400 uppercase">Stories Paired</div>
-            <div class="text-2xl font-black text-purple-300 mt-1" id="statStoriesUsed">0</div>
-          </div>
-          <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-            <div class="text-[11px] font-bold text-slate-400 uppercase">Sabbath Services</div>
-            <div class="text-2xl font-black text-emerald-400 mt-1" id="statSabbathCount">0</div>
-          </div>
-          <div class="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-            <div class="text-[11px] font-bold text-slate-400 uppercase">Feast Services</div>
-            <div class="text-2xl font-black text-amber-400 mt-1" id="statFeastCount">0</div>
+        <!-- Room Navigation Tabs: 1. Spiritual Diary & Calendar (Top/Default) | 2. Preached Sermon History -->
+        <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+          <button 
+            onclick="switchMyRoomTab('diary')" 
+            id="myRoomTab-diary" 
+            class="px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-indigo-600/20"
+          >
+            <i class="fa-solid fa-feather-pointed"></i>
+            <span>Ministry Diary & Calendar</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white" id="myRoomDiaryCountBadge">0</span>
+          </button>
+          <button 
+            onclick="switchMyRoomTab('history')" 
+            id="myRoomTab-history" 
+            class="px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Preached Sermon History</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300" id="myRoomSermonCountBadge">0</span>
+          </button>
+        </div>
+
+        <!-- TAB CONTENT 1: SPIRITUAL DIARY & CALENDAR JOURNAL -->
+        <div id="myRoomContent-diary" class="space-y-6">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Column: Visual Mini Calendar & Date Filters (4 cols) -->
+            <div class="lg:col-span-4 space-y-4">
+              <!-- Calendar Card -->
+              <div class="bg-white dark:bg-slate-800 rounded-3xl p-5 border border-slate-200/90 dark:border-slate-700 shadow-sm space-y-4">
+                <!-- Calendar Month Navigation -->
+                <div class="flex items-center justify-between">
+                  <h3 class="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days text-indigo-500"></i>
+                    <span id="diaryCalendarMonthYear">November 2026</span>
+                  </h3>
+                  <div class="flex items-center gap-1">
+                    <button onclick="prevDiaryMonth()" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 transition text-xs" title="Previous Month">
+                      <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button onclick="currentDiaryToday()" class="px-2 py-1 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 hover:text-indigo-600 font-bold text-[10px] transition">
+                      Today
+                    </button>
+                    <button onclick="nextDiaryMonth()" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 transition text-xs" title="Next Month">
+                      <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Calendar Weekdays Header -->
+                <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase text-slate-400">
+                  <span class="text-rose-500">Su</span>
+                  <span>Mo</span>
+                  <span>Tu</span>
+                  <span>We</span>
+                  <span>Th</span>
+                  <span>Fr</span>
+                  <span class="text-indigo-500">Sa</span>
+                </div>
+
+                <!-- Calendar Days Grid (Populated via JS) -->
+                <div id="diaryCalendarDaysGrid" class="grid grid-cols-7 gap-1">
+                  <!-- Rendered via JS -->
+                </div>
+
+                <!-- Calendar Legend -->
+                <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-violet-500"></span>
+                    <span>Diary</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>Reminder</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Connected</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Selected Date Banner & Filter Buttons -->
+              <div class="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-800/80 rounded-2xl p-4 border border-indigo-100 dark:border-slate-700 space-y-2">
+                <div class="text-[11px] font-extrabold uppercase text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+                  <span>Selected Date</span>
+                  <button onclick="filterDiaryByDate('all')" class="text-[10px] text-indigo-600 dark:text-indigo-300 underline font-bold">Show All Dates</button>
+                </div>
+                <div class="text-base font-black text-slate-800 dark:text-white" id="diarySelectedDateLabel">Today</div>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400" id="diarySelectedDateSummary">0 entries for this date</p>
+              </div>
+            </div>
+
+            <!-- Right Column: + Create Diary Entry & Diary Timeline (8 cols) -->
+            <div class="lg:col-span-8 space-y-6">
+              
+              <!-- 1. Diary Entry Form Card -->
+              <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-700 shadow-sm space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+                  <h3 class="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-pen-nib text-indigo-600 dark:text-indigo-400"></i>
+                    <span id="diaryFormActionTitle">Write Today's Spiritual Diary</span>
+                  </h3>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800" id="diaryFormDateBadge">Today</span>
+                </div>
+
+                <form onsubmit="saveDiaryEntry(event)" class="space-y-4">
+                  <input type="hidden" id="diaryEntryEditId" value="">
+
+                  <!-- Title Input -->
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Entry Title *</label>
+                    <input 
+                      type="text" 
+                      id="diaryTitleInput" 
+                      required 
+                      placeholder="e.g. Morning Prayer Realization, Sabbath Sermon Reflection, Feast Meditation..." 
+                      class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition font-medium"
+                    >
+                  </div>
+
+                  <!-- Mood / Spiritual Emotion Selector (Cute Emojis) -->
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Mood / Spiritual State</label>
+                    <div class="flex flex-wrap gap-1.5" id="diaryMoodSelectorContainer">
+                      <!-- Rendered via JS cute pill buttons -->
+                    </div>
+                    <input type="hidden" id="diaryMoodInput" value="Joyful">
+                  </div>
+
+                  <!-- Note / Reflections Textarea -->
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Spiritual Notes & Reflections *</label>
+                    <textarea 
+                      id="diaryNoteInput" 
+                      rows="4" 
+                      required 
+                      placeholder="Write your prayers, realizations, spiritual learnings, action plans, sermon ideas, or personal thoughts..."
+                      class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-indigo-500 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition font-normal"
+                    ></textarea>
+                  </div>
+
+                  <!-- 2-col row: Connect to other date & Reminder Alert -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Connect to Other Date -->
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1.5">
+                      <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-link text-indigo-500"></i>
+                        <span>Connect to Other Date (Follow-up)</span>
+                      </label>
+                      <input 
+                        type="date" 
+                        id="diaryConnectedDateInput" 
+                        class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none"
+                      >
+                      <p class="text-[9px] text-slate-500">Link this note to next Sabbath, Baptism, or Feast</p>
+                    </div>
+
+                    <!-- Reminder & Alarm Notification / Popup -->
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1.5">
+                      <div class="flex items-center justify-between">
+                        <label class="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer">
+                          <input type="checkbox" id="diaryHasReminderCheckbox" onchange="toggleDiaryReminderTimeInput()" class="rounded bg-white dark:bg-slate-800 border-slate-300 text-indigo-600 focus:ring-0">
+                          <i class="fa-solid fa-bell text-amber-500"></i>
+                          <span>Set Reminder / Alarm Alert</span>
+                        </label>
+                      </div>
+                      <div id="diaryReminderTimeWrapper" class="hidden flex items-center gap-2">
+                        <input 
+                          type="time" 
+                          id="diaryReminderTimeInput" 
+                          value="09:00"
+                          class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none"
+                        >
+                      </div>
+                      <p class="text-[9px] text-slate-500">Shows reminder popup on portal opening</p>
+                    </div>
+                  </div>
+
+                  <!-- Link Embed & Paste (Strictly NO file upload as requested) -->
+                  <div class="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <i class="fa-solid fa-link text-indigo-600"></i>
+                      <span>Link Embed & Paste (No upload needed)</span>
+                    </label>
+                    <div class="flex items-center gap-2">
+                      <input 
+                        type="url" 
+                        id="diaryEmbedLinkInput" 
+                        oninput="previewDiaryEmbedLink(this.value)"
+                        placeholder="Paste YouTube video URL, Google Drive file link, web article, audio stream..." 
+                        class="w-full px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none"
+                      >
+                      <button type="button" onclick="pasteFromClipboardToDiaryEmbed()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center gap-1 flex-shrink-0" title="Paste from Clipboard">
+                        <i class="fa-solid fa-paste"></i>
+                        <span class="hidden sm:inline">Paste</span>
+                      </button>
+                    </div>
+                    <!-- Live Embed / Preview Container -->
+                    <div id="diaryEmbedPreviewContainer" class="hidden pt-2">
+                      <!-- Rendered live -->
+                    </div>
+                  </div>
+
+                  <!-- Form Actions -->
+                  <div class="pt-2 flex items-center justify-between">
+                    <button type="button" id="diaryCancelEditBtn" onclick="resetDiaryForm()" class="hidden px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition">
+                      Cancel Edit
+                    </button>
+                    <button type="submit" class="ml-auto px-6 py-2.5 rounded-2xl text-xs font-extrabold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white transition shadow-md shadow-indigo-600/25 flex items-center gap-2">
+                      <i class="fa-solid fa-check"></i>
+                      <span id="diarySubmitBtnText">Save to My Diary</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- 2. Diary Timeline / Entries List -->
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i>
+                    <span>Journal Entries</span>
+                  </h3>
+                  <span class="text-xs font-bold text-slate-500 dark:text-slate-400" id="diaryEntriesCountBadge">0 entries</span>
+                </div>
+
+                <div id="diaryEntriesTimelineList" class="space-y-3">
+                  <!-- Rendered via JS -->
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
 
-        <!-- Saved Ministry Records Timeline -->
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <h3 class="text-sm font-bold text-white flex items-center gap-2">
-              <i class="fa-solid fa-clock-rotate-left text-purple-400"></i>
-              <span>Sermon (Used) History & Notes</span>
-            </h3>
-            <span class="text-xs text-slate-400" id="roomRecordsCountLabel">0 entries</span>
+        <!-- TAB CONTENT 2: PREACHED SERMON (USED) HISTORY (Existing History all in one clean sub-page) -->
+        <div id="myRoomContent-history" class="hidden space-y-6">
+          <!-- Room Statistics Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="p-4 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 rounded-3xl shadow-xs">
+              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Sermons (Used)</div>
+              <div class="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1" id="statSermonsUsed">0</div>
+            </div>
+            <div class="p-4 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 rounded-3xl shadow-xs">
+              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Stories Paired</div>
+              <div class="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1" id="statStoriesUsed">0</div>
+            </div>
+            <div class="p-4 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 rounded-3xl shadow-xs">
+              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Sabbath Services</div>
+              <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1" id="statSabbathCount">0</div>
+            </div>
+            <div class="p-4 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 rounded-3xl shadow-xs">
+              <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Feast Services</div>
+              <div class="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1" id="statFeastCount">0</div>
+            </div>
           </div>
 
-          <div id="roomRecordsList" class="space-y-3">
-            <!-- Rendered via JS -->
+          <!-- Saved Ministry Records Timeline -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-indigo-500"></i>
+                <span>Sermon Preaching Logs & Dates</span>
+              </h3>
+              <span class="text-xs font-bold text-slate-500 dark:text-slate-400" id="roomRecordsCountLabel">0 entries</span>
+            </div>
+
+            <div id="roomRecordsList" class="space-y-3">
+              <!-- Rendered via JS -->
+            </div>
           </div>
         </div>
 
@@ -1712,10 +1952,6 @@
             </button>
           </div>
         </div>
-              Save Configuration
-            </button>
-          </div>
-        </div>
       </form>
     </div>
   </div>
@@ -1724,28 +1960,29 @@
   <!-- MODAL: TOP SETTINGS & USER PROFILE                       -->
   <!-- ======================================================== -->
   <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300 p-4">
-    <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="settingsModalContainer">
+    <div class="bg-white dark:bg-slate-900 text-slate-800 dark:text-white rounded-3xl shadow-2xl w-full max-w-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="settingsModalContainer">
       
-      <div class="h-16 px-6 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between flex-shrink-0">
+      <div class="h-16 px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 flex items-center justify-between flex-shrink-0">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
             <i class="fa-solid fa-gear"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-white">System Settings</h3>
-            <p class="text-[11px] text-slate-400">Security, profile, Zion, and permissions</p>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">System Settings</h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Security, profile, Zion, and permissions</p>
           </div>
         </div>
-        <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm">
+        <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center text-sm transition">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <div class="flex items-center gap-2 px-6 pt-3 border-b border-slate-800 bg-slate-950/40 text-xs font-bold overflow-x-auto flex-shrink-0">
-        <button onclick="switchSettingsTab('profile')" id="stab-profile" class="px-3 py-2 border-b-2 border-indigo-500 text-indigo-400">Profile & Zion</button>
-        <button onclick="switchSettingsTab('security')" id="stab-security" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-white">Password & PIN</button>
-        <button onclick="switchSettingsTab('audit')" id="stab-audit" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-white">Online & History</button>
-        <button onclick="switchSettingsTab('suggestion')" id="stab-suggestion" class="px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-white">Enquiries</button>
+      <div class="flex items-center gap-2 px-6 pt-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 text-xs font-bold overflow-x-auto flex-shrink-0">
+        <button onclick="switchSettingsTab('profile')" id="stab-profile" class="px-3 py-2 border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400">Profile & Zion</button>
+        <button onclick="switchSettingsTab('security')" id="stab-security" class="px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">Password & PIN</button>
+        <!-- Online & History STRICTLY GATED TO ADMIN ONLY -->
+        <button onclick="switchSettingsTab('audit')" id="stab-audit" class="admin-only-control hidden px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">Online & History</button>
+        <button onclick="switchSettingsTab('suggestion')" id="stab-suggestion" class="px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">Enquiries</button>
       </div>
 
       <div class="p-6 flex-1 overflow-y-auto custom-scrollbar text-xs">
@@ -2902,7 +3139,31 @@
     </div>
   </div>
 
+  <!-- ======================================================== -->
+  <!-- MODAL: DIARY REMINDER POPUP ALERT                        -->
+  <!-- ======================================================== -->
+  <div id="diaryReminderAlertModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs opacity-0 pointer-events-none transition-all duration-300 p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-amber-300 dark:border-amber-500/40 overflow-hidden transform scale-95 transition-transform duration-300 p-6 space-y-4 text-center">
+      <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 flex items-center justify-center text-2xl mx-auto shadow-inner">
+        <i class="fa-solid fa-bell animate-bounce"></i>
+      </div>
+      <div>
+        <span class="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">Ministry Diary Alert</span>
+        <h3 class="text-base font-black text-slate-800 dark:text-white mt-1.5" id="diaryAlertTitle">Reminder Title</h3>
+        <p class="text-xs text-slate-600 dark:text-slate-300 mt-1 line-clamp-3" id="diaryAlertNote"></p>
+      </div>
+      <div class="flex items-center justify-center gap-2 pt-2">
+        <button onclick="dismissDiaryReminderAlert()" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 transition">
+          Dismiss
+        </button>
+        <button onclick="viewDiaryEntryFromAlert()" class="px-5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md transition">
+          Open in My Room
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=5.9"></script>
+  <script src="portal_engine.js?v=6.0"></script>
 </body>
 </html>
