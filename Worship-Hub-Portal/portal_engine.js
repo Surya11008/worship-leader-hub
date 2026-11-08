@@ -943,17 +943,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // Active user session check — clear stale lock on fresh page load
   localStorage.removeItem('l_support_screen_locked');
 
-  // ALWAYS open the portal UI immediately! Never block with white page
   const portalRoot = document.getElementById('portalAppRoot');
   if (portalRoot) {
     portalRoot.classList.remove('hidden');
     portalRoot.style.display = 'flex';
   }
-  closeAuthModal();
-  switchView('home');
 
-  if (CURRENT_USER) {
-    sessionStorage.setItem('l_support_session_active', 'true');
+  // ========================================================
+  // FIRST SCREEN ON SITE OPEN: ALWAYS SHOW LOGIN PAGE FIRST!
+  // "site open chesinappudu first login page ravali"
+  // ========================================================
+  const isSessionActive = sessionStorage.getItem('l_support_session_active') === 'true';
+
+  if (!CURRENT_USER || !isSessionActive) {
+    // Show dedicated Login Page immediately when opening site
+    openAuthModal();
+  } else {
+    // Already authenticated in current browser session
+    closeAuthModal();
+    switchView('home');
     logActivity('Session Resume', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
     if (CURRENT_USER.role === 'admin') {
       setTimeout(() => checkPendingApprovals(), 500);
@@ -1140,13 +1148,40 @@ function openAuthModal() {
     container.classList.remove('scale-95');
     container.classList.add('scale-100');
   }
-  if (CURRENT_USER && CURRENT_USER.userId) {
-    const uidInput = document.getElementById('loginUserId');
-    if (uidInput && !uidInput.value) uidInput.value = CURRENT_USER.userId;
+
+  const isSessionActive = sessionStorage.getItem('l_support_session_active') === 'true';
+  const closeBtn = document.querySelector('#authModalContainer button[onclick="closeAuthModal()"]');
+  if (closeBtn) {
+    if (!CURRENT_USER || !isSessionActive) {
+      closeBtn.classList.add('hidden');
+    } else {
+      closeBtn.classList.remove('hidden');
+    }
   }
+
+  const savedUser = CURRENT_USER || safeJsonParse(localStorage.getItem('wlh_current_user'), null);
+  if (savedUser && savedUser.userId) {
+    const uidInput = document.getElementById('loginUserId');
+    if (uidInput && !uidInput.value) uidInput.value = savedUser.userId;
+  }
+
+  setTimeout(() => {
+    const uidInput = document.getElementById('loginUserId');
+    const passInput = document.getElementById('loginPassword');
+    if (uidInput && !uidInput.value) {
+      uidInput.focus();
+    } else if (passInput) {
+      passInput.focus();
+    }
+  }, 150);
 }
 
 function closeAuthModal() {
+  const isSessionActive = sessionStorage.getItem('l_support_session_active') === 'true';
+  if (!CURRENT_USER || !isSessionActive) {
+    showToast('Please sign in with your User ID & Password to enter.', 'info');
+    return;
+  }
   const modal = document.getElementById('authModal');
   const container = document.getElementById('authModalContainer');
   if (modal) {
@@ -1368,6 +1403,8 @@ async function handleLoginSubmit(e) {
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
   sessionStorage.setItem('l_support_session_active', 'true');
   localStorage.removeItem('l_support_screen_locked');
+  const closeBtn = document.querySelector('#authModalContainer button[onclick="closeAuthModal()"]');
+  if (closeBtn) closeBtn.classList.remove('hidden');
   closeAuthModal();
   switchView('home');
   refreshDataModel();
