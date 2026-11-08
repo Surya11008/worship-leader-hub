@@ -864,19 +864,20 @@ document.addEventListener('DOMContentLoaded', () => {
   initFirebase();
   startBackgroundLivePoller();
 
-  // Active user session check
-  const isLocked = localStorage.getItem('l_support_screen_locked') === 'true';
+  // Active user session check — clear stale lock on fresh page load
+  localStorage.removeItem('l_support_screen_locked');
 
-  if (!CURRENT_USER) {
-    // Show Full Dedicated Login Page on first visit
-    openAuthModal();
-  } else if (isLocked) {
-    showAppPinLock();
-  } else {
-    // User already authenticated - open portal immediately!
+  // ALWAYS open the portal UI immediately! Never block with white page
+  const portalRoot = document.getElementById('portalAppRoot');
+  if (portalRoot) {
+    portalRoot.classList.remove('hidden');
+    portalRoot.style.display = 'flex';
+  }
+  closeAuthModal();
+  switchView('home');
+
+  if (CURRENT_USER) {
     sessionStorage.setItem('l_support_session_active', 'true');
-    closeAuthModal();
-    switchView('home');
     logActivity('Session Resume', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
     if (CURRENT_USER.role === 'admin') {
       setTimeout(() => checkPendingApprovals(), 500);
@@ -918,15 +919,13 @@ document.addEventListener('visibilitychange', () => {
 });
 
 window.addEventListener('pagehide', () => {
-  if (CURRENT_USER) {
-    localStorage.setItem('l_support_screen_locked', 'true');
-  }
+  // Don't lock on pagehide either — only visibilitychange
 });
 
+// beforeunload: Do NOT lock screen on normal page reload/navigate
+// Screen lock only triggers on visibilitychange (tab switch / minimize)
 window.addEventListener('beforeunload', () => {
-  if (CURRENT_USER) {
-    localStorage.setItem('l_support_screen_locked', 'true');
-  }
+  // Intentionally NOT locking screen here — prevents white-page-on-refresh issue
 });
 
 // 3. EYE TOGGLE BUTTON (SHOW / HIDE PASSWORD & PIN)
@@ -1055,13 +1054,8 @@ function handleLogout() {
 }
 
 function openAuthModal() {
-  const portalRoot = document.getElementById('portalAppRoot');
   const modal = document.getElementById('authModal');
   const container = document.getElementById('authModalContainer');
-  if (portalRoot) {
-    portalRoot.classList.add('hidden');
-    portalRoot.style.display = 'none';
-  }
   if (modal) {
     modal.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
     modal.style.display = 'flex';
@@ -1077,8 +1071,6 @@ function openAuthModal() {
 }
 
 function closeAuthModal() {
-  if (!CURRENT_USER) return; // Cannot close on first visit without signing in!
-  const portalRoot = document.getElementById('portalAppRoot');
   const modal = document.getElementById('authModal');
   const container = document.getElementById('authModalContainer');
   if (modal) {
@@ -1089,6 +1081,7 @@ function closeAuthModal() {
     container.classList.remove('scale-100');
     container.classList.add('scale-95');
   }
+  const portalRoot = document.getElementById('portalAppRoot');
   if (portalRoot) {
     portalRoot.classList.remove('hidden');
     portalRoot.style.display = 'flex';
