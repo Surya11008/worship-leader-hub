@@ -2,7 +2,11 @@
 <html lang="en" class="h-full light-mode">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
   <title>Support</title>
   <script>
     (function() {
@@ -122,7 +126,7 @@
       color: #0f172a !important;
     }
 
-    /* All dark slate backgrounds converted to crisp bright colors */
+    /* All dark slate backgrounds converted to crisp bright daylight colors */
     html.light-mode [class*="bg-slate-950"],
     html.light-mode [class*="bg-slate-900"],
     html.light-mode [class*="bg-slate-850"] {
@@ -152,6 +156,7 @@
     html.light-mode [class*="hover:bg-slate-800"]:hover,
     html.light-mode [class*="hover:bg-slate-700"]:hover {
       background-color: #f1f5f9 !important;
+      color: #0f172a !important;
     }
 
     /* Header & Navigation */
@@ -172,52 +177,101 @@
 
     /* Main Content Background */
     html.light-mode main,
-    html.light-mode #mainContentArea {
+    html.light-mode #mainContentArea,
+    html.light-mode #contentScrollView {
       background-color: #f8fafc !important;
     }
 
-    /* Text Colors & Hierarchy */
+    /* ========================================================
+       HIGH-CONTRAST READABILITY FIX: ALL WORDS CRISP & BLACK
+       "all words clear ga kanipinchali, white colour lo unna font black colour lo ravali"
+       ======================================================== */
     html.light-mode h1,
     html.light-mode h2,
     html.light-mode h3,
     html.light-mode h4,
     html.light-mode h5,
-    html.light-mode h6 {
+    html.light-mode h6,
+    html.light-mode p,
+    html.light-mode label,
+    html.light-mode th,
+    html.light-mode td {
       color: #0f172a !important;
     }
-    
-    html.light-mode [class*="text-slate-100"],
-    html.light-mode [class*="text-slate-200"],
-    html.light-mode [class*="text-slate-300"] {
-      color: #1e293b !important;
+
+    /* Turn any white or washed-out slate text into obsidian black in light mode */
+    html.light-mode .text-white,
+    html.light-mode .text-slate-50,
+    html.light-mode .text-slate-100,
+    html.light-mode .text-slate-200,
+    html.light-mode .text-slate-300 {
+      color: #0f172a !important;
     }
-    
-    html.light-mode [class*="text-slate-400"] {
+
+    html.light-mode .text-slate-400 {
+      color: #334155 !important;
+    }
+
+    html.light-mode .text-slate-500 {
       color: #475569 !important;
     }
 
-    html.light-mode [class*="text-slate-500"] {
-      color: #64748b !important;
-    }
-
-    /* Crisp White Text for Colored Buttons & Gradients */
-    html.light-mode button.text-white,
-    html.light-mode a.text-white,
-    html.light-mode [class*="bg-purple-600"] *,
-    html.light-mode [class*="bg-indigo-600"] *,
-    html.light-mode [class*="bg-rose-600"] *,
-    html.light-mode [class*="bg-emerald-600"] *,
-    html.light-mode [class*="bg-amber-600"] *,
-    html.light-mode [class*="from-purple-"] *,
-    html.light-mode [class*="from-indigo-"] *,
-    html.light-mode [class*="from-rose-"] *,
-    html.light-mode [class*="from-amber-"] *,
-    html.light-mode [class*="from-emerald-"] * {
-      color: #ffffff;
-    }
-
-    html.light-mode .text-white:not(button):not(button *):not(a):not(a *):not([class*="bg-purple-"]):not([class*="bg-indigo-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="from-"]) {
+    /* Elements with light/pastel gradients or cards must have dark black text */
+    html.light-mode [class*="from-indigo-50"],
+    html.light-mode [class*="from-purple-50"],
+    html.light-mode [class*="from-pink-50"],
+    html.light-mode [class*="from-amber-50"],
+    html.light-mode [class*="from-emerald-50"],
+    html.light-mode [class*="from-slate-"],
+    html.light-mode [class*="from-indigo-50"] *,
+    html.light-mode [class*="from-purple-50"] *,
+    html.light-mode [class*="from-pink-50"] *,
+    html.light-mode [class*="from-amber-50"] *,
+    html.light-mode [class*="from-emerald-50"] *,
+    html.light-mode [class*="from-slate-"] * {
       color: #0f172a !important;
+    }
+
+    /* Ghost, outline, slate, or neutral buttons MUST have dark text */
+    html.light-mode button:not([class*="bg-indigo-600"]):not([class*="bg-purple-600"]):not([class*="bg-rose-600"]):not([class*="bg-emerald-600"]):not([class*="bg-blue-600"]):not([class*="bg-amber-600"]):not([class*="from-violet-600"]):not([class*="from-indigo-600"]):not([class*="from-purple-700"]):not(.keep-white),
+    html.light-mode a:not([class*="bg-indigo-600"]):not([class*="bg-purple-600"]):not([class*="bg-rose-600"]):not([class*="bg-emerald-600"]):not([class*="bg-blue-600"]):not([class*="bg-amber-600"]):not([class*="from-violet-600"]):not([class*="from-indigo-600"]):not([class*="from-purple-700"]):not(.keep-white) {
+      color: #0f172a !important;
+    }
+
+    /* Only solid vibrant badges/buttons keep white text */
+    html.light-mode .keep-white,
+    html.light-mode .keep-white *,
+    html.light-mode .bg-indigo-600,
+    html.light-mode .bg-indigo-600 *,
+    html.light-mode .bg-indigo-700,
+    html.light-mode .bg-indigo-700 *,
+    html.light-mode .bg-purple-600,
+    html.light-mode .bg-purple-600 *,
+    html.light-mode .bg-purple-700,
+    html.light-mode .bg-purple-700 *,
+    html.light-mode .bg-rose-600,
+    html.light-mode .bg-rose-600 *,
+    html.light-mode .bg-emerald-600,
+    html.light-mode .bg-emerald-600 *,
+    html.light-mode .bg-blue-600,
+    html.light-mode .bg-blue-600 *,
+    html.light-mode .bg-amber-600,
+    html.light-mode .bg-amber-600 *,
+    html.light-mode [class*="bg-indigo-600"],
+    html.light-mode [class*="bg-indigo-600"] *,
+    html.light-mode [class*="bg-purple-600"],
+    html.light-mode [class*="bg-purple-600"] *,
+    html.light-mode [class*="bg-rose-600"],
+    html.light-mode [class*="bg-rose-600"] *,
+    html.light-mode [class*="bg-emerald-600"],
+    html.light-mode [class*="bg-emerald-600"] *,
+    html.light-mode [class*="from-violet-600"],
+    html.light-mode [class*="from-violet-600"] *,
+    html.light-mode [class*="from-indigo-600"],
+    html.light-mode [class*="from-indigo-600"] *,
+    html.light-mode [class*="from-purple-700"],
+    html.light-mode [class*="from-purple-700"] * {
+      color: #ffffff !important;
     }
 
     /* Form Controls */
@@ -236,30 +290,63 @@
     }
     html.light-mode input::placeholder,
     html.light-mode textarea::placeholder {
-      color: #94a3b8 !important;
+      color: #64748b !important;
+    }
+
+    /* Search input specific */
+    html.light-mode #searchInput {
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    html.light-mode #searchInput::placeholder {
+      color: #64748b !important;
     }
 
     /* Tables */
-    html.light-mode table thead tr {
+    html.light-mode table thead tr,
+    html.light-mode table thead th {
       background-color: #f1f5f9 !important;
+      color: #0f172a !important;
       border-color: #cbd5e1 !important;
+      font-weight: 700 !important;
     }
-    html.light-mode table tbody tr {
+    html.light-mode table tbody tr,
+    html.light-mode table tbody td {
       background-color: #ffffff !important;
+      color: #0f172a !important;
       border-color: #e2e8f0 !important;
     }
-    html.light-mode table tbody tr:hover {
+    html.light-mode table tbody tr:hover,
+    html.light-mode table tbody tr:hover td {
       background-color: #f8fafc !important;
+      color: #0f172a !important;
     }
 
     /* Modals & Dialogs */
     html.light-mode .modal-content,
     html.light-mode [id$="Modal"] .bg-slate-900,
+    html.light-mode [id$="Modal"] .bg-slate-950,
     html.light-mode [id$="Modal"] > div > div {
       background-color: #ffffff !important;
       border-color: #e2e8f0 !important;
       color: #0f172a !important;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Mobile App Comfort Styles */
+    @media (max-width: 767px) {
+      body {
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #mainSidebar {
+        z-index: 50 !important;
+        width: 82vw !important;
+        max-width: 320px !important;
+      }
+      #contentScrollView {
+        padding-bottom: 5.5rem !important; /* Space for mobile bottom bar */
+      }
     }
 
     /* Dedicated Auth & Lock Screens */
@@ -1279,6 +1366,52 @@
     </div>
 
   </main>
+
+    <!-- ======================================================== -->
+    <!-- MOBILE APP-LIKE BOTTOM NAVIGATION BAR (md:hidden)        -->
+    <!-- "phone ki kuda comfort ga undali, oka app la ravali"     -->
+    <!-- ======================================================== -->
+    <nav id="mobileBottomNav" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1 flex items-center justify-around shadow-2xl transition-all" style="padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));">
+      <!-- 1. Home -->
+      <button type="button" onclick="mobileNavSelect('home')" id="mobNavHome" class="flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl text-indigo-600 dark:text-indigo-400 transition-all active:scale-95">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-base bg-indigo-50 dark:bg-indigo-950/60 transition">
+          <i class="fa-solid fa-house"></i>
+        </div>
+        <span class="text-[10px] mt-0.5 tracking-tight font-extrabold truncate">Home</span>
+      </button>
+
+      <!-- 2. Modules / Library -->
+      <button type="button" onclick="mobileNavSelect('modules')" id="mobNavModules" class="flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl text-slate-700 dark:text-slate-300 transition-all active:scale-95">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-base bg-slate-100 dark:bg-slate-800 transition">
+          <i class="fa-solid fa-folder-tree text-amber-500"></i>
+        </div>
+        <span class="text-[10px] mt-0.5 tracking-tight font-semibold truncate">Modules</span>
+      </button>
+
+      <!-- 3. My Room / Diary -->
+      <button type="button" onclick="mobileNavSelect('myroom')" id="mobNavRoom" class="flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl text-slate-700 dark:text-slate-300 transition-all active:scale-95">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-base bg-slate-100 dark:bg-slate-800 transition">
+          <i class="fa-solid fa-book-bookmark text-purple-500"></i>
+        </div>
+        <span class="text-[10px] mt-0.5 tracking-tight font-semibold truncate" id="mobNavRoomText">My Room</span>
+      </button>
+
+      <!-- 4. Schedule -->
+      <button type="button" onclick="mobileNavSelect('schedule')" id="mobNavSchedule" class="flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl text-slate-700 dark:text-slate-300 transition-all active:scale-95">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-base bg-slate-100 dark:bg-slate-800 transition">
+          <i class="fa-solid fa-calendar-days text-sky-500"></i>
+        </div>
+        <span class="text-[10px] mt-0.5 tracking-tight font-semibold truncate">Schedule</span>
+      </button>
+
+      <!-- 5. Settings / Profile -->
+      <button type="button" onclick="mobileNavSelect('settings')" id="mobNavSettings" class="flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl text-slate-700 dark:text-slate-300 transition-all active:scale-95">
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-base bg-slate-100 dark:bg-slate-800 transition">
+          <i class="fa-solid fa-user-gear text-emerald-500"></i>
+        </div>
+        <span class="text-[10px] mt-0.5 tracking-tight font-semibold truncate">Profile</span>
+      </button>
+    </nav>
   </div>
 
   <!-- ======================================================== -->
@@ -3184,6 +3317,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=8.0"></script>
+  <script src="portal_engine.js?v=9.0"></script>
 </body>
 </html>
