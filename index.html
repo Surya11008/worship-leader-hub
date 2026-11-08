@@ -336,9 +336,9 @@
   </script>
 
   <!-- ======================================================== -->
-  <!-- PORTAL APPLICATION WRAPPER (HIDDEN UNTIL AUTHENTICATED)  -->
+  <!-- PORTAL APPLICATION WRAPPER                               -->
   <!-- ======================================================== -->
-  <div id="portalAppRoot" class="hidden h-full flex flex-col flex-1 overflow-hidden w-full" style="display: none;">
+  <div id="portalAppRoot" class="h-full flex flex-col flex-1 overflow-hidden w-full">
     <!-- Top Rainbow Aesthetic Accent Bar -->
     <div class="h-1.5 w-full bg-gradient-to-r from-pink-500 via-purple-500 via-indigo-500 via-cyan-400 via-emerald-400 via-yellow-400 to-rose-400 flex-shrink-0 animate-pulse shadow-xs"></div>
 
@@ -2259,8 +2259,12 @@
   <!-- ======================================================== -->
   <!-- DEDICATED FULL-SCREEN LOGIN & CREATE ID / PASSWORD PAGE   -->
   <!-- ======================================================== -->
-  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs overflow-y-auto p-4 sm:p-6 transition-all duration-300" style="display: flex;">
-    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden transform scale-100 transition-transform duration-300 p-6 sm:p-8" id="authModalContainer">
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm overflow-y-auto p-4 sm:p-6 transition-all duration-300 opacity-0 pointer-events-none hidden" style="display: none;">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden transform scale-100 transition-transform duration-300 p-6 sm:p-8 relative" id="authModalContainer">
+      <!-- Close Modal Button -->
+      <button type="button" onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
       
       <!-- Brand Logo -->
       <div class="text-center mb-6">
@@ -3180,6 +3184,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=6.0"></script>
+  <script src="portal_engine.js?v=8.0"></script>
 </body>
 </html>
