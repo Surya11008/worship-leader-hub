@@ -1229,6 +1229,15 @@ function openAuthModal() {
     if (uidInput && !uidInput.value) uidInput.value = savedUser.userId;
   }
 
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (window.location.hash === '#register' || urlParams.get('mode') === 'register' || urlParams.get('register') === 'true') {
+      switchAuthMode('register');
+    } else {
+      switchAuthMode('login');
+    }
+  } catch(e) {}
+
   setTimeout(() => {
     const uidInput = document.getElementById('loginUserId');
     const passInput = document.getElementById('loginPassword');
@@ -1274,23 +1283,23 @@ function switchAuthMode(mode) {
   const tabRegister = document.getElementById('authTabRegister');
 
   if (mode === 'login') {
-    loginForm.classList.remove('hidden');
-    registerForm.classList.add('hidden');
+    if (loginForm) loginForm.classList.remove('hidden');
+    if (registerForm) registerForm.classList.add('hidden');
     if (forgotForm) forgotForm.classList.add('hidden');
-    tabLogin.className = 'w-1/2 py-2 rounded-xl bg-indigo-600 text-white font-extrabold shadow-sm transition border border-indigo-500';
-    tabRegister.className = 'w-1/2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition bg-transparent';
+    if (tabLogin) tabLogin.className = 'w-1/2 py-2.5 rounded-xl bg-indigo-600 text-white font-extrabold shadow-sm transition flex items-center justify-center gap-1.5 border border-indigo-500 cursor-pointer';
+    if (tabRegister) tabRegister.className = 'w-1/2 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition flex items-center justify-center gap-1.5 bg-transparent cursor-pointer';
   } else if (mode === 'register') {
-    loginForm.classList.add('hidden');
-    registerForm.classList.remove('hidden');
+    if (loginForm) loginForm.classList.add('hidden');
+    if (registerForm) registerForm.classList.remove('hidden');
     if (forgotForm) forgotForm.classList.add('hidden');
-    tabRegister.className = 'w-1/2 py-2 rounded-xl bg-indigo-600 text-white font-extrabold shadow-sm transition border border-indigo-500';
-    tabLogin.className = 'w-1/2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition bg-transparent';
+    if (tabRegister) tabRegister.className = 'w-1/2 py-2.5 rounded-xl bg-emerald-600 text-white font-extrabold shadow-sm transition flex items-center justify-center gap-1.5 border border-emerald-500 cursor-pointer';
+    if (tabLogin) tabLogin.className = 'w-1/2 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition flex items-center justify-center gap-1.5 bg-transparent cursor-pointer';
   } else if (mode === 'forgot') {
-    loginForm.classList.add('hidden');
-    registerForm.classList.add('hidden');
+    if (loginForm) loginForm.classList.add('hidden');
+    if (registerForm) registerForm.classList.add('hidden');
     if (forgotForm) forgotForm.classList.remove('hidden');
-    tabLogin.className = 'w-1/2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition bg-transparent';
-    tabRegister.className = 'w-1/2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition bg-transparent';
+    if (tabLogin) tabLogin.className = 'w-1/2 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition flex items-center justify-center gap-1.5 bg-transparent cursor-pointer';
+    if (tabRegister) tabRegister.className = 'w-1/2 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition flex items-center justify-center gap-1.5 bg-transparent cursor-pointer';
   }
 }
 
