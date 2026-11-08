@@ -9,6 +9,22 @@
   <meta name="theme-color" content="#4f46e5">
   <title>Support</title>
   
+  <!-- ULTRA-FAST ZERO-LEAK PRE-RENDER AUTH GATE -->
+  <script>
+    (function() {
+      try {
+        var isSession = sessionStorage.getItem('l_support_session_active') === 'true';
+        var raw = localStorage.getItem('wlh_current_user');
+        var u = raw ? JSON.parse(raw) : null;
+        if (!isSession || !u || !u.userId) {
+          document.documentElement.classList.add('portal-unauth-locked');
+        }
+      } catch(e) {
+        document.documentElement.classList.add('portal-unauth-locked');
+      }
+    })();
+  </script>
+  
   <!-- App Icons for Chrome, Edge, Safari & Mobile Install -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
@@ -436,6 +452,136 @@
     .wave-bar:nth-child(4) { animation-delay: 0.45s; }
     .wave-bar:nth-child(5) { animation-delay: 0.2s; }
     .wave-bar:nth-child(6) { animation-delay: 0.35s; }
+  
+    /* ========================================================
+       BULLETPROOF STANDALONE LOGIN GATE:
+       "new ga open chesevariki site lopalo kanipinchakudadu, login page matrame kanipinchali"
+       ======================================================== */
+    html.portal-unauth-locked #portalAppRoot,
+    html.portal-unauth-locked header,
+    html.portal-unauth-locked aside,
+    html.portal-unauth-locked main,
+    html.portal-unauth-locked nav,
+    html.portal-unauth-locked #mainSidebar,
+    html.portal-unauth-locked #contentScrollView {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      height: 0 !important;
+      overflow: hidden !important;
+    }
+
+    html.portal-unauth-locked #authModal {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 999999 !important;
+      background: radial-gradient(circle at 50% 15%, #1e1b4b 0%, #0f172a 55%, #020617 100%) !important;
+      backdrop-filter: none !important;
+    }
+    html.light-mode.portal-unauth-locked #authModal {
+      background: radial-gradient(circle at 50% 15%, #fdf4ff 0%, #e0e7ff 50%, #f8fafc 100%) !important;
+      backdrop-filter: none !important;
+    }
+    html.portal-unauth-locked #authModalCloseBtn,
+    html.portal-unauth-locked #authModal button[onclick*="closeAuthModal"] {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    /* ========================================================
+       UNIVERSAL BUTTON CONTRAST & VISIBILITY ENFORCEMENT
+       "konni buttonsa ki background and icon and words same undadam valla kanipinchadam ledu"
+       ======================================================== */
+    /* 1. All Solid & Gradient Vibrant Buttons ALWAYS have crisp pure white words & icons */
+    .btn-vibrant-white,
+    button[class*="bg-indigo-600"],
+    button[class*="bg-indigo-700"],
+    button[class*="bg-purple-600"],
+    button[class*="bg-purple-700"],
+    button[class*="bg-rose-600"],
+    button[class*="bg-rose-700"],
+    button[class*="bg-emerald-600"],
+    button[class*="bg-emerald-700"],
+    button[class*="bg-sky-600"],
+    button[class*="bg-sky-700"],
+    button[class*="bg-amber-600"],
+    button[class*="from-violet-600"],
+    button[class*="from-indigo-600"],
+    button[class*="from-purple-600"],
+    button[class*="from-amber-500"],
+    button[class*="from-rose-500"],
+    a[class*="bg-indigo-600"],
+    a[class*="bg-emerald-600"] {
+      color: #ffffff !important;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    }
+
+    button[class*="bg-indigo-600"] *,
+    button[class*="bg-indigo-700"] *,
+    button[class*="bg-purple-600"] *,
+    button[class*="bg-purple-700"] *,
+    button[class*="bg-rose-600"] *,
+    button[class*="bg-rose-700"] *,
+    button[class*="bg-emerald-600"] *,
+    button[class*="bg-emerald-700"] *,
+    button[class*="bg-sky-600"] *,
+    button[class*="bg-sky-700"] *,
+    button[class*="bg-amber-600"] *,
+    button[class*="from-violet-600"] *,
+    button[class*="from-indigo-600"] *,
+    button[class*="from-purple-600"] *,
+    button[class*="from-amber-500"] *,
+    button[class*="from-rose-500"] *,
+    a[class*="bg-indigo-600"] *,
+    a[class*="bg-emerald-600"] * {
+      color: #ffffff !important;
+      fill: #ffffff !important;
+    }
+
+    /* 2. Light Mode Neutral/White/Slate Buttons: Crisp Obsidian Text & Slate-700 Icons */
+    html.light-mode button[class*="bg-slate-100"],
+    html.light-mode button[class*="bg-slate-200"],
+    html.light-mode button[class*="bg-white"],
+    html.light-mode button[class*="bg-slate-50"] {
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    html.light-mode button[class*="bg-slate-100"] i,
+    html.light-mode button[class*="bg-slate-200"] i,
+    html.light-mode button[class*="bg-white"] i,
+    html.light-mode button[class*="bg-slate-50"] i {
+      color: #334155 !important;
+    }
+
+    /* 3. Dark Mode Neutral/Slate Buttons: Bright Off-White Text & Muted Indigo/Slate Icons */
+    html.dark button[class*="bg-slate-800"],
+    html.dark button[class*="bg-slate-900"],
+    html.dark button[class*="bg-slate-700"] {
+      color: #f8fafc !important;
+      border-color: #334155 !important;
+    }
+    html.dark button[class*="bg-slate-800"] i,
+    html.dark button[class*="bg-slate-900"] i,
+    html.dark button[class*="bg-slate-700"] i {
+      color: #94a3b8 !important;
+    }
+
+    /* 4. Ensure Topic & Module Pills have razor sharp contrast */
+    html.light-mode .badge-topic-pill,
+    html.light-mode [class*="bg-slate-800"] .badge-topic-pill {
+      background-color: #f1f5f9 !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+
   </style>
 </head>
 <body class="h-full font-sans antialiased bg-slate-50 text-slate-900 flex overflow-hidden select-none">
@@ -448,7 +594,7 @@
   <!-- ======================================================== -->
   <!-- PORTAL APPLICATION WRAPPER                               -->
   <!-- ======================================================== -->
-  <div id="portalAppRoot" class="h-full flex flex-col flex-1 overflow-hidden w-full">
+  <div id="portalAppRoot" style="display: none;" class="h-full flex flex-col flex-1 overflow-hidden w-full hidden">
     <!-- Top Rainbow Aesthetic Accent Bar -->
     <div class="h-1.5 w-full bg-gradient-to-r from-pink-500 via-purple-500 via-indigo-500 via-cyan-400 via-emerald-400 via-yellow-400 to-rose-400 flex-shrink-0 animate-pulse shadow-xs"></div>
 
@@ -2415,10 +2561,10 @@
   <!-- ======================================================== -->
   <!-- DEDICATED FULL-SCREEN LOGIN & CREATE ID / PASSWORD PAGE   -->
   <!-- ======================================================== -->
-  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm overflow-y-auto p-4 sm:p-6 transition-all duration-300 opacity-0 pointer-events-none hidden" style="display: none;">
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm overflow-y-auto p-4 sm:p-6 transition-all duration-300">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden transform scale-100 transition-transform duration-300 p-6 sm:p-8 relative" id="authModalContainer">
       <!-- Close Modal Button -->
-      <button type="button" onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition text-sm">
+      <button type="button" id="authModalCloseBtn" onclick="closeAuthModal()" class="hidden absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-950 flex items-center justify-center transition text-sm border border-slate-300 shadow-2xs">
         <i class="fa-solid fa-xmark"></i>
       </button>
       
@@ -2458,7 +2604,7 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl transition shadow-lg shadow-indigo-600/25 mt-2">
+        <button type="submit" style="color: #ffffff !important;" class="w-full py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-black text-xs rounded-xl transition shadow-lg shadow-indigo-600/30 mt-2 border border-indigo-400/40 cursor-pointer">
           Sign In to Portal
         </button>
         <div class="flex items-center justify-between pt-2 text-[11px]">
@@ -2472,9 +2618,9 @@
 
         <!-- Phone App Install Banner -->
         <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center">
-          <button type="button" onclick="triggerPwaInstall()" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 hover:from-indigo-100 hover:to-pink-100 border border-indigo-200 text-indigo-700 font-black text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-95">
-            <i class="fa-solid fa-mobile-screen-button text-sm text-indigo-600"></i>
-            <span>Install Support App on Phone 📲</span>
+          <button type="button" onclick="triggerPwaInstall()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 dark:from-indigo-950/70 dark:to-purple-950/70 border-2 border-indigo-300 dark:border-indigo-500/50 text-indigo-900 dark:text-indigo-200 font-black text-xs flex items-center justify-center gap-2.5 shadow-sm transition active:scale-95 cursor-pointer">
+            <i class="fa-solid fa-mobile-screen-button text-base text-indigo-600 dark:text-indigo-400"></i>
+            <span class="tracking-wide">Install Support App on Phone 📲</span>
           </button>
         </div>
       </form>
@@ -3348,6 +3494,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=10.0"></script>
+  <script src="portal_engine.js?v=11.0"></script>
 </body>
 </html>
