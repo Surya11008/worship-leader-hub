@@ -1,6 +1,18 @@
 // ========================================================
 // GLOBAL CORE UTILITIES
 // ========================================================
+function safeJsonParse(val, fallback) {
+  try {
+    if (val === null || val === undefined || val === '' || val === 'undefined' || val === 'null') {
+      return fallback;
+    }
+    return JSON.parse(val);
+  } catch (e) {
+    console.warn('safeJsonParse fallback used:', e);
+    return fallback;
+  }
+}
+
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -82,7 +94,7 @@ const DEFAULT_UI_TEXTS = {
   searchPlaceholder: 'Quick search files, topics, songs...'
 };
 
-let UI_CUSTOM_TEXTS = JSON.parse(localStorage.getItem('wlh_ui_texts') || '{}');
+let UI_CUSTOM_TEXTS = safeJsonParse(localStorage.getItem('wlh_ui_texts'), {});
 let isLiveTextEditMode = false;
 
 function getUiText(key, fallback) {
@@ -290,9 +302,9 @@ const ALL_POSITIONS = [
   'Member'
 ];
 
-let modulePermissions = JSON.parse(localStorage.getItem('wlh_module_permissions') || '{}');
-let topicPermissions = JSON.parse(localStorage.getItem('wlh_topic_permissions') || '{}');
-let filePermissions = JSON.parse(localStorage.getItem('wlh_file_permissions') || '{}');
+let modulePermissions = safeJsonParse(localStorage.getItem('wlh_module_permissions'), {});
+let topicPermissions = safeJsonParse(localStorage.getItem('wlh_topic_permissions'), {});
+let filePermissions = safeJsonParse(localStorage.getItem('wlh_file_permissions'), {});
 
 function isEntityVisibleToUser(configOrItem, user) {
   if (!user) return false;
@@ -572,9 +584,10 @@ function initPresenceTracking() {
 ======================================================== */
 
 // 1. DATA INITIALIZATION
-const APP_RAW_DATA = JSON.parse(document.getElementById('initial-app-data').textContent);
-const BASE_CATEGORIES = APP_RAW_DATA.categories;
-const BASE_ITEMS = APP_RAW_DATA.items;
+const _initialAppDataEl = document.getElementById('initial-app-data');
+const APP_RAW_DATA = safeJsonParse(_initialAppDataEl ? _initialAppDataEl.textContent : null, { categories: [], items: [] });
+const BASE_CATEGORIES = APP_RAW_DATA.categories || [];
+const BASE_ITEMS = APP_RAW_DATA.items || [];
 
 // Master Admin User (Role strictly Admin, clean details)
 const DEFAULT_ADMIN = {
@@ -593,12 +606,12 @@ const DEFAULT_ADMIN = {
 };
 
 // Seed or update admin user in localStorage
-let ALL_USERS = JSON.parse(localStorage.getItem('wlh_users') || 'null');
+let ALL_USERS = safeJsonParse(localStorage.getItem('wlh_users'), null);
 if (!ALL_USERS || ALL_USERS.length === 0) {
   ALL_USERS = [DEFAULT_ADMIN];
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS)); fbSync('users', ALL_USERS);
 } else {
-  const adminIdx = ALL_USERS.findIndex(u => u.userId.toLowerCase() === 'surya11008');
+  const adminIdx = ALL_USERS.findIndex(u => u && u.userId && u.userId.toLowerCase() === 'surya11008');
   if (adminIdx !== -1) {
     ALL_USERS[adminIdx].fullName = 'Surya';
     ALL_USERS[adminIdx].password = 'Suri742766';
@@ -615,8 +628,8 @@ if (!ALL_USERS || ALL_USERS.length === 0) {
 }
 
 // Active session: Link open shows login page if no user session exists
-let CURRENT_USER = JSON.parse(localStorage.getItem('wlh_current_user') || 'null');
-if (CURRENT_USER && CURRENT_USER.userId.toLowerCase() === 'surya11008') {
+let CURRENT_USER = safeJsonParse(localStorage.getItem('wlh_current_user'), null);
+if (CURRENT_USER && CURRENT_USER.userId && CURRENT_USER.userId.toLowerCase() === 'surya11008') {
   CURRENT_USER.fullName = 'Surya';
   CURRENT_USER.password = 'Suri742766';
   CURRENT_USER.pin = '742766';
@@ -629,23 +642,22 @@ if (CURRENT_USER && CURRENT_USER.userId.toLowerCase() === 'surya11008') {
 }
 
 // Global master download switch (STRICT CONTROL)
-let DOWNLOADS_ENABLED = JSON.parse(localStorage.getItem('wlh_downloads_enabled') || 'false');
-let MODULE_DOWNLOAD_RULES = JSON.parse(localStorage.getItem('wlh_module_download_rules') || '{}');
+let DOWNLOADS_ENABLED = safeJsonParse(localStorage.getItem('wlh_downloads_enabled'), false);
+let MODULE_DOWNLOAD_RULES = safeJsonParse(localStorage.getItem('wlh_module_download_rules'), {});
 
 // Custom storage
-let customItems = JSON.parse(localStorage.getItem('wlh_custom_resources') || '[]');
-let customModules = JSON.parse(localStorage.getItem('wlh_custom_modules') || '[]');
-let moduleEdits = JSON.parse(localStorage.getItem('wlh_module_edits') || '{}');
-let topicEdits = JSON.parse(localStorage.getItem('wlh_topic_edits') || '{}');
-let fileMetadata = JSON.parse(localStorage.getItem('wlh_file_metadata') || '{}');
-let pinnedUrls = new Set(JSON.parse(localStorage.getItem('wlh_pinned_urls') || '[]'));
-let auditLog = JSON.parse(localStorage.getItem('wlh_audit_log') || '[]');
-let suggestionsList = JSON.parse(localStorage.getItem('wlh_suggestions') || '[]');
-let myRoomRecords = JSON.parse(localStorage.getItem('wlh_my_room_records') || '[]');
-
+let customItems = safeJsonParse(localStorage.getItem('wlh_custom_resources'), []);
+let customModules = safeJsonParse(localStorage.getItem('wlh_custom_modules'), []);
+let moduleEdits = safeJsonParse(localStorage.getItem('wlh_module_edits'), {});
+let topicEdits = safeJsonParse(localStorage.getItem('wlh_topic_edits'), {});
+let fileMetadata = safeJsonParse(localStorage.getItem('wlh_file_metadata'), {});
+let pinnedUrls = new Set(safeJsonParse(localStorage.getItem('wlh_pinned_urls'), []));
+let auditLog = safeJsonParse(localStorage.getItem('wlh_audit_log'), []);
+let suggestionsList = safeJsonParse(localStorage.getItem('wlh_suggestions'), []);
+let myRoomRecords = safeJsonParse(localStorage.getItem('wlh_my_room_records'), []);
 
 // Notices storage
-let NOTICES_LIST = JSON.parse(localStorage.getItem('l_support_notices') || 'null');
+let NOTICES_LIST = safeJsonParse(localStorage.getItem('l_support_notices'), null);
 if (!NOTICES_LIST || NOTICES_LIST.length === 0) {
   NOTICES_LIST = [
     {
@@ -693,11 +705,11 @@ const BUILTIN_FIREBASE_CONFIG = {
   measurementId: "G-HMC8LN2T7J"
 };
 
-let FIREBASE_CONFIG = JSON.parse(localStorage.getItem('l_support_firebase_config') || 'null') || BUILTIN_FIREBASE_CONFIG;
+let FIREBASE_CONFIG = safeJsonParse(localStorage.getItem('l_support_firebase_config'), null) || BUILTIN_FIREBASE_CONFIG;
 
 
 // Interactive Worship Schedule Storage
-let SCHEDULES_LIST = JSON.parse(localStorage.getItem('l_support_schedules') || 'null');
+let SCHEDULES_LIST = safeJsonParse(localStorage.getItem('l_support_schedules'), null);
 if (!SCHEDULES_LIST || SCHEDULES_LIST.length === 0) {
   SCHEDULES_LIST = [
     {
@@ -852,22 +864,22 @@ document.addEventListener('DOMContentLoaded', () => {
   initFirebase();
   startBackgroundLivePoller();
 
-  const hasActiveSession = sessionStorage.getItem('l_support_session_active') === 'true';
+  // Active user session check
+  const isLocked = localStorage.getItem('l_support_screen_locked') === 'true';
 
-  if (!CURRENT_USER || !hasActiveSession) {
-    // Show Full Dedicated Login Page on first visit / new link open
+  if (!CURRENT_USER) {
+    // Show Full Dedicated Login Page on first visit
     openAuthModal();
+  } else if (isLocked) {
+    showAppPinLock();
   } else {
-    logActivity('Session Start', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
-    const isLocked = localStorage.getItem('l_support_screen_locked') === 'true';
-    if (isLocked) {
-      showAppPinLock();
-    } else {
-      closeAuthModal();
-      switchView('home');
-      if (CURRENT_USER.role === 'admin') {
-        setTimeout(() => checkPendingApprovals(), 500);
-      }
+    // User already authenticated - open portal immediately!
+    sessionStorage.setItem('l_support_session_active', 'true');
+    closeAuthModal();
+    switchView('home');
+    logActivity('Session Resume', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
+    if (CURRENT_USER.role === 'admin') {
+      setTimeout(() => checkPendingApprovals(), 500);
     }
   }
 
