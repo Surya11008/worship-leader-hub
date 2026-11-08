@@ -1,5 +1,60 @@
 
 // ========================================================
+// PWA INSTALLATION LOGIC ("phone లో ఓపెన్ చేసినప్పుడు ఇన్స్టాల్ రావాలి, లైక్ app")
+// ========================================================
+let deferredPwaPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPwaPrompt = e;
+  console.log('PWA beforeinstallprompt event captured!');
+  showPwaInstallButton();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredPwaPrompt = null;
+  console.log('Support App installed successfully!');
+  showToast('Support App installed on your device! 🎉', 'success');
+  hidePwaInstallButton();
+});
+
+function showPwaInstallButton() {
+  document.querySelectorAll('.pwa-install-trigger').forEach(el => {
+    el.classList.remove('hidden');
+    el.style.display = 'flex';
+  });
+}
+
+function hidePwaInstallButton() {
+  document.querySelectorAll('.pwa-install-trigger').forEach(el => {
+    el.classList.add('hidden');
+    el.style.display = 'none';
+  });
+}
+
+function triggerPwaInstall() {
+  if (deferredPwaPrompt) {
+    deferredPwaPrompt.prompt();
+    deferredPwaPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        showToast('Installing Support App... 📲', 'success');
+      }
+      deferredPwaPrompt = null;
+    });
+  } else {
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIos) {
+      alert('To install Support App on iPhone / iPad:
+\n1. Tap the Share button at bottom of Safari (square with arrow ⬆️).\n2. Scroll down and tap "Add to Home Screen" ➕.\n3. Tap "Add" in top-right.\n\nThe app icon will appear on your phone screen!');
+    } else {
+      alert('To install Support App on your phone / computer:
+\n1. Tap the browser menu (⋮) in Chrome or Edge.\n2. Tap "Install app" or "Add to Home screen".\n\nThe app will install directly to your device like a native app!');
+    }
+  }
+}
+
+
+// ========================================================
 // MOBILE APP NAVIGATION HELPERS
 // "phone ki kuda comfort ga undali, oka app la ravali"
 // ========================================================
@@ -1140,6 +1195,14 @@ function handleLogout() {
 function openAuthModal() {
   const modal = document.getElementById('authModal');
   const container = document.getElementById('authModalContainer');
+  const portalRoot = document.getElementById('portalAppRoot');
+
+  // STRICT PRIVACY: HIDE ENTIRE PORTAL UI SO ONLY LOGIN PAGE IS VISIBLE!
+  // "link ఓపెన్ చేసినప్పుడు only లాగిన్ పేజీ మాత్రమే కనిపించాలి, ఫస్ట్ time అవుతే"
+  if (portalRoot) {
+    portalRoot.classList.add('hidden');
+    portalRoot.style.display = 'none';
+  }
   if (modal) {
     modal.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
     modal.style.display = 'flex';
