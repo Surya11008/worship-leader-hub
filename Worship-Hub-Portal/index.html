@@ -1061,10 +1061,6 @@
               <i class="fa-solid fa-plus text-xs"></i>
               <span>Add Resource</span>
             </button>
-
-              <i class="fa-solid fa-layer-group text-xs"></i>
-              <span>Browse Library</span>
-            </button>
             <!-- Banner My Room Removed -->
           </div>
         </div>
@@ -1868,11 +1864,16 @@
           <p class="text-[10px] text-slate-500 mt-1">Select individual members who should have access to this file.</p>
         </div>
 
-        <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
-          <button type="button" onclick="closeEditFileModuleTopicModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-xl">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30">
-            Save Multi-Assignments
+        <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+          <button type="button" id="btnDeleteCurrentFile" onclick="deleteCurrentEditingFile()" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600/20 text-rose-300 border border-rose-500/30 hover:bg-rose-600 hover:text-white transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-trash-can text-xs"></i> <span>Delete File</span>
           </button>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeEditFileModuleTopicModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-xl cursor-pointer">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 cursor-pointer">
+              Save Changes
+            </button>
+          </div>
         </div>
       </form>
 
