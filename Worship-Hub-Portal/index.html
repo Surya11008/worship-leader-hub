@@ -6,8 +6,26 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#4f46e5">
   <title>Support</title>
+  
+  <!-- App Icons for Chrome, Edge, Safari & Mobile Install -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+          console.log('Support PWA Service Worker Registered:', reg.scope);
+        }).catch((err) => {
+          console.warn('SW registration skipped:', err);
+        });
+      });
+    }
+  </script>
   <script>
     (function() {
       try {
@@ -349,11 +367,16 @@
       }
     }
 
-    /* Dedicated Auth & Lock Screens */
+    /* Dedicated Standalone Full-Screen Login Page */
     html.light-mode #authModal {
-      background: rgba(15, 23, 42, 0.45) !important;
-      backdrop-filter: blur(8px) !important;
-      -webkit-backdrop-filter: blur(8px) !important;
+      background: radial-gradient(circle at 50% 15%, #fdf4ff 0%, #eef2ff 45%, #f8fafc 100%) !important;
+      backdrop-filter: none !important;
+      z-index: 9999 !important;
+    }
+    html.dark #authModal {
+      background: radial-gradient(circle at 50% 15%, #1e1b4b 0%, #0f172a 45%, #020617 100%) !important;
+      backdrop-filter: none !important;
+      z-index: 9999 !important;
     }
     html.light-mode #authModalContainer {
       background-color: #ffffff !important;
@@ -2439,11 +2462,19 @@
           Sign In to Portal
         </button>
         <div class="flex items-center justify-between pt-2 text-[11px]">
-          <button type="button" onclick="switchAuthMode('forgot')" class="text-indigo-600 hover:text-indigo-800 font-bold hover:underline">
+          <button type="button" onclick="switchAuthMode('forgot')" class="text-indigo-600 hover:text-indigo-800 font-extrabold hover:underline">
             Forgot Password / PIN? (Reset)
           </button>
-          <button type="button" onclick="switchAuthMode('register')" class="text-slate-600 hover:text-slate-900 font-semibold">
+          <button type="button" onclick="switchAuthMode('register')" class="text-slate-700 hover:text-slate-950 font-black">
             New User? Register
+          </button>
+        </div>
+
+        <!-- Phone App Install Banner -->
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center">
+          <button type="button" onclick="triggerPwaInstall()" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 hover:from-indigo-100 hover:to-pink-100 border border-indigo-200 text-indigo-700 font-black text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-95">
+            <i class="fa-solid fa-mobile-screen-button text-sm text-indigo-600"></i>
+            <span>Install Support App on Phone 📲</span>
           </button>
         </div>
       </form>
@@ -3317,6 +3348,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=9.1"></script>
+  <script src="portal_engine.js?v=10.0"></script>
 </body>
 </html>
