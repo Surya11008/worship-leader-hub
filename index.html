@@ -665,15 +665,15 @@
       <button 
         onclick="switchView('home')" 
         id="btnHomeSidebar"
-        class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-slate-100/90 hover:bg-indigo-50 border border-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-750 dark:border-slate-700/80 text-slate-800 dark:text-white shadow-2xs group"
+        class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white shadow-2xs group cursor-pointer"
       >
         <div class="flex items-center gap-2.5">
-          <div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 flex items-center justify-center text-sm group-hover:scale-110 transition shadow-2xs">
-            <i class="fa-solid fa-house"></i>
+          <div id="homeSidebarIconWrapper" class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm group-hover:scale-110 transition shadow-sm flex-shrink-0">
+            <i id="homeSidebarIcon" class="fa-solid fa-house text-white"></i>
           </div>
-          <span class="font-bold">Home</span>
+          <span class="font-black text-slate-900 dark:text-white" id="homeSidebarText">Home</span>
         </div>
-        <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 font-extrabold uppercase">Main</span>
+        <span id="homeSidebarBadge" class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-black uppercase">Main</span>
       </button>
 
       <!-- 3. ADMIN MANAGEMENT CENTER BUTTON (Admin Only) -->
@@ -721,11 +721,11 @@
         <button 
           id="btnAdminAddCategory"
           onclick="openAddModuleModal()" 
-          class="admin-only-control hidden text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-white bg-indigo-50 hover:bg-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-600 px-2.5 py-1 rounded-xl transition flex items-center gap-1 border border-indigo-200 dark:border-slate-700/60 shadow-xs"
-          title="Add New Category"
+          class="admin-only-control hidden text-xs font-black text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-3 py-1.5 rounded-xl border border-indigo-400/40 shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+          title="Add New Category / Module"
         >
-          <i class="fa-solid fa-plus text-[10px]"></i>
-          <span>Add Category</span>
+          <i class="fa-solid fa-plus text-xs text-white"></i>
+          <span class="text-white font-black">Add Module</span>
         </button>
       </div>
     </div>
@@ -903,6 +903,59 @@
           <span id="liveTextEditLabel" class="hidden sm:inline">Edit Text</span>
         </button>
 
+        
+        <!-- Multi-Language Switcher Dropdown -->
+        <div class="relative inline-block text-left" id="langSelectorDropdownContainer">
+          <button 
+            onclick="toggleLanguageDropdown()" 
+            id="btnLanguageSelect"
+            type="button"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-extrabold hover:bg-slate-100 dark:hover:bg-slate-700 transition shadow-2xs cursor-pointer"
+            title="Change Language"
+          >
+            <i class="fa-solid fa-globe text-indigo-500 text-xs"></i>
+            <span id="currentLangLabel">English</span>
+            <i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i>
+          </button>
+          
+          <div id="languageDropdownMenu" class="hidden absolute right-0 mt-2 w-44 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-50 max-h-72 overflow-y-auto">
+            <div class="px-3 py-1 text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1">Select Language</div>
+            <button onclick="changeAppLanguage('en', 'English')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>English</span><span class="text-[10px] text-indigo-500 font-black">Default</span>
+            </button>
+            <button onclick="changeAppLanguage('te', 'తెలుగు')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Telugu</span><span class="text-[10px] text-slate-400">తెలుగు</span>
+            </button>
+            <button onclick="changeAppLanguage('hi', 'हिन्दी')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Hindi</span><span class="text-[10px] text-slate-400">हिन्दी</span>
+            </button>
+            <button onclick="changeAppLanguage('ta', 'தமிழ்')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Tamil</span><span class="text-[10px] text-slate-400">தமிழ்</span>
+            </button>
+            <button onclick="changeAppLanguage('kn', 'ಕನ್ನಡ')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Kannada</span><span class="text-[10px] text-slate-400">ಕನ್ನಡ</span>
+            </button>
+            <button onclick="changeAppLanguage('ml', 'മലയാളം')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Malayalam</span><span class="text-[10px] text-slate-400">മലയാളം</span>
+            </button>
+            <button onclick="changeAppLanguage('mr', 'मराठी')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Marathi</span><span class="text-[10px] text-slate-400">मराठी</span>
+            </button>
+            <button onclick="changeAppLanguage('bn', 'বাংলা')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Bengali</span><span class="text-[10px] text-slate-400">বাংলা</span>
+            </button>
+            <button onclick="changeAppLanguage('gu', 'ગુજરાતી')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Gujarati</span><span class="text-[10px] text-slate-400">ગુજરાતી</span>
+            </button>
+            <button onclick="changeAppLanguage('es', 'Español')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>Spanish</span><span class="text-[10px] text-slate-400">Español</span>
+            </button>
+            <button onclick="changeAppLanguage('fr', 'Français')" class="w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-800 dark:text-white flex items-center justify-between cursor-pointer">
+              <span>French</span><span class="text-[10px] text-slate-400">Français</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Top Light / Dark Mode Toggle Button -->
         <button 
           id="themeToggleBtn"
@@ -978,14 +1031,7 @@
               <i class="fa-solid fa-layer-group text-xs"></i>
               <span>Browse Library</span>
             </button>
-            <button 
-              onclick="switchToMyRoom()" 
-              class="px-3.5 py-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700 font-bold text-xs transition flex items-center gap-1.5"
-              data-ui-key="btnMyRoom"
-            >
-              <i class="fa-solid fa-book-bookmark text-xs"></i>
-              <span id="homeRoomBtnText">Admin Room</span>
-            </button>
+            <!-- Banner My Room Removed -->
           </div>
         </div>
 
@@ -993,13 +1039,13 @@
         <div class="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg">
-                <i class="fa-solid fa-sparkles"></i>
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center text-lg shadow-md shadow-amber-500/30 flex-shrink-0">
+                <i class="fa-solid fa-sparkles text-white"></i>
               </div>
               <div>
                 <h2 class="text-base font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
                   New Arrivals
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">Latest Added</span>
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-md shadow-rose-500/30 animate-pulse border border-rose-400"><span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>🔴 LATEST</span>
                 </h2>
                 <p class="text-[11px] text-slate-500 dark:text-slate-400">Recently added files across all categories</p>
               </div>
@@ -1909,11 +1955,11 @@
           <button 
             id="modalDownloadBtn" 
             onclick="triggerCurrentModalDirectDownload()"
-            class="hidden px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
-            title="Direct Download File"
+            class="hidden px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer"
+            title="Download File / PDF"
           >
-            <i class="fa-solid fa-download"></i>
-            <span class="hidden md:inline">Direct Download</span>
+            <i class="fa-solid fa-file-arrow-down text-sm"></i>
+            <span id="modalDownloadBtnLabel">Download PDF</span>
           </button>
 
           <!-- Copy Link -->
@@ -1958,19 +2004,101 @@
           <p class="text-xs text-slate-400 font-semibold">Opening in-app preview securely...</p>
         </div>
 
-        <div id="cuteAudioPlayerView" class="hidden w-full max-w-lg p-6 flex flex-col items-center justify-center z-20">
-          <div class="w-full rounded-3xl bg-gradient-to-br from-indigo-900/90 via-purple-900/80 to-slate-900 p-6 border border-purple-500/30 shadow-2xl relative overflow-hidden">
-            <div class="flex items-center justify-between mb-6">
-              <span class="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5">
-                <i class="fa-solid fa-music"></i> Audio Player
+        <!-- PRO AUDIO PLAYER CONTAINER -->
+        <div id="cuteAudioPlayerView" class="hidden w-full max-w-xl p-4 sm:p-6 flex flex-col items-center justify-center z-20">
+          <div class="w-full rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-6 border border-purple-500/40 shadow-2xl relative overflow-hidden">
+            
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-black border border-purple-500/30 flex items-center gap-1.5">
+                <i class="fa-solid fa-music"></i> Studio Audio Player
               </span>
-              <div class="flex items-center gap-1">
-                <div class="w-1.5 bg-pink-400 rounded-full wave-bar"></div>
-                <div class="w-1.5 bg-purple-400 rounded-full wave-bar"></div>
-                <div class="w-1.5 bg-indigo-400 rounded-full wave-bar"></div>
-                <div class="w-1.5 bg-cyan-400 rounded-full wave-bar"></div>
-                <div class="w-1.5 bg-pink-400 rounded-full wave-bar"></div>
+              <div class="flex items-center gap-1" id="audioEqualizerBars">
+                <div class="w-1.5 bg-pink-400 rounded-full h-3 animate-pulse"></div>
+                <div class="w-1.5 bg-purple-400 rounded-full h-5 animate-pulse"></div>
+                <div class="w-1.5 bg-indigo-400 rounded-full h-7 animate-pulse"></div>
+                <div class="w-1.5 bg-cyan-400 rounded-full h-4 animate-pulse"></div>
+                <div class="w-1.5 bg-pink-400 rounded-full h-2 animate-pulse"></div>
               </div>
+            </div>
+
+            <div class="text-center mb-5">
+              <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center text-3xl shadow-xl shadow-purple-500/30 mb-3 animate-bounce">
+                🎵
+              </div>
+              <h4 id="audioPlayerTitle" class="text-sm sm:text-base font-extrabold text-white truncate px-2">Song / Audio Title</h4>
+              <p id="audioPlayerSubtitle" class="text-xs text-purple-300 font-medium mt-0.5">High Fidelity Playback</p>
+            </div>
+
+            <!-- Native Audio Tag (hidden, controlled via UI) -->
+            <audio id="nativeAudioElement" preload="metadata" class="hidden"></audio>
+
+            <!-- Seek Slider & Time -->
+            <div class="space-y-1 mb-4">
+              <input 
+                type="range" 
+                id="audioProgressBar" 
+                min="0" 
+                max="100" 
+                value="0" 
+                oninput="onAudioSeekInput(this.value)" 
+                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              >
+              <div class="flex items-center justify-between text-[11px] font-mono font-bold text-slate-400 px-0.5">
+                <span id="audioCurrentTime">00:00</span>
+                <span id="audioDuration">00:00</span>
+              </div>
+            </div>
+
+            <!-- Playback Controls -->
+            <div class="flex items-center justify-center gap-4 mb-4">
+              <button onclick="skipAudio(-10)" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs font-black transition border border-slate-700 cursor-pointer" title="Rewind 10 Seconds">
+                -10s
+              </button>
+              <button onclick="toggleAudioPlayback()" id="btnAudioPlayPause" class="w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white flex items-center justify-center text-xl shadow-lg shadow-indigo-500/40 transition transform active:scale-95 cursor-pointer" title="Play / Pause">
+                <i id="audioPlayIcon" class="fa-solid fa-play ml-0.5"></i>
+              </button>
+              <button onclick="skipAudio(10)" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center text-xs font-black transition border border-slate-700 cursor-pointer" title="Forward 10 Seconds">
+                +10s
+              </button>
+            </div>
+
+            <!-- Speed & Volume Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800/80 text-xs">
+              <div class="flex items-center gap-1 bg-slate-900/80 px-2 py-1 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-400 font-bold uppercase mr-1">Speed:</span>
+                <button onclick="setAudioPlaybackSpeed(0.75)" class="speed-pill px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:text-white">0.75x</button>
+                <button onclick="setAudioPlaybackSpeed(1)" class="speed-pill px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-600 text-white">1x</button>
+                <button onclick="setAudioPlaybackSpeed(1.25)" class="speed-pill px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:text-white">1.25x</button>
+                <button onclick="setAudioPlaybackSpeed(1.5)" class="speed-pill px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:text-white">1.5x</button>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="toggleAudioMute()" id="btnAudioMute" class="text-slate-400 hover:text-white text-xs cursor-pointer">
+                  <i id="audioMuteIcon" class="fa-solid fa-volume-high"></i>
+                </button>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  value="1" 
+                  oninput="setAudioVolume(this.value)" 
+                  class="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                >
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- PRO VIDEO PLAYER CONTAINER -->
+        <div id="cuteVideoPlayerView" class="hidden w-full max-w-4xl p-2 sm:p-4 flex flex-col items-center justify-center z-20">
+          <div class="w-full rounded-2xl bg-black border border-slate-800 shadow-2xl overflow-hidden relative">
+            <video id="nativeVideoElement" class="w-full h-auto max-h-[75vh]" controls playsinline preload="metadata">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
             </div>
 
             <div class="text-center mb-6">
@@ -2301,6 +2429,11 @@
       <div class="flex items-center gap-2 px-6 pt-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 text-xs font-bold overflow-x-auto flex-shrink-0">
         <button onclick="switchSettingsTab('profile')" id="stab-profile" class="px-3 py-2 border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400">Profile & Zion</button>
         <button onclick="switchSettingsTab('security')" id="stab-security" class="px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">Password & PIN</button>
+        <!-- Admin Panel Tab (Admin Works Consolidated) -->
+        <button onclick="switchSettingsTab('adminpanel')" id="stab-adminpanel" class="admin-only-control hidden px-3 py-2 border-b-2 border-transparent text-rose-600 dark:text-rose-400 hover:text-rose-700 flex items-center gap-1.5 font-bold cursor-pointer">
+          <i class="fa-solid fa-shield-halved text-xs"></i>
+          <span>Admin Panel</span>
+        </button>
         <!-- Online & History STRICTLY GATED TO ADMIN ONLY -->
         <button onclick="switchSettingsTab('audit')" id="stab-audit" class="admin-only-control hidden px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">Online & History</button>
         <button onclick="switchSettingsTab('suggestion')" id="stab-suggestion" class="px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">Enquiries</button>
@@ -2308,6 +2441,75 @@
 
       <div class="p-6 flex-1 overflow-y-auto custom-scrollbar text-xs">
         
+        
+        <!-- TAB 5: DEDICATED ADMIN PANEL IN SETTINGS -->
+        <div id="tabContent-adminpanel" class="hidden space-y-5">
+          <div class="p-3.5 bg-gradient-to-r from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/40 border border-rose-200 dark:border-rose-900/40 rounded-2xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center text-lg font-bold shadow-md shadow-rose-600/30">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div>
+                <h4 class="text-xs font-black text-rose-950 dark:text-rose-100">Portal Admin Center</h4>
+                <p class="text-[11px] text-rose-700 dark:text-rose-300 font-semibold">User approvals, category management & download security controls</p>
+              </div>
+            </div>
+            <button onclick="syncAllCloudDataNow()" class="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-white text-xs font-bold rounded-xl border border-rose-200 dark:border-rose-800 shadow-2xs flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-arrows-rotate text-xs text-rose-500"></i> Sync Cloud
+            </button>
+          </div>
+
+          <!-- Section A: Member Approvals & Role Controls -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+            <div class="flex items-center justify-between">
+              <h5 class="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-users-gear text-indigo-500"></i> User Approvals & Membership
+              </h5>
+              <span id="adminPanelUserCount" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">0 Users</span>
+            </div>
+            <div id="adminPanelUserList" class="space-y-2 max-h-56 overflow-y-auto custom-scrollbar">
+              <p class="text-slate-400 text-center py-3">Loading users...</p>
+            </div>
+          </div>
+
+          <!-- Section B: Master Downloads Permission Controls -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h5 class="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <i class="fa-solid fa-file-arrow-down text-emerald-500"></i> Download & PDF Permissions
+                </h5>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Control who can download PDF and media files across modules</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="masterDownloadToggle" onchange="toggleMasterDownloads(this.checked)" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+
+            <!-- Category-wise download switches -->
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-700/60">
+              <div class="text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-2">Category Level Download Permissions:</div>
+              <div id="adminCategoryDownloadToggles" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto custom-scrollbar">
+                <!-- Dynamically rendered -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Section C: Quick Category Manager -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <div>
+              <h5 class="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-layer-group text-purple-500"></i> Category & Module Structure
+              </h5>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Add new categories, edit topics or rearrange modules</p>
+            </div>
+            <button onclick="closeSettingsModal(); openAddModuleModal();" class="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs rounded-xl shadow-xs hover:shadow-md transition flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-plus text-xs"></i> Add Module
+            </button>
+          </div>
+        </div>
+
         <!-- TAB 1: Profile & Zion -->
         <div id="tabContent-profile" class="space-y-4">
           <form onsubmit="saveUserProfile(event)" class="space-y-3">
@@ -2582,11 +2784,11 @@
       <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 mb-4 text-xs font-bold gap-1">
         <button onclick="switchAuthMode('login')" id="authTabLogin" type="button" class="w-1/2 py-2.5 rounded-xl bg-indigo-600 text-white font-extrabold shadow-sm transition flex items-center justify-center gap-1.5 border border-indigo-500 cursor-pointer">
           <i class="fa-solid fa-right-to-bracket text-xs"></i>
-          <span>Login (లాగిన్)</span>
+          <span>Sign In</span>
         </button>
         <button onclick="switchAuthMode('register')" id="authTabRegister" type="button" class="w-1/2 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition flex items-center justify-center gap-1.5 bg-transparent cursor-pointer">
           <i class="fa-solid fa-user-plus text-xs"></i>
-          <span>Create ID (కొత్త ID)</span>
+          <span>Create Account</span>
         </button>
       </div>
 
@@ -2599,7 +2801,7 @@
               <i class="fa-solid fa-user-plus"></i>
             </span>
             <div>
-              <h4 class="text-xs font-black text-emerald-950 dark:text-emerald-100">కొత్త యూజరా? New User?</h4>
+              <h4 class="text-xs font-black text-emerald-950 dark:text-emerald-100">New User? Register Below</h4>
               <p class="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">Create your User ID in 1 min</p>
             </div>
           </div>
@@ -2703,7 +2905,7 @@
               <i class="fa-solid fa-right-to-bracket"></i>
             </span>
             <div>
-              <h4 class="text-xs font-black text-indigo-950 dark:text-indigo-100">ఇప్పటికే ID ఉందా? Have an ID?</h4>
+              <h4 class="text-xs font-black text-indigo-950 dark:text-indigo-100">Already registered? Sign In</h4>
               <p class="text-[11px] text-indigo-700 dark:text-indigo-300 font-semibold">Sign in directly with your ID</p>
             </div>
           </div>
@@ -3529,6 +3731,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=13.0"></script>
+  <script src="portal_engine.js?v=14.0"></script>
 </body>
 </html>
