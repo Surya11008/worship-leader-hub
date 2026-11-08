@@ -975,8 +975,8 @@ function refreshDataModel() {
   }
 }
 
-// 2. LIFECYCLE & DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
+// 2. LIFECYCLE & DOMContentLoaded (FAIL-SAFE INITIALIZER)
+function initPortalApp() {
   initTheme();
   refreshDataModel();
   updateTopDownloadBtn();
@@ -996,26 +996,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Active user session check — clear stale lock on fresh page load
   localStorage.removeItem('l_support_screen_locked');
 
-  const portalRoot = document.getElementById('portalAppRoot');
-  if (portalRoot) {
-    portalRoot.classList.remove('hidden');
-    portalRoot.style.display = 'flex';
-  }
-
-  // ========================================================
-  // FIRST SCREEN ON SITE OPEN: ALWAYS SHOW LOGIN PAGE FIRST!
-  // "site open chesinappudu first login page ravali"
-  // ========================================================
+  // Check session
   const isSessionActive = sessionStorage.getItem('l_support_session_active') === 'true';
 
   if (!CURRENT_USER || !isSessionActive) {
     // Show dedicated Login Page immediately when opening site; ZERO portal leakage
     document.documentElement.classList.add('portal-unauth-locked');
+    const portalRoot = document.getElementById('portalAppRoot');
+    if (portalRoot) {
+      portalRoot.style.display = 'none';
+      portalRoot.classList.add('hidden');
+    }
     openAuthModal();
   } else {
     // Already authenticated in current browser session
     document.documentElement.classList.remove('portal-unauth-locked');
     closeAuthModal();
+    const portalRoot = document.getElementById('portalAppRoot');
+    if (portalRoot) {
+      portalRoot.classList.remove('hidden');
+      portalRoot.style.display = 'flex';
+    }
     switchView('home');
     logActivity('Session Resume', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
     if (CURRENT_USER.role === 'admin') {
@@ -1042,7 +1043,14 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSelection();
     }
   });
-});
+}
+
+// Guaranteed execution: if DOMContentLoaded already fired, execute immediately!
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPortalApp);
+} else {
+  initPortalApp();
+}
 
 // Event listeners for screen off, tab switch, minimizing, or exiting site
 document.addEventListener('visibilitychange', () => {
