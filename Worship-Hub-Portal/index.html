@@ -120,6 +120,15 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
 
     
+    
+    /* Bulletproof Full-Viewport Root Safety */
+    #portalAppRoot {
+      width: 100vw !important;
+      min-width: 100vw !important;
+      height: 100vh !important;
+      min-height: 100vh !important;
+    }
+
     /* Bulletproof Admin Visibility Protection: regular users never see admin options */
     html:not(.is-admin-active) .admin-only-control,
     html:not(.is-admin-active) [data-admin-only="true"],
@@ -584,7 +593,7 @@
 
   </style>
 </head>
-<body class="h-full font-sans antialiased bg-slate-50 text-slate-900 flex overflow-hidden select-none">
+<body class="h-full w-full font-sans antialiased bg-slate-50 text-slate-900 overflow-hidden select-none block">
 
   <!-- Embedded Initial Application Data -->
   <script id="initial-app-data" type="application/json">
@@ -594,7 +603,7 @@
   <!-- ======================================================== -->
   <!-- PORTAL APPLICATION WRAPPER                               -->
   <!-- ======================================================== -->
-  <div id="portalAppRoot" style="display: none;" class="h-full flex flex-col flex-1 overflow-hidden w-full hidden">
+  <div id="portalAppRoot" class="h-full w-full flex flex-col flex-1 overflow-hidden relative" style="width: 100vw; height: 100vh; min-width: 100vw;">
     <!-- Top Rainbow Aesthetic Accent Bar -->
     <div class="h-1.5 w-full bg-gradient-to-r from-pink-500 via-purple-500 via-indigo-500 via-cyan-400 via-emerald-400 via-yellow-400 to-rose-400 flex-shrink-0 animate-pulse shadow-xs"></div>
 
@@ -2097,24 +2106,6 @@
             <video id="nativeVideoElement" class="w-full h-auto max-h-[75vh]" controls playsinline preload="metadata">
               Your browser does not support the video tag.
             </video>
-          </div>
-        </div>
-            </div>
-
-            <div class="text-center mb-6">
-              <div class="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center text-3xl shadow-xl shadow-purple-500/30 mb-4 animate-pulse">
-                🎵
-              </div>
-              <h4 id="audioPlayerTitle" class="text-base font-bold text-white truncate mb-1">Song / Audio Title</h4>
-              <p id="audioPlayerSubtitle" class="text-xs text-purple-300 font-medium">Support Media</p>
-            </div>
-
-            <audio id="nativeAudioElement" class="w-full rounded-xl bg-slate-800/80 mb-3" controls></audio>
-            
-            <div class="flex items-center justify-between text-xs text-slate-400 pt-2">
-              <span>High Quality Stream</span>
-              <span id="audioStatusBadge" class="text-emerald-400 font-bold">Ready</span>
-            </div>
           </div>
         </div>
 
@@ -3731,6 +3722,6 @@
   </div>
 
   <!-- SCRIPT LOGIC (PURE JAVASCRIPT) -->
-  <script src="portal_engine.js?v=14.0"></script>
+  <script src="portal_engine.js?v=15.0"></script>
 </body>
 </html>
