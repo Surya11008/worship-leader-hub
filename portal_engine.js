@@ -44,11 +44,9 @@ function triggerPwaInstall() {
   } else {
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     if (isIos) {
-      alert('To install Support App on iPhone / iPad:
-\n1. Tap the Share button at bottom of Safari (square with arrow ⬆️).\n2. Scroll down and tap "Add to Home Screen" ➕.\n3. Tap "Add" in top-right.\n\nThe app icon will appear on your phone screen!');
+      alert('To install Support App on iPhone / iPad:\n1. Tap the Share button at bottom of Safari (square with arrow ⬆️).\n2. Scroll down and tap "Add to Home Screen" ➕.\n3. Tap "Add" in top-right.\n\nThe app icon will appear on your phone screen!');
     } else {
-      alert('To install Support App on your phone / computer:
-\n1. Tap the browser menu (⋮) in Chrome or Edge.\n2. Tap "Install app" or "Add to Home screen".\n\nThe app will install directly to your device like a native app!');
+      alert('To install Support App on your phone / computer:\n1. Tap the browser menu (⋮) in Chrome or Edge.\n2. Tap "Install app" or "Add to Home screen".\n\nThe app will install directly to your device like a native app!');
     }
   }
 }
@@ -1011,10 +1009,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const isSessionActive = sessionStorage.getItem('l_support_session_active') === 'true';
 
   if (!CURRENT_USER || !isSessionActive) {
-    // Show dedicated Login Page immediately when opening site
+    // Show dedicated Login Page immediately when opening site; ZERO portal leakage
+    document.documentElement.classList.add('portal-unauth-locked');
     openAuthModal();
   } else {
     // Already authenticated in current browser session
+    document.documentElement.classList.remove('portal-unauth-locked');
     closeAuthModal();
     switchView('home');
     logActivity('Session Resume', 'Active as ' + CURRENT_USER.fullName + ' (' + CURRENT_USER.userId + ')');
@@ -1199,6 +1199,7 @@ function openAuthModal() {
 
   // STRICT PRIVACY: HIDE ENTIRE PORTAL UI SO ONLY LOGIN PAGE IS VISIBLE!
   // "link ఓపెన్ చేసినప్పుడు only లాగిన్ పేజీ మాత్రమే కనిపించాలి, ఫస్ట్ time అవుతే"
+  document.documentElement.classList.add('portal-unauth-locked');
   if (portalRoot) {
     portalRoot.classList.add('hidden');
     portalRoot.style.display = 'none';
@@ -1242,9 +1243,11 @@ function openAuthModal() {
 function closeAuthModal() {
   const isSessionActive = sessionStorage.getItem('l_support_session_active') === 'true';
   if (!CURRENT_USER || !isSessionActive) {
+    document.documentElement.classList.add('portal-unauth-locked');
     showToast('Please sign in with your User ID & Password to enter.', 'info');
     return;
   }
+  document.documentElement.classList.remove('portal-unauth-locked');
   const modal = document.getElementById('authModal');
   const container = document.getElementById('authModalContainer');
   if (modal) {
@@ -1274,26 +1277,20 @@ function switchAuthMode(mode) {
     loginForm.classList.remove('hidden');
     registerForm.classList.add('hidden');
     if (forgotForm) forgotForm.classList.add('hidden');
-    tabLogin.classList.add('bg-indigo-600', 'text-white');
-    tabLogin.classList.remove('text-slate-400');
-    tabRegister.classList.remove('bg-indigo-600', 'text-white');
-    tabRegister.classList.add('text-slate-400');
+    tabLogin.className = 'w-1/2 py-2 rounded-xl bg-indigo-600 text-white font-extrabold shadow-sm transition border border-indigo-500';
+    tabRegister.className = 'w-1/2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition bg-transparent';
   } else if (mode === 'register') {
     loginForm.classList.add('hidden');
     registerForm.classList.remove('hidden');
     if (forgotForm) forgotForm.classList.add('hidden');
-    tabRegister.classList.add('bg-indigo-600', 'text-white');
-    tabRegister.classList.remove('text-slate-400');
-    tabLogin.classList.remove('bg-indigo-600', 'text-white');
-    tabLogin.classList.add('text-slate-400');
+    tabRegister.className = 'w-1/2 py-2 rounded-xl bg-indigo-600 text-white font-extrabold shadow-sm transition border border-indigo-500';
+    tabLogin.className = 'w-1/2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition bg-transparent';
   } else if (mode === 'forgot') {
     loginForm.classList.add('hidden');
     registerForm.classList.add('hidden');
     if (forgotForm) forgotForm.classList.remove('hidden');
-    tabLogin.classList.remove('bg-indigo-600', 'text-white');
-    tabLogin.classList.add('text-slate-400');
-    tabRegister.classList.remove('bg-indigo-600', 'text-white');
-    tabRegister.classList.add('text-slate-400');
+    tabLogin.className = 'w-1/2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition bg-transparent';
+    tabRegister.className = 'w-1/2 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white font-bold transition bg-transparent';
   }
 }
 
@@ -3373,7 +3370,7 @@ function renderTableView(items) {
             ${showDownload ? `
               <button 
                 onclick="triggerDirectDownload('${safeUrl}', '${safeTitle}', event)"
-                class="p-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 transition text-[11px]"
+                class="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition text-[11px] shadow-xs flex items-center justify-center border border-emerald-400/40"
                 title="Direct Download File"
               >
                 <i class="fa-solid fa-download"></i>
@@ -3383,7 +3380,7 @@ function renderTableView(items) {
             <!-- Multi-Module & Topic edit button -->
             <button 
               onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
-              class="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-300 hover:text-indigo-300 transition text-[11px] border border-slate-700"
+              class="p-1.5 rounded-lg bg-indigo-50 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-slate-700 border border-indigo-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 transition text-[11px] flex items-center justify-center"
               title="Assign Multiple Modules & Topics"
             >
               <i class="fa-solid fa-folder-tree"></i>
@@ -3394,7 +3391,7 @@ function renderTableView(items) {
               href="${item.url}" 
               target="_blank" 
               rel="noopener noreferrer"
-              class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition text-[11px] border border-slate-700"
+              class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition text-[11px] flex items-center justify-center"
               title="Open in external browser tab"
             >
               <i class="fa-solid fa-arrow-up-right-from-square"></i>
@@ -3461,14 +3458,14 @@ function renderGridView(items) {
               ` : ''}
               <button 
                 onclick="openEditFileModuleTopicModal('${safeUrl}', event)"
-                class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-indigo-600/30 text-slate-400 hover:text-indigo-300 flex items-center justify-center text-xs transition"
+                class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-slate-700 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-slate-700 flex items-center justify-center text-xs transition"
                 title="Change Modules & Topics"
               >
                 <i class="fa-solid fa-folder-tree"></i>
               </button>
               <button 
                 onclick="togglePin('${safeUrl}', event)"
-                class="w-7 h-7 rounded-lg transition flex items-center justify-center text-xs ${isPinned ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500 hover:text-amber-400'}"
+                class="w-7 h-7 rounded-lg transition flex items-center justify-center text-xs ${isPinned ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-500/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-amber-500 border border-slate-200 dark:border-slate-700'}"
                 title="Star"
               >
                 <i class="${isPinned ? 'fa-solid fa-star' : 'fa-regular fa-star'}"></i>
