@@ -1158,6 +1158,7 @@ function updateUserUI() {
     'btnAdminAddNotice',
     'btnAdminAddCategory',
     'btnAdminAddResource',
+    'btnTopAddResource',
     'adminLiveTextEditBtn',
     'topAdminPanelBtn',
     'adminApprovalsTopBtn',
@@ -1573,36 +1574,119 @@ async function handleRegisterSubmit(e) {
 }
 
 // 6. DIRECT FILE DOWNLOAD (DIRECT PDF/DRIVE WITHOUT DOCS EDITOR)
-function getDirectDownloadUrl(url) {
-  if (!url) return '';
+
+function formatEmbedPreviewUrl(rawUrl) {
+  if (!rawUrl) return '';
+  let url = rawUrl.trim();
+
+  // If user pasted full iframe tag, extract src attribute
+  if (url.includes('<iframe') && url.includes('src=')) {
+    const srcMatch = url.match(/src=["']([^"']+)["']/i);
+    if (srcMatch && srcMatch[1]) url = srcMatch[1].trim();
+  }
+
+  // 1. Google Docs: Extract clean document ID
+  const docMatch = url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (docMatch && docMatch[1]) {
+    return 'https://docs.google.com/document/d/' + docMatch[1] + '/preview';
+  }
+
+  // 2. Google Presentations / Slides: Extract clean presentation ID
+  const slideMatch = url.match(/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+  if (slideMatch && slideMatch[1]) {
+    return 'https://docs.google.com/presentation/d/' + slideMatch[1] + '/preview';
+  }
+
+  // 3. Google Spreadsheets / Sheets: Extract clean sheet ID
+  const sheetMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (sheetMatch && sheetMatch[1]) {
+    return 'https://docs.google.com/spreadsheets/d/' + sheetMatch[1] + '/preview';
+  }
+
+  // 4. Google Drive File (Audio, Video, PDF, Docs, General files)
+  const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveFileMatch && driveFileMatch[1]) {
+    return 'https://drive.google.com/file/d/' + driveFileMatch[1] + '/preview';
+  }
+  const driveIdParam = url.match(/drive\.google\.com\/(?:open|uc)\?[^#]*id=([a-zA-Z0-9_-]+)/);
+  if (driveIdParam && driveIdParam[1]) {
+    return 'https://drive.google.com/file/d/' + driveIdParam[1] + '/preview';
+  }
+
+  // 5. Google Drive Folder
+  const folderMatch = url.match(/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/);
+  if (folderMatch && folderMatch[1]) {
+    return 'https://drive.google.com/embeddedfolderview?id=' + folderMatch[1] + '#list';
+  }
+
+  // 6. YouTube Video (watch, embed, shorts, youtu.be)
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (ytMatch && ytMatch[1]) {
+    return 'https://www.youtube-nocookie.com/embed/' + ytMatch[1] + '?autoplay=1&rel=0';
+  }
+
+  // 7. Vimeo Video
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return 'https://player.vimeo.com/video/' + vimeoMatch[1] + '?autoplay=1';
+  }
+
+  return url;
+}
+
+function detectResourceMediaType(url) {
+  if (!url) return 'doc';
+  const u = url.toLowerCase();
+  if (/\.(mp3|wav|m4a|aac|ogg|flac)(\?|$)/i.test(u)) return 'audio';
+  if (/\.(mp4|webm|mov|m4v|ogv)(\?|$)/i.test(u)) return 'video';
+  if (u.includes('youtube.com') || u.includes('youtu.be') || u.includes('vimeo.com')) return 'video';
+  if (/\.pdf(\?|$)/i.test(u)) return 'pdf';
+  if (u.includes('docs.google.com/document')) return 'doc';
+  if (u.includes('docs.google.com/presentation')) return 'slides';
+  if (u.includes('docs.google.com/spreadsheets')) return 'sheets';
+  if (u.includes('drive.google.com')) return 'drive';
+  if (u.includes('<iframe')) return 'embed';
+  return 'doc';
+}
+
+function getDirectDownloadUrl(rawUrl) {
+  if (!rawUrl) return '';
+  let url = rawUrl.trim();
+
+  // If iframe, extract src
+  if (url.includes('<iframe') && url.includes('src=')) {
+    const srcMatch = url.match(/src=["']([^"']+)["']/i);
+    if (srcMatch && srcMatch[1]) url = srcMatch[1].trim();
+  }
+
   // Google Docs -> Direct PDF export
-  if (url.includes('docs.google.com/document/d/')) {
-    const match = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-      return `https://docs.google.com/document/d/${match[1]}/export?format=pdf`;
-    }
+  const docMatch = url.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (docMatch && docMatch[1]) {
+    return 'https://docs.google.com/document/d/' + docMatch[1] + '/export?format=pdf';
   }
+
   // Google Slides -> Direct PDF export
-  if (url.includes('docs.google.com/presentation/d/')) {
-    const match = url.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-      return `https://docs.google.com/presentation/d/${match[1]}/export/pdf`;
-    }
+  const slideMatch = url.match(/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+  if (slideMatch && slideMatch[1]) {
+    return 'https://docs.google.com/presentation/d/' + slideMatch[1] + '/export/pdf';
   }
+
   // Google Sheets -> Direct PDF export
-  if (url.includes('docs.google.com/spreadsheets/d/')) {
-    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-      return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=pdf`;
-    }
+  const sheetMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (sheetMatch && sheetMatch[1]) {
+    return 'https://docs.google.com/spreadsheets/d/' + sheetMatch[1] + '/export?format=pdf';
   }
-  // Google Drive -> Direct file download
-  if (url.includes('drive.google.com/file/d/')) {
-    const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-      return `https://drive.google.com/uc?export=download&id=${match[1]}`;
-    }
+
+  // Google Drive File -> Direct Download
+  const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveFileMatch && driveFileMatch[1]) {
+    return 'https://drive.google.com/uc?export=download&id=' + driveFileMatch[1];
   }
+  const driveIdParam = url.match(/drive\.google\.com\/(?:open|uc)\?[^#]*id=([a-zA-Z0-9_-]+)/);
+  if (driveIdParam && driveIdParam[1]) {
+    return 'https://drive.google.com/uc?export=download&id=' + driveIdParam[1];
+  }
+
   return url;
 }
 
@@ -3674,7 +3758,19 @@ function submitNewResource(e) {
   const topicSelectVal = document.getElementById('newResourceTopicSelect').value;
   const customTopicVal = document.getElementById('newResourceCustomTopic').value.trim();
   const title = document.getElementById('newResourceTitle').value.trim();
-  const url = document.getElementById('newResourceUrl').value.trim();
+
+  const urlVal = document.getElementById('newResourceUrl') ? document.getElementById('newResourceUrl').value.trim() : '';
+  const embedVal = document.getElementById('newResourceEmbedCode') ? document.getElementById('newResourceEmbedCode').value.trim() : '';
+  const rawInput = addResourceInputMode === 'url' ? urlVal : (embedVal || urlVal);
+
+  if (!title) {
+    showToast('Please enter a Resource Title.', 'error');
+    return;
+  }
+  if (!rawInput) {
+    showToast('Please provide a File URL or Embed Code.', 'error');
+    return;
+  }
 
   let topic = customTopicVal || (topicSelectVal !== '__NEW_TOPIC__' ? topicSelectVal : 'General');
   
@@ -3689,19 +3785,17 @@ function submitNewResource(e) {
     }
   }
 
-  let previewUrl = url;
-  if (previewUrl.indexOf('docs.google.com/document/d/') !== -1) {
-    previewUrl = previewUrl.split('/edit')[0] + '/preview';
-  } else if (previewUrl.indexOf('drive.google.com/file/d/') !== -1) {
-    previewUrl = previewUrl.split('/view')[0] + '/preview';
-  }
+  // Canonical Embed URL & Media Detection
+  const previewUrl = formatEmbedPreviewUrl(rawInput);
+  const mediaType = detectResourceMediaType(rawInput);
 
   const fileAllowedPositions = getSelectedPositionsFromCheckboxes('resourcePositionChoice');
   const newItem = {
-    title,
+    title: title,
     allowedPositions: fileAllowedPositions,
-    url,
-    previewUrl,
+    url: rawInput,
+    previewUrl: previewUrl,
+    mediaType: mediaType,
     group: topic,
     tab: moduleId,
     modules: [moduleId],
@@ -3711,6 +3805,7 @@ function submitNewResource(e) {
     badge: catObj ? catObj.badge : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
     btn: catObj ? catObj.btn : 'bg-emerald-600 hover:bg-emerald-500',
     isCustom: true,
+    allowDownload: true,
     id: 'custom_' + Date.now()
   };
 
@@ -3718,7 +3813,8 @@ function submitNewResource(e) {
   filePermissions[newItem.url] = fileAllowedPositions;
   localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
   fbSync('file_permissions', filePermissions);
-  localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); fbSync('custom_resources', customItems);
+  localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); 
+  fbSync('custom_resources', customItems);
 
   closeAddResourceModal();
   refreshDataModel();
@@ -3726,7 +3822,7 @@ function submitNewResource(e) {
   renderSidebarCategories();
   renderSubgroupTabs();
   renderRecords();
-  showToast('✨ Resource added: ' + title);
+  showToast('✨ Resource added successfully: ' + title);
   logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
 }
 
@@ -4059,8 +4155,17 @@ function generateMergedStudyPack() {
 
 // 20. IN-APP POPUP PREVIEW WITH ZOOM & CUTE PLAYERS
 function openFilePreview(url) {
-  const item = ALL_ITEMS.find(it => it.url === url);
-  if (!item) return;
+  let item = ALL_ITEMS.find(it => it.url === url);
+  if (!item) {
+    item = {
+      title: 'Resource Preview',
+      url: url,
+      previewUrl: formatEmbedPreviewUrl(url),
+      categoryName: 'General',
+      categoryIcon: '📄',
+      group: 'General'
+    };
+  }
 
   if (item.isLocked) {
     pendingUnlockUrl = url;
@@ -4107,10 +4212,14 @@ function openFilePreview(url) {
   const videoEl = document.getElementById('nativeVideoElement');
   if (videoEl) { videoEl.pause(); videoEl.src = ''; }
 
-  const isAudio = item.mediaType === 'audio' || /\.(mp3|wav|m4a|aac|ogg)(\?|$)/i.test(url) || (url.includes('drive.google.com') && item.tab === 'New Song');
-  const isVideo = item.mediaType === 'video' || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
+  const cleanEmbedUrl = formatEmbedPreviewUrl(item.previewUrl || item.url);
+  
+  // Check if it's direct non-drive audio (e.g. mp3 file on CDN/server)
+  const isDirectAudio = /\.(mp3|wav|m4a|aac|ogg)(\?|$)/i.test(url) && !url.includes('drive.google.com');
+  // Check if it's direct non-drive video (e.g. mp4 file on CDN/server)
+  const isDirectVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url) && !url.includes('drive.google.com');
 
-  if (isAudio && audioView) {
+  if (isDirectAudio && audioView) {
     if (iframeContainer) iframeContainer.classList.add('hidden');
     if (loader) loader.classList.add('hidden');
     if (videoView) videoView.classList.add('hidden');
@@ -4122,7 +4231,7 @@ function openFilePreview(url) {
       audioEl.src = item.url;
       audioEl.play().catch(e => console.log('Autoplay deferred:', e));
     }
-  } else if (isVideo && videoView) {
+  } else if (isDirectVideo && videoView) {
     if (iframeContainer) iframeContainer.classList.add('hidden');
     if (loader) loader.classList.add('hidden');
     if (audioView) audioView.classList.add('hidden');
@@ -4133,25 +4242,16 @@ function openFilePreview(url) {
       videoEl.play().catch(e => console.log('Autoplay deferred:', e));
     }
   } else {
+    // UNIVERSAL EMBED VIEWER: Handles Google Docs, Slides, Sheets, Drive Audio/Video (with Drive's native web player & play button!), YouTube, Vimeo, PDFs
     if (audioView) audioView.classList.add('hidden');
     if (videoView) videoView.classList.add('hidden');
     if (iframeContainer) iframeContainer.classList.remove('hidden');
     if (loader) loader.classList.remove('opacity-0', 'pointer-events-none');
 
-    let embedUrl = item.previewUrl || item.url;
-    // Enhanced embed transformers
-    if (embedUrl.includes('docs.google.com/document/d/')) {
-      embedUrl = embedUrl.split('/edit')[0].split('/view')[0] + '/preview';
-    } else if (embedUrl.includes('docs.google.com/presentation/d/')) {
-      embedUrl = embedUrl.split('/edit')[0].split('/view')[0] + '/preview';
-    } else if (embedUrl.includes('docs.google.com/spreadsheets/d/')) {
-      embedUrl = embedUrl.split('/edit')[0].split('/view')[0] + '/preview';
-    } else if (embedUrl.includes('drive.google.com/file/d/')) {
-      embedUrl = embedUrl.split('/view')[0] + '/preview';
-    }
-
     const iframe = document.getElementById('previewIframe');
-    if (iframe) iframe.src = embedUrl;
+    if (iframe) {
+      iframe.src = cleanEmbedUrl;
+    }
   }
 
   const modal = document.getElementById('filePreviewModal');
@@ -7229,3 +7329,80 @@ window.googleTranslateElementInit = function() {
     }
   }
 };
+
+
+let addResourceInputMode = 'url';
+
+function setAddResourceInputMode(mode) {
+  addResourceInputMode = mode;
+  const urlBox = document.getElementById('urlInputContainer');
+  const embedBox = document.getElementById('embedInputContainer');
+  const btnUrl = document.getElementById('modeBtnUrl');
+  const btnEmbed = document.getElementById('modeBtnEmbed');
+
+  if (mode === 'url') {
+    if (urlBox) urlBox.classList.remove('hidden');
+    if (embedBox) embedBox.classList.add('hidden');
+    if (btnUrl) {
+      btnUrl.className = 'w-1/2 py-2 rounded-lg bg-indigo-600 text-white font-black shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer';
+    }
+    if (btnEmbed) {
+      btnEmbed.className = 'w-1/2 py-2 rounded-lg text-slate-400 hover:text-white font-bold transition flex items-center justify-center gap-1.5 cursor-pointer';
+    }
+  } else {
+    if (urlBox) urlBox.classList.add('hidden');
+    if (embedBox) embedBox.classList.remove('hidden');
+    if (btnEmbed) {
+      btnEmbed.className = 'w-1/2 py-2 rounded-lg bg-indigo-600 text-white font-black shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer';
+    }
+    if (btnUrl) {
+      btnUrl.className = 'w-1/2 py-2 rounded-lg text-slate-400 hover:text-white font-bold transition flex items-center justify-center gap-1.5 cursor-pointer';
+    }
+  }
+  onResourceInputLiveCheck();
+}
+
+function onResourceInputLiveCheck() {
+  const urlVal = document.getElementById('newResourceUrl') ? document.getElementById('newResourceUrl').value.trim() : '';
+  const embedVal = document.getElementById('newResourceEmbedCode') ? document.getElementById('newResourceEmbedCode').value.trim() : '';
+  const input = addResourceInputMode === 'url' ? urlVal : embedVal;
+
+  const previewBox = document.getElementById('newResourceLivePreview');
+  const miniIframe = document.getElementById('newResourceMiniIframe');
+  const typeBadge = document.getElementById('livePreviewTypeBadge');
+
+  if (!input) {
+    if (previewBox) previewBox.classList.add('hidden');
+    if (miniIframe) miniIframe.src = 'about:blank';
+    return;
+  }
+
+  const cleanEmbedUrl = formatEmbedPreviewUrl(input);
+  const mediaType = detectResourceMediaType(input);
+
+  if (previewBox) previewBox.classList.remove('hidden');
+
+  let typeText = 'Embed Resource 📄';
+  if (mediaType === 'audio') typeText = 'Audio Stream 🎵';
+  else if (mediaType === 'video') typeText = 'Video Stream 🎬';
+  else if (cleanEmbedUrl.includes('docs.google.com/document')) typeText = 'Google Doc 📄';
+  else if (cleanEmbedUrl.includes('docs.google.com/presentation')) typeText = 'Google Slide 📊';
+  else if (cleanEmbedUrl.includes('docs.google.com/spreadsheets')) typeText = 'Google Sheet 📈';
+  else if (cleanEmbedUrl.includes('drive.google.com')) typeText = 'Drive File 📁';
+  else if (cleanEmbedUrl.includes('youtube.com')) typeText = 'YouTube Video 🎥';
+
+  if (typeBadge) typeBadge.textContent = typeText;
+
+  if (miniIframe && miniIframe.src !== cleanEmbedUrl) {
+    miniIframe.src = cleanEmbedUrl;
+  }
+}
+
+function testOpenPreviewInNewTab() {
+  const urlVal = document.getElementById('newResourceUrl') ? document.getElementById('newResourceUrl').value.trim() : '';
+  const embedVal = document.getElementById('newResourceEmbedCode') ? document.getElementById('newResourceEmbedCode').value.trim() : '';
+  const input = addResourceInputMode === 'url' ? urlVal : embedVal;
+  if (!input) return;
+  const cleanUrl = formatEmbedPreviewUrl(input);
+  window.open(cleanUrl, '_blank');
+}
