@@ -3753,26 +3753,35 @@ function hideCustomTopicInput() {
 }
 
 function submitNewResource(e) {
-  e.preventDefault();
-  const moduleId = document.getElementById('newResourceModule').value;
-  const topicSelectVal = document.getElementById('newResourceTopicSelect').value;
-  const customTopicVal = document.getElementById('newResourceCustomTopic').value.trim();
-  const title = document.getElementById('newResourceTitle').value.trim();
+  if (e && e.preventDefault) e.preventDefault();
+  const modSelect = document.getElementById('newResourceModule');
+  const moduleId = modSelect ? modSelect.value : (currentCategory !== 'all' ? currentCategory : (CATEGORIES[0] ? CATEGORIES[0].id : 'General'));
+  const topicSelect = document.getElementById('newResourceTopicSelect');
+  const topicSelectVal = topicSelect ? topicSelect.value : '';
+  const customTopicInput = document.getElementById('newResourceCustomTopic');
+  const customTopicVal = customTopicInput ? customTopicInput.value.trim() : '';
+  const titleInput = document.getElementById('newResourceTitle');
+  const title = titleInput ? titleInput.value.trim() : '';
 
-  const urlVal = document.getElementById('newResourceUrl') ? document.getElementById('newResourceUrl').value.trim() : '';
-  const embedVal = document.getElementById('newResourceEmbedCode') ? document.getElementById('newResourceEmbedCode').value.trim() : '';
-  const rawInput = addResourceInputMode === 'url' ? urlVal : (embedVal || urlVal);
+  const urlInput = document.getElementById('newResourceUrl');
+  const embedInput = document.getElementById('newResourceEmbedCode');
+  const urlVal = urlInput ? urlInput.value.trim() : '';
+  const embedVal = embedInput ? embedInput.value.trim() : '';
+  const rawInput = addResourceInputMode === 'url' ? (urlVal || embedVal) : (embedVal || urlVal);
 
   if (!title) {
     showToast('Please enter a Resource Title.', 'error');
+    if (titleInput) titleInput.focus();
     return;
   }
   if (!rawInput) {
     showToast('Please provide a File URL or Embed Code.', 'error');
+    if (addResourceInputMode === 'url' && urlInput) urlInput.focus();
+    else if (embedInput) embedInput.focus();
     return;
   }
 
-  let topic = customTopicVal || (topicSelectVal !== '__NEW_TOPIC__' ? topicSelectVal : 'General');
+  let topic = customTopicVal || (topicSelectVal && topicSelectVal !== '__NEW_TOPIC__' ? topicSelectVal : (currentSubgroup !== 'all' ? currentSubgroup : 'General'));
   
   const catObj = CATEGORIES.find(c => c.id === moduleId);
   if (catObj && customTopicVal) {
@@ -3782,6 +3791,7 @@ function submitNewResource(e) {
       if (!topicEdits[moduleId]) topicEdits[moduleId] = [];
       topicEdits[moduleId].push(topic);
       localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
+      fbSync('topic_edits', topicEdits);
     }
   }
 
@@ -3790,9 +3800,12 @@ function submitNewResource(e) {
   const mediaType = detectResourceMediaType(rawInput);
 
   const fileAllowedPositions = getSelectedPositionsFromCheckboxes('resourcePositionChoice');
+  const fileAllowedUsers = getSelectedUsersFromCheckboxes('resourceUserChoice');
+
   const newItem = {
     title: title,
     allowedPositions: fileAllowedPositions,
+    allowedUsers: fileAllowedUsers,
     url: rawInput,
     previewUrl: previewUrl,
     mediaType: mediaType,
@@ -3809,19 +3822,35 @@ function submitNewResource(e) {
     id: 'custom_' + Date.now()
   };
 
+  // Prepend to customItems
   customItems.unshift(newItem);
-  filePermissions[newItem.url] = fileAllowedPositions;
+
+  // Store permissions
+  filePermissions[newItem.url] = {
+    positions: fileAllowedPositions,
+    users: fileAllowedUsers
+  };
   localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
   fbSync('file_permissions', filePermissions);
+
+  // Store custom resources
   localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); 
   fbSync('custom_resources', customItems);
 
   closeAddResourceModal();
+
+  // If currently filtering in a different category, switch to the new resource category so it is immediately visible!
+  if (currentCategory !== 'all' && currentCategory !== moduleId) {
+    currentCategory = moduleId;
+    currentSubgroup = topic;
+  }
+
   refreshDataModel();
   updateTotalCounts();
   renderSidebarCategories();
   renderSubgroupTabs();
   renderRecords();
+
   showToast('✨ Resource added successfully: ' + title);
   logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
 }
@@ -7405,4 +7434,45 @@ function testOpenPreviewInNewTab() {
   if (!input) return;
   const cleanUrl = formatEmbedPreviewUrl(input);
   window.open(cleanUrl, '_blank');
+}
+
+// FILE DELETION LOGIC (SINGLE & CUSTOM ITEMS)
+function deleteCurrentEditingFile() {
+  const url = document.getElementById('singleEditFileUrl').value;
+  if (!url) return;
+  const item = ALL_ITEMS.find(it => it.url === url);
+  const title = item ? item.title : 'this file';
+
+  if (!confirm('Are you sure you want to delete "' + title + '"? This action will remove the file from your hub.')) {
+    return;
+  }
+
+  // 1. Remove from customItems if it is a custom added file
+  const beforeCount = customItems.length;
+  customItems = customItems.filter(it => it.url !== url && it.previewUrl !== url);
+  const wasCustom = customItems.length !== beforeCount;
+
+  // 2. If it is a base item or custom item, hide it in fileMetadata
+  if (!fileMetadata[url]) fileMetadata[url] = {};
+  fileMetadata[url].hidden = true;
+  localStorage.setItem('wlh_file_metadata', JSON.stringify(fileMetadata));
+  fbSync('file_metadata', fileMetadata);
+
+  if (wasCustom) {
+    localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems));
+    fbSync('custom_resources', customItems);
+  }
+
+  // Clean from selection
+  selectedItemUrls.delete(url);
+  pinnedUrls.delete(url);
+  localStorage.setItem('wlh_pinned_urls', JSON.stringify([...pinnedUrls]));
+
+  closeEditFileModuleTopicModal();
+  refreshDataModel();
+  updateTotalCounts();
+  renderSubgroupTabs();
+  renderRecords();
+  showToast('🗑️ Deleted: ' + title);
+  logActivity('File Delete', 'Deleted ' + title);
 }
