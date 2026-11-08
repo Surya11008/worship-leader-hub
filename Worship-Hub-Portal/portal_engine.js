@@ -1,3 +1,79 @@
+
+// ========================================================
+// MOBILE APP NAVIGATION HELPERS
+// "phone ki kuda comfort ga undali, oka app la ravali"
+// ========================================================
+function updateMobileNavState(activeKey) {
+  const tabs = [
+    { id: 'mobNavHome', key: 'home' },
+    { id: 'mobNavModules', key: 'modules' },
+    { id: 'mobNavRoom', key: 'myroom' },
+    { id: 'mobNavSchedule', key: 'schedule' },
+    { id: 'mobNavSettings', key: 'settings' }
+  ];
+  tabs.forEach(t => {
+    const el = document.getElementById(t.id);
+    if (!el) return;
+    const isAct = t.key === activeKey;
+    const iconWrapper = el.querySelector('div');
+    const label = el.querySelector('span');
+
+    if (isAct) {
+      el.classList.add('text-indigo-600', 'dark:text-indigo-400');
+      el.classList.remove('text-slate-700', 'dark:text-slate-300');
+      if (iconWrapper) {
+        iconWrapper.className = 'w-8 h-8 rounded-xl flex items-center justify-center text-base bg-indigo-50 dark:bg-indigo-950/60 shadow-xs transition scale-105';
+      }
+      if (label) {
+        label.className = 'text-[10px] mt-0.5 tracking-tight font-extrabold truncate text-indigo-600 dark:text-indigo-400';
+      }
+    } else {
+      el.classList.remove('text-indigo-600', 'dark:text-indigo-400');
+      el.classList.add('text-slate-700', 'dark:text-slate-300');
+      if (iconWrapper) {
+        iconWrapper.className = 'w-8 h-8 rounded-xl flex items-center justify-center text-base bg-slate-100 dark:bg-slate-800 transition';
+      }
+      if (label) {
+        label.className = 'text-[10px] mt-0.5 tracking-tight font-semibold truncate text-slate-700 dark:text-slate-300';
+      }
+    }
+  });
+}
+
+function mobileNavSelect(item) {
+  if (item === 'home') {
+    closeMobileSidebar();
+    switchView('home');
+  } else if (item === 'modules') {
+    toggleSidebar();
+    updateMobileNavState('modules');
+  } else if (item === 'myroom') {
+    closeMobileSidebar();
+    switchToMyRoom();
+  } else if (item === 'schedule') {
+    closeMobileSidebar();
+    switchToResourcesTab('Schedule');
+    updateMobileNavState('schedule');
+  } else if (item === 'settings') {
+    closeMobileSidebar();
+    openSettingsModal('profile');
+    updateMobileNavState('settings');
+  }
+}
+
+function closeMobileSidebar() {
+  if (window.innerWidth < 768) {
+    const sb = document.getElementById('mainSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sb && !sb.classList.contains('-translate-x-full')) {
+      sb.classList.add('-translate-x-full');
+    }
+    if (overlay && !overlay.classList.contains('hidden')) {
+      overlay.classList.add('hidden');
+    }
+  }
+}
+
 // ========================================================
 // GLOBAL CORE UTILITIES
 // ========================================================
@@ -1464,6 +1540,8 @@ function updateMyRoomBadge() {
 // ========================================================
 function switchView(viewName, targetCategory) {
   activeView = viewName;
+  closeMobileSidebar();
+  updateMobileNavState(viewName);
   const homeView = document.getElementById('homeViewContainer');
   const resourcesView = document.getElementById('resourcesViewContainer');
   const myRoomView = document.getElementById('myRoomViewContainer');
@@ -1482,17 +1560,17 @@ function switchView(viewName, targetCategory) {
 
   if (btnHome) btnHome.className = viewName === 'home' 
     ? 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-indigo-600 text-white shadow-md' 
-    : 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-slate-800 hover:bg-slate-750 border border-slate-700/80 text-white shadow-sm';
+    : 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white shadow-2xs';
   if (btnHomeTop) btnHomeTop.className = viewName === 'home'
     ? 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-500 bg-indigo-600 text-white text-xs font-bold transition'
-    : 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition';
+    : 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition';
 
   if (btnRoom) btnRoom.className = viewName === 'myroom'
     ? 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-purple-600 text-white shadow-md'
-    : 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-gradient-to-r from-purple-950/70 to-indigo-950/70 hover:from-purple-900/80 hover:to-indigo-900/80 border border-purple-500/30 text-white shadow-sm';
+    : 'w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold transition bg-purple-50 hover:bg-purple-100 dark:bg-gradient-to-r dark:from-purple-950/70 dark:to-indigo-950/70 dark:hover:from-purple-900/80 dark:hover:to-indigo-900/80 border border-purple-200 dark:border-purple-500/30 text-purple-900 dark:text-white shadow-2xs';
   if (btnRoomTop) btnRoomTop.className = viewName === 'myroom'
     ? 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500 bg-purple-600 text-white text-xs font-bold transition'
-    : 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-bold transition';
+    : 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-500/40 bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/10 dark:hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-xs font-bold transition';
 
   if (viewName === 'home') {
     renderHomePage();
@@ -1511,6 +1589,7 @@ function switchToMyRoom() {
 function switchToResourcesTab(catId) {
   currentCategory = catId || 'all';
   currentSubgroup = 'all';
+  closeMobileSidebar();
   switchView('resources');
   renderSidebarCategories();
   renderSubgroupTabs();
@@ -2524,7 +2603,7 @@ function openAdminManagementModal() {
     const isDlAllowed = u.role === 'admin' ? true : (u.canDownload !== false);
     return `
       <tr>
-        <td class="py-2.5 px-3 font-bold text-white">${u.fullName} (${u.userId})</td>
+        <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white">${u.fullName} (${u.userId})</td>
         <td class="py-2.5 px-3 text-slate-400">${u.zion}</td>
         <td class="py-2.5 px-3">
           <select onchange="updateUserModuleAssignment('${u.userId}', this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs px-2 py-1 rounded-lg outline-none">
@@ -2799,6 +2878,7 @@ function selectCategory(catId) {
   currentCategory = catId;
   currentSubgroup = 'all';
   isPinnedOnly = false;
+  closeMobileSidebar();
 
   document.querySelectorAll('#sidebarCategoryList button[id^="cat-btn-"]').forEach(btn => {
     btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
@@ -3113,7 +3193,7 @@ function renderTableView(items) {
         </td>
 
         <!-- Title & Used Badge -->
-        <td class="py-3 px-4 font-semibold text-white">
+        <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">
           <div class="flex items-center gap-2 flex-wrap">
             ${item.customColor ? `<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${item.customColor}"></span>` : ''}
             ${item.isLocked ? '<i class="fa-solid fa-lock text-amber-400 text-xs" title="PIN Protected"></i>' : ''}
@@ -3300,7 +3380,7 @@ function renderGridView(items) {
             ${item.customColor ? `<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${item.customColor}"></span>` : ''}
             ${item.isLocked ? '<i class="fa-solid fa-lock text-amber-400 text-xs"></i>' : ''}
             ${item.isCustom ? '<span class="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold px-1.5 py-0.2 rounded border border-emerald-500/30">NEW</span>' : ''}
-            <h4 class="text-sm font-bold text-white group-hover:text-indigo-400 transition line-clamp-2 ${isTelugu ? 'font-telugu' : ''}">
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-500 transition line-clamp-2 ${isTelugu ? 'font-telugu' : ''}">
               ${item.title}
             </h4>
           </div>
@@ -4449,7 +4529,7 @@ function renderPendingUsersList() {
     container.innerHTML = `
       <div class="py-12 text-center text-slate-400">
         <i class="fa-solid fa-circle-check text-4xl text-emerald-400 mb-2"></i>
-        <p class="font-bold text-white text-sm">No Pending Approvals</p>
+        <p class="font-bold text-slate-900 dark:text-white text-sm">No Pending Approvals</p>
         <p class="text-xs text-slate-500 mt-1">All registered users have been reviewed.</p>
       </div>
     `;
@@ -4463,7 +4543,7 @@ function renderPendingUsersList() {
       <div class="p-3.5 bg-slate-800/80 rounded-2xl border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md mb-2">
         <div class="space-y-1">
           <div class="flex items-center gap-2">
-            <span class="font-bold text-white text-sm">${u.fullName}</span>
+            <span class="font-bold text-slate-900 dark:text-white text-sm">${u.fullName}</span>
             <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">ID: ${u.userId}</span>
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">⏳ Pending</span>
           </div>
@@ -4500,7 +4580,7 @@ function renderPendingUsersList() {
           <div class="p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm mb-2 opacity-85 hover:opacity-100 transition">
             <div class="space-y-0.5">
               <div class="flex items-center gap-2">
-                <span class="font-bold text-white text-xs">${u.fullName}</span>
+                <span class="font-bold text-slate-900 dark:text-white text-xs">${u.fullName}</span>
                 <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-700 text-slate-300">ID: ${u.userId}</span>
                 <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-bold">Rejected</span>
               </div>
@@ -4621,7 +4701,7 @@ function renderHomeNewArrivals(filterModule) {
             </span>
             <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-widest">NEW</span>
           </div>
-          <h4 class="font-extrabold text-white text-xs group-hover:text-indigo-300 transition line-clamp-2 leading-tight mb-1.5">${it.title}</h4>
+          <h4 class="font-extrabold text-slate-900 dark:text-white text-xs group-hover:text-indigo-500 transition line-clamp-2 leading-tight mb-1.5">${it.title}</h4>
           <p class="text-[10px] text-slate-400 font-medium truncate">${it.group || 'General'}</p>
         </div>
         <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-indigo-400 font-bold mt-2">
@@ -4772,7 +4852,7 @@ function renderModalNewArrivals(filterModule) {
       <div class="flex items-center gap-3 min-w-0">
         <span class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-sm flex-shrink-0">${it.categoryIcon || '📄'}</span>
         <div class="min-w-0">
-          <div class="font-bold text-white text-xs truncate">${it.title}</div>
+          <div class="font-bold text-slate-900 dark:text-white text-xs truncate">${it.title}</div>
           <div class="text-[10px] text-slate-400">${it.categoryName || it.tab} • ${it.group || 'General'}</div>
         </div>
       </div>
@@ -4956,7 +5036,7 @@ function renderStarMembersGrid(filterQuery) {
     container.innerHTML = `
       <div class="col-span-full py-12 text-center text-slate-400">
         <i class="fa-solid fa-users-slash text-4xl text-purple-400/50 mb-3"></i>
-        <p class="font-bold text-white text-sm">No Members Found</p>
+        <p class="font-bold text-slate-900 dark:text-white text-sm">No Members Found</p>
         <p class="text-xs text-slate-500 mt-1">Try adjusting your search criteria or register a new member.</p>
       </div>
     `;
@@ -4992,7 +5072,7 @@ function renderStarMembersGrid(filterQuery) {
                 ${initial}
               </div>
               <div class="min-w-0">
-                <h4 class="font-extrabold text-white text-sm flex items-center gap-1.5 flex-wrap truncate">
+                <h4 class="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-1.5 flex-wrap truncate">
                   <span class="truncate">${u.fullName || 'User'}</span>
                   ${statusBadge}
                   <span class="px-2 py-0.5 rounded-md text-[9px] font-black bg-purple-500/20 text-purple-200 border border-purple-500/30">
@@ -5240,7 +5320,7 @@ function renderStarOnlineGrid() {
             <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse"></span>
           </div>
           <div class="min-w-0">
-            <h4 class="font-bold text-white text-sm truncate">${u.fullName || 'User'}</h4>
+            <h4 class="font-bold text-slate-900 dark:text-white text-sm truncate">${u.fullName || 'User'}</h4>
             <div class="text-[11px] font-mono text-slate-400">@${u.userId}</div>
             <div class="text-[10px] text-slate-500 truncate mt-0.5">
               ${u.zion ? `<span>${u.zion}</span> • ` : ''}<span>${u.area || 'Active'}</span>
@@ -5276,7 +5356,7 @@ function renderStarApprovalsList() {
         <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl border border-emerald-500/30">
           <i class="fa-solid fa-circle-check"></i>
         </div>
-        <h3 class="font-extrabold text-white text-base">No Pending Approvals</h3>
+        <h3 class="font-extrabold text-slate-900 dark:text-white text-base">No Pending Approvals</h3>
         <p class="text-xs text-slate-400 max-w-md mx-auto">
           All registered users have been reviewed and approved! All new accounts can log in immediately upon approval.
         </p>
@@ -5309,7 +5389,7 @@ function renderStarApprovalsList() {
                       ${(u.fullName || u.userId || '?').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h4 class="font-extrabold text-white text-sm">${u.fullName || 'User'}</h4>
+                      <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">${u.fullName || 'User'}</h4>
                       <div class="text-[11px] font-mono text-purple-300">ID: ${u.userId}</div>
                     </div>
                   </div>
@@ -5380,7 +5460,7 @@ function renderStarApprovalsList() {
             <div class="p-3 bg-slate-900/60 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="font-bold text-white text-xs truncate">${u.fullName}</span>
+                  <span class="font-bold text-slate-900 dark:text-white text-xs truncate">${u.fullName}</span>
                   <span class="text-[10px] font-mono text-purple-300">@${u.userId}</span>
                   <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-bold">Rejected</span>
                 </div>
@@ -5508,7 +5588,7 @@ function renderStarManagersList() {
         <div class="w-14 h-14 mx-auto rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl border border-purple-500/30">
           <i class="fa-solid fa-user-shield"></i>
         </div>
-        <h3 class="font-extrabold text-white text-base">No Appointed Managers</h3>
+        <h3 class="font-extrabold text-slate-900 dark:text-white text-base">No Appointed Managers</h3>
         <p class="text-xs text-slate-400 max-w-md mx-auto">
           Managers can oversee designated members and past-date records. To appoint a manager, go to the <strong>Members Information</strong> tab and click <strong>"Make Manager"</strong> on any member.
         </p>
@@ -5530,7 +5610,7 @@ function renderStarManagersList() {
                   ${m.fullName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h4 class="font-extrabold text-white text-sm">${m.fullName}</h4>
+                  <h4 class="font-extrabold text-slate-900 dark:text-white text-sm">${m.fullName}</h4>
                   <div class="text-[11px] font-mono text-purple-300">@${m.userId}</div>
                 </div>
               </div>
@@ -5589,7 +5669,7 @@ function renderStarMemberPerms() {
     return `
       <tr class="hover:bg-slate-900/60 transition">
         <td class="py-2.5 px-3">
-          <div class="font-bold text-white text-xs">${u.fullName}</div>
+          <div class="font-bold text-slate-900 dark:text-white text-xs">${u.fullName}</div>
           <div class="text-[10px] font-mono text-purple-300">@${u.userId}</div>
         </td>
         <td class="py-2.5 px-3">
@@ -5646,7 +5726,7 @@ function renderStarFeedbackList() {
         <div class="w-14 h-14 mx-auto rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-2xl border border-sky-500/30">
           <i class="fa-solid fa-comments"></i>
         </div>
-        <h3 class="font-extrabold text-white text-base">No Feedback or Suggestions</h3>
+        <h3 class="font-extrabold text-slate-900 dark:text-white text-base">No Feedback or Suggestions</h3>
         <p class="text-xs text-slate-400 max-w-md mx-auto">
           User enquiries and suggestions submitted from the portal settings will appear here in real-time.
         </p>
@@ -5661,7 +5741,7 @@ function renderStarFeedbackList() {
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 shadow-lg space-y-2">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <h4 class="font-bold text-white text-sm">${s.subject || 'Enquiry'}</h4>
+              <h4 class="font-bold text-slate-900 dark:text-white text-sm">${s.subject || 'Enquiry'}</h4>
               <div class="text-[11px] text-purple-300 mt-0.5">
                 From: <strong>${s.userName || 'Member'}</strong> (@${s.userId || 'anon'}) • ${s.zion || 'Zion'}
               </div>
