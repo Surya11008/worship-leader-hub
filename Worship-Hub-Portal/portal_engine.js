@@ -1520,26 +1520,635 @@ function getFilteredRoomRecords() {
   return myRoomRecords.filter(r => r.userId.toLowerCase() === CURRENT_USER.userId.toLowerCase());
 }
 
+// ========================================================
+// SPIRITUAL DIARY & MINISTRY JOURNAL ENGINE
+// ========================================================
+let activeMyRoomTab = 'diary'; // 'diary' | 'history'
+let currentDiaryMonth = new Date();
+let selectedDiaryDate = 'all'; // 'all' or 'YYYY-MM-DD'
+let selectedDiaryMood = 'Joyful';
+let currentDiaryEditId = null;
+let activeReminderEntry = null;
+
+const DIARY_MOODS = [
+  { mood: 'Joyful', emoji: '😊', label: 'Joyful', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+  { mood: 'Prayerful', emoji: '🙏', label: 'Prayerful', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+  { mood: 'Passionate', emoji: '🔥', label: 'Passionate', color: 'bg-rose-100 text-rose-800 border-rose-200' },
+  { mood: 'Peaceful', emoji: '🕊️', label: 'Peaceful', color: 'bg-sky-100 text-sky-800 border-sky-200' },
+  { mood: 'Zealous', emoji: '⚡', label: 'Zealous', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  { mood: 'Reflective', emoji: '💭', label: 'Reflective', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+  { mood: 'Thankful', emoji: '💖', label: 'Thankful', color: 'bg-pink-100 text-pink-800 border-pink-200' },
+  { mood: 'Encouraged', emoji: '💪', label: 'Encouraged', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' }
+];
+
+let userDiariesMap = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('wlh_user_diaries') || '{}');
+  } catch(e) {
+    return {};
+  }
+})();
+
+function getActiveRoomUserId() {
+  if (CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.userId.toLowerCase() === 'surya11008') && adminRoomSelectedUser && adminRoomSelectedUser !== 'all') {
+    return adminRoomSelectedUser;
+  }
+  return CURRENT_USER ? CURRENT_USER.userId : 'user';
+}
+
+function getUserDiaryEntries(userId) {
+  const uid = (userId || getActiveRoomUserId() || '').toLowerCase();
+  return Array.isArray(userDiariesMap[uid]) ? userDiariesMap[uid] : [];
+}
+
+function saveUserDiaryEntries(userId, entries) {
+  const uid = (userId || getActiveRoomUserId() || '').toLowerCase();
+  userDiariesMap[uid] = entries;
+  localStorage.setItem('wlh_user_diaries', JSON.stringify(userDiariesMap));
+  fbSync('user_diaries/' + uid, entries);
+}
+
+function switchMyRoomTab(tab) {
+  activeMyRoomTab = tab;
+  const tabDiaryBtn = document.getElementById('myRoomTab-diary');
+  const tabHistoryBtn = document.getElementById('myRoomTab-history');
+  const contentDiary = document.getElementById('myRoomContent-diary');
+  const contentHistory = document.getElementById('myRoomContent-history');
+
+  if (tab === 'diary') {
+    if (tabDiaryBtn) tabDiaryBtn.className = 'px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-indigo-600/20';
+    if (tabHistoryBtn) tabHistoryBtn.className = 'px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700';
+    if (contentDiary) contentDiary.classList.remove('hidden');
+    if (contentHistory) contentHistory.classList.add('hidden');
+    renderMyRoomView();
+  } else {
+    if (tabDiaryBtn) tabDiaryBtn.className = 'px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700';
+    if (tabHistoryBtn) tabHistoryBtn.className = 'px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-indigo-600/20';
+    if (contentDiary) contentDiary.classList.add('hidden');
+    if (contentHistory) contentHistory.classList.remove('hidden');
+    renderSermonHistoryStatsAndList();
+  }
+}
+
+function renderDiaryCalendar() {
+  const monthYearLabel = document.getElementById('diaryCalendarMonthYear');
+  const grid = document.getElementById('diaryCalendarDaysGrid');
+  if (!monthYearLabel || !grid) return;
+
+  const year = currentDiaryMonth.getFullYear();
+  const month = currentDiaryMonth.getMonth(); // 0-11
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  monthYearLabel.textContent = `${monthNames[month]} ${year}`;
+
+  const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
+  const lastDate = new Date(year, month + 1, 0).getDate(); // Days in current month
+  const prevLastDate = new Date(year, month, 0).getDate();
+
+  const entries = getUserDiaryEntries();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  let html = '';
+
+  // Previous month padding days
+  for (let i = firstDayIndex; i > 0; i--) {
+    const d = prevLastDate - i + 1;
+    html += `<div class="h-9 flex items-center justify-center text-[11px] text-slate-300 dark:text-slate-600 font-medium select-none">${d}</div>`;
+  }
+
+  // Current month days
+  for (let day = 1; day <= lastDate; day++) {
+    const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayEntries = entries.filter(e => e.date === dayStr);
+    const hasDiary = dayEntries.length > 0;
+    const hasReminder = dayEntries.some(e => e.hasReminder);
+    const hasConnected = dayEntries.some(e => e.connectedDate);
+    const isToday = (dayStr === todayStr);
+    const isSelected = (selectedDiaryDate === dayStr);
+
+    let cellClass = 'h-9 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all relative cursor-pointer ';
+    if (isSelected) {
+      cellClass += 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-black scale-105';
+    } else if (isToday) {
+      cellClass += 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-black';
+    } else {
+      cellClass += 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60';
+    }
+
+    html += `
+      <div onclick="selectDiaryDate('${dayStr}')" class="${cellClass}" title="${dayStr} (${dayEntries.length} entries)">
+        <span>${day}</span>
+        <div class="flex items-center gap-0.5 mt-0.5">
+          ${hasDiary ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-violet-500'}"></span>` : ''}
+          ${hasReminder ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-200' : 'bg-amber-500'}"></span>` : ''}
+          ${hasConnected ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-200' : 'bg-emerald-500'}"></span>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  grid.innerHTML = html;
+}
+
+function prevDiaryMonth() {
+  currentDiaryMonth.setMonth(currentDiaryMonth.getMonth() - 1);
+  renderDiaryCalendar();
+}
+
+function nextDiaryMonth() {
+  currentDiaryMonth.setMonth(currentDiaryMonth.getMonth() + 1);
+  renderDiaryCalendar();
+}
+
+function currentDiaryToday() {
+  currentDiaryMonth = new Date();
+  selectDiaryDate(new Date().toISOString().slice(0, 10));
+}
+
+function selectDiaryDate(dateStr) {
+  selectedDiaryDate = dateStr;
+  renderDiaryCalendar();
+  updateSelectedDateBanner();
+  renderDiaryEntries();
+}
+
+function filterDiaryByDate(dateStr) {
+  selectedDiaryDate = dateStr;
+  renderDiaryCalendar();
+  updateSelectedDateBanner();
+  renderDiaryEntries();
+}
+
+function updateSelectedDateBanner() {
+  const label = document.getElementById('diarySelectedDateLabel');
+  const summary = document.getElementById('diarySelectedDateSummary');
+  const formDateBadge = document.getElementById('diaryFormDateBadge');
+  if (!label || !summary) return;
+
+  const entries = getUserDiaryEntries();
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  if (selectedDiaryDate === 'all') {
+    label.textContent = 'All Dates View';
+    summary.textContent = `Showing all ${entries.length} entries in diary`;
+    if (formDateBadge) formDateBadge.textContent = 'For: Today (' + todayStr + ')';
+  } else {
+    const isToday = (selectedDiaryDate === todayStr);
+    label.textContent = isToday ? `Today (${selectedDiaryDate})` : selectedDiaryDate;
+    const dayEntries = entries.filter(e => e.date === selectedDiaryDate);
+    summary.textContent = `${dayEntries.length} entries for this date`;
+    if (formDateBadge) formDateBadge.textContent = 'For: ' + selectedDiaryDate;
+  }
+}
+
+function renderDiaryMoodSelector() {
+  const container = document.getElementById('diaryMoodSelectorContainer');
+  if (!container) return;
+  container.innerHTML = DIARY_MOODS.map(m => {
+    const isSelected = (selectedDiaryMood === m.mood);
+    return `
+      <button 
+        type="button" 
+        onclick="selectDiaryMood('${m.mood}')" 
+        class="px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+          isSelected 
+            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+        }"
+      >
+        <span>${m.emoji}</span>
+        <span>${m.label}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function selectDiaryMood(mood) {
+  selectedDiaryMood = mood;
+  const input = document.getElementById('diaryMoodInput');
+  if (input) input.value = mood;
+  renderDiaryMoodSelector();
+}
+
+function toggleDiaryReminderTimeInput() {
+  const chk = document.getElementById('diaryHasReminderCheckbox');
+  const wrapper = document.getElementById('diaryReminderTimeWrapper');
+  if (chk && wrapper) {
+    if (chk.checked) wrapper.classList.remove('hidden');
+    else wrapper.classList.add('hidden');
+  }
+}
+
+function getDiaryEmbedUrl(url) {
+  if (!url) return null;
+  const str = String(url).trim();
+  const ytMatch = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  if (ytMatch) {
+    return { type: 'youtube', embed: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}`, raw: str };
+  }
+  return { type: 'web', embed: str, raw: str };
+}
+
+function previewDiaryEmbedLink(url) {
+  const container = document.getElementById('diaryEmbedPreviewContainer');
+  if (!container) return;
+  const link = (url || '').trim();
+  if (!link) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const parsed = getDiaryEmbedUrl(link);
+  container.classList.remove('hidden');
+
+  if (parsed.type === 'youtube') {
+    container.innerHTML = `
+      <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black aspect-video max-w-md shadow-xs">
+        <iframe src="${parsed.embed}" class="w-full h-full" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <div class="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 shadow-2xs">
+        <div class="flex items-center gap-2 truncate">
+          <i class="fa-solid fa-arrow-up-right-from-square text-indigo-500"></i>
+          <span class="text-xs font-bold text-slate-800 dark:text-white truncate">${escapeHtml(link)}</span>
+        </div>
+        <a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-extrabold rounded-xl text-xs flex-shrink-0">
+          Open Link
+        </a>
+      </div>
+    `;
+  }
+}
+
+async function pasteFromClipboardToDiaryEmbed() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      document.getElementById('diaryEmbedLinkInput').value = text;
+      previewDiaryEmbedLink(text);
+    }
+  } catch(e) {
+    const input = document.getElementById('diaryEmbedLinkInput');
+    if (input) {
+      input.focus();
+      showToast('Please press Ctrl+V to paste link');
+    }
+  }
+}
+
+function resetDiaryForm() {
+  currentDiaryEditId = null;
+  const editIdEl = document.getElementById('diaryEntryEditId');
+  if (editIdEl) editIdEl.value = '';
+  const titleEl = document.getElementById('diaryTitleInput');
+  if (titleEl) titleEl.value = '';
+  const noteEl = document.getElementById('diaryNoteInput');
+  if (noteEl) noteEl.value = '';
+  const connectedDateEl = document.getElementById('diaryConnectedDateInput');
+  if (connectedDateEl) connectedDateEl.value = '';
+  const hasReminderEl = document.getElementById('diaryHasReminderCheckbox');
+  if (hasReminderEl) hasReminderEl.checked = false;
+  toggleDiaryReminderTimeInput();
+  const embedLinkEl = document.getElementById('diaryEmbedLinkInput');
+  if (embedLinkEl) embedLinkEl.value = '';
+  previewDiaryEmbedLink('');
+
+  selectDiaryMood('Joyful');
+
+  const actionTitle = document.getElementById('diaryFormActionTitle');
+  if (actionTitle) actionTitle.textContent = "Write Today's Spiritual Diary";
+  const submitBtnText = document.getElementById('diarySubmitBtnText');
+  if (submitBtnText) submitBtnText.textContent = 'Save to My Diary';
+  const cancelBtn = document.getElementById('diaryCancelEditBtn');
+  if (cancelBtn) cancelBtn.classList.add('hidden');
+}
+
+function editDiaryEntry(id) {
+  const uid = getActiveRoomUserId();
+  const entries = getUserDiaryEntries(uid);
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return;
+
+  currentDiaryEditId = id;
+  document.getElementById('diaryEntryEditId').value = id;
+  document.getElementById('diaryTitleInput').value = entry.title || '';
+  document.getElementById('diaryNoteInput').value = entry.note || '';
+  document.getElementById('diaryConnectedDateInput').value = entry.connectedDate || '';
+  
+  const chk = document.getElementById('diaryHasReminderCheckbox');
+  chk.checked = !!entry.hasReminder;
+  toggleDiaryReminderTimeInput();
+  if (entry.reminderTime) {
+    document.getElementById('diaryReminderTimeInput').value = entry.reminderTime;
+  }
+
+  document.getElementById('diaryEmbedLinkInput').value = entry.embedLink || '';
+  previewDiaryEmbedLink(entry.embedLink || '');
+
+  selectDiaryMood(entry.mood || 'Joyful');
+
+  const actionTitle = document.getElementById('diaryFormActionTitle');
+  if (actionTitle) actionTitle.textContent = 'Edit Diary Entry: ' + (entry.title || '');
+  const submitBtnText = document.getElementById('diarySubmitBtnText');
+  if (submitBtnText) submitBtnText.textContent = 'Update Diary Entry';
+  const cancelBtn = document.getElementById('diaryCancelEditBtn');
+  if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+  document.getElementById('diaryTitleInput').focus();
+}
+
+function deleteDiaryEntry(id) {
+  if (!confirm('Are you sure you want to delete this diary entry?')) return;
+  const uid = getActiveRoomUserId();
+  let entries = getUserDiaryEntries(uid);
+  entries = entries.filter(e => e.id !== id);
+  saveUserDiaryEntries(uid, entries);
+  if (currentDiaryEditId === id) resetDiaryForm();
+  renderDiaryCalendar();
+  renderDiaryEntries();
+  updateDiaryCountBadges();
+  showToast('Diary entry deleted.');
+}
+
+function saveDiaryEntry(e) {
+  e.preventDefault();
+  const title = document.getElementById('diaryTitleInput').value.trim();
+  const note = document.getElementById('diaryNoteInput').value.trim();
+  const mood = document.getElementById('diaryMoodInput').value || selectedDiaryMood;
+  const connectedDate = document.getElementById('diaryConnectedDateInput').value;
+  const hasReminder = document.getElementById('diaryHasReminderCheckbox').checked;
+  const reminderTime = document.getElementById('diaryReminderTimeInput').value || '09:00';
+  const embedLink = document.getElementById('diaryEmbedLinkInput').value.trim();
+
+  const entryDate = (selectedDiaryDate && selectedDiaryDate !== 'all') ? selectedDiaryDate : new Date().toISOString().slice(0, 10);
+  const uid = getActiveRoomUserId();
+  let entries = getUserDiaryEntries(uid);
+
+  if (currentDiaryEditId) {
+    const idx = entries.findIndex(it => it.id === currentDiaryEditId);
+    if (idx !== -1) {
+      entries[idx] = {
+        ...entries[idx],
+        title,
+        note,
+        mood,
+        connectedDate,
+        hasReminder,
+        reminderTime,
+        embedLink,
+        updatedAt: Date.now()
+      };
+      showToast('Diary entry updated!');
+    }
+  } else {
+    const newEntry = {
+      id: 'diary_' + Date.now(),
+      userId: uid,
+      userName: CURRENT_USER ? (CURRENT_USER.fullName || 'User') : 'User',
+      date: entryDate,
+      createdAt: Date.now(),
+      title,
+      note,
+      mood,
+      connectedDate,
+      hasReminder,
+      reminderTime,
+      reminderAcknowledged: false,
+      embedLink
+    };
+    entries.unshift(newEntry);
+    showToast('Spiritual diary entry saved!');
+  }
+
+  saveUserDiaryEntries(uid, entries);
+  resetDiaryForm();
+  renderDiaryCalendar();
+  renderDiaryEntries();
+  updateDiaryCountBadges();
+}
+
+function renderDiaryEntries() {
+  const container = document.getElementById('diaryEntriesTimelineList');
+  if (!container) return;
+
+  const uid = getActiveRoomUserId();
+  let entries = getUserDiaryEntries(uid);
+
+  if (selectedDiaryDate && selectedDiaryDate !== 'all') {
+    entries = entries.filter(e => e.date === selectedDiaryDate);
+  }
+
+  const countBadge = document.getElementById('diaryEntriesCountBadge');
+  if (countBadge) countBadge.textContent = entries.length + (entries.length === 1 ? ' entry' : ' entries');
+
+  if (entries.length === 0) {
+    container.innerHTML = `
+      <div class="py-12 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 rounded-3xl text-center shadow-xs">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 flex items-center justify-center mx-auto mb-3 text-xl">
+          <i class="fa-solid fa-feather-pointed"></i>
+        </div>
+        <h4 class="font-extrabold text-slate-800 dark:text-white text-sm mb-1">No Diary Entries Found</h4>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Write your prayers, reflections, sermon prep, or daily realizations above.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = entries.map(entry => {
+    const moodObj = DIARY_MOODS.find(m => m.mood === entry.mood) || DIARY_MOODS[0];
+    const parsedEmbed = getDiaryEmbedUrl(entry.embedLink);
+
+    let embedHtml = '';
+    if (parsedEmbed && entry.embedLink) {
+      if (parsedEmbed.type === 'youtube') {
+        embedHtml = `
+          <div class="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black aspect-video max-w-md shadow-xs mt-3">
+            <iframe src="${parsedEmbed.embed}" class="w-full h-full" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+          </div>
+        `;
+      } else {
+        embedHtml = `
+          <div class="mt-3 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 truncate">
+              <i class="fa-solid fa-link text-indigo-500"></i>
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">${escapeHtml(entry.embedLink)}</span>
+            </div>
+            <a href="${escapeHtml(entry.embedLink)}" target="_blank" rel="noopener" class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-extrabold rounded-xl text-xs flex-shrink-0">
+              Open Link
+            </a>
+          </div>
+        `;
+      }
+    }
+
+    return `
+      <div class="p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/90 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all shadow-xs space-y-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-3 py-1 rounded-full text-xs font-extrabold border ${moodObj.color} flex items-center gap-1.5 shadow-2xs">
+              <span>${moodObj.emoji}</span>
+              <span>${moodObj.label}</span>
+            </span>
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <i class="fa-regular fa-calendar text-[10px]"></i>
+              <span>${entry.date}</span>
+            </span>
+            ${entry.hasReminder ? `
+              <span class="px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shadow-2xs">
+                <i class="fa-solid fa-bell text-[10px] animate-pulse"></i>
+                <span>${entry.reminderTime || '09:00'}</span>
+              </span>
+            ` : ''}
+            ${entry.connectedDate ? `
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                <i class="fa-solid fa-link text-[10px]"></i>
+                <span>Connected: ${entry.connectedDate}</span>
+              </span>
+            ` : ''}
+          </div>
+
+          <div class="flex items-center gap-1">
+            <button onclick="editDiaryEntry('${entry.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition text-xs" title="Edit Entry">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button onclick="deleteDiaryEntry('${entry.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition text-xs" title="Delete Entry">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-black text-slate-900 dark:text-white leading-snug">${escapeHtml(entry.title)}</h4>
+          <div class="text-xs text-slate-600 dark:text-slate-300 mt-1.5 whitespace-pre-wrap leading-relaxed font-normal">${escapeHtml(entry.note)}</div>
+          ${embedHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function checkDueDiaryReminders() {
+  if (!CURRENT_USER) return;
+  const uid = CURRENT_USER.userId;
+  const entries = getUserDiaryEntries(uid);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  
+  const due = entries.find(e => e.date === todayStr && e.hasReminder && !e.reminderAcknowledged);
+  if (due && !sessionStorage.getItem('diary_alert_shown_' + due.id)) {
+    sessionStorage.setItem('diary_alert_shown_' + due.id, 'true');
+    activeReminderEntry = due;
+    showDiaryReminderAlert(due);
+  }
+}
+
+function showDiaryReminderAlert(entry) {
+  const modal = document.getElementById('diaryReminderAlertModal');
+  if (!modal) return;
+  const titleEl = document.getElementById('diaryAlertTitle');
+  const noteEl = document.getElementById('diaryAlertNote');
+  if (titleEl) titleEl.textContent = entry.title || 'Diary Reminder';
+  if (noteEl) noteEl.textContent = (entry.reminderTime ? `[Time: ${entry.reminderTime}] ` : '') + (entry.note || '');
+  modal.classList.remove('opacity-0', 'pointer-events-none');
+}
+
+function dismissDiaryReminderAlert() {
+  const modal = document.getElementById('diaryReminderAlertModal');
+  if (modal) modal.classList.add('opacity-0', 'pointer-events-none');
+  if (activeReminderEntry && CURRENT_USER) {
+    const uid = CURRENT_USER.userId;
+    let entries = getUserDiaryEntries(uid);
+    const idx = entries.findIndex(e => e.id === activeReminderEntry.id);
+    if (idx !== -1) {
+      entries[idx].reminderAcknowledged = true;
+      saveUserDiaryEntries(uid, entries);
+    }
+  }
+}
+
+function viewDiaryEntryFromAlert() {
+  dismissDiaryReminderAlert();
+  switchToMyRoom();
+  switchMyRoomTab('diary');
+  if (activeReminderEntry) {
+    selectDiaryDate(activeReminderEntry.date);
+  }
+}
+
 function renderMyRoomView() {
+  const isAdm = CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.userId.toLowerCase() === 'surya11008');
+  const targetUserObj = ALL_USERS.find(u => u && u.userId && u.userId.toLowerCase() === (adminRoomSelectedUser || CURRENT_USER.userId).toLowerCase()) || CURRENT_USER;
+  
+  // Update Room Title
+  const roomTitleEl = document.getElementById('myRoomTitle');
+  if (roomTitleEl) {
+    if (isAdm && adminRoomSelectedUser && adminRoomSelectedUser !== CURRENT_USER.userId) {
+      roomTitleEl.textContent = (targetUserObj.fullName || 'User') + ' Room';
+    } else {
+      roomTitleEl.textContent = getDynamicRoomName();
+    }
+  }
+
+  const selectorWrapper = document.getElementById('adminRoomUserSelectorWrapper');
+  if (selectorWrapper) {
+    if (isAdm) {
+      selectorWrapper.classList.remove('hidden');
+      populateAdminRoomUserSelect();
+    } else {
+      selectorWrapper.classList.add('hidden');
+    }
+  }
+
+  updateDiaryCountBadges();
+
+  if (activeMyRoomTab === 'diary') {
+    renderDiaryCalendar();
+    renderDiaryMoodSelector();
+    updateSelectedDateBanner();
+    renderDiaryEntries();
+  } else {
+    renderSermonHistoryStatsAndList();
+  }
+}
+
+function renderMyRoomTimeline() {
+  renderMyRoomView();
+}
+
+function updateDiaryCountBadges() {
+  const entries = getUserDiaryEntries();
+  const records = getFilteredRoomRecords();
+  const diaryBadge = document.getElementById('myRoomDiaryCountBadge');
+  if (diaryBadge) diaryBadge.textContent = entries.length;
+  const sermonBadge = document.getElementById('myRoomSermonCountBadge');
+  if (sermonBadge) sermonBadge.textContent = records.length;
+  const sidebarBadge = document.getElementById('myRoomRecordsBadge');
+  if (sidebarBadge) sidebarBadge.textContent = entries.length + records.length;
+}
+
+function renderSermonHistoryStatsAndList() {
   const records = getFilteredRoomRecords();
   
   // Calculate stats
-  document.getElementById('statSermonsUsed').textContent = records.length;
-  document.getElementById('statStoriesUsed').textContent = records.filter(r => r.storyTitle && r.storyTitle !== 'None').length;
-  document.getElementById('statSabbathCount').textContent = records.filter(r => r.worship === 'Sabbath').length;
-  document.getElementById('statFeastCount').textContent = records.filter(r => r.worship !== 'Sabbath' && r.worship !== 'Tuesday' && r.worship !== 'Other').length;
-  document.getElementById('roomRecordsCountLabel').textContent = records.length + ' entries';
+  if (document.getElementById('statSermonsUsed')) document.getElementById('statSermonsUsed').textContent = records.length;
+  if (document.getElementById('statStoriesUsed')) document.getElementById('statStoriesUsed').textContent = records.filter(r => r.storyTitle && r.storyTitle !== 'None').length;
+  if (document.getElementById('statSabbathCount')) document.getElementById('statSabbathCount').textContent = records.filter(r => r.worship === 'Sabbath').length;
+  if (document.getElementById('statFeastCount')) document.getElementById('statFeastCount').textContent = records.filter(r => r.worship !== 'Sabbath' && r.worship !== 'Tuesday' && r.worship !== 'Other').length;
+  if (document.getElementById('roomRecordsCountLabel')) document.getElementById('roomRecordsCountLabel').textContent = records.length + ' entries';
 
   const list = document.getElementById('roomRecordsList');
+  if (!list) return;
+
   if (records.length === 0) {
     list.innerHTML = `
-      <div class="py-12 bg-slate-900 border border-slate-800 rounded-3xl text-center">
-        <div class="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center mx-auto mb-3 text-xl">
+      <div class="py-12 bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 rounded-3xl text-center shadow-xs">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 flex items-center justify-center mx-auto mb-3 text-xl">
           <i class="fa-solid fa-book-open"></i>
         </div>
-        <h4 class="font-bold text-white text-sm mb-1">No Sermon Records Yet</h4>
-        <p class="text-xs text-slate-400 mb-4">Click below to record your first preached sermon, story, and spiritual notes.</p>
-        <button onclick="openRecordUsageModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-600/30">
+        <h4 class="font-extrabold text-slate-800 dark:text-white text-sm mb-1">No Sermon Records Yet</h4>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Click below to record your first preached sermon, story, and spiritual notes.</p>
+        <button onclick="openRecordUsageModal()" class="px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-2xl shadow-md">
           + Record Sermon Usage
         </button>
       </div>
@@ -1552,25 +2161,24 @@ function renderMyRoomView() {
     const safeStoryUrl = (rec.storyUrl || '').replace(/'/g, "\\'");
 
     return `
-      <div class="p-5 bg-slate-900/90 rounded-3xl border border-slate-800 hover:border-purple-500/40 transition shadow-lg space-y-3">
-        
+      <div class="p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/90 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition shadow-xs space-y-3">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-2">
-            <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+            <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
               ${rec.worship}
             </span>
-            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
               <i class="fa-regular fa-clock text-[10px] mr-1"></i> ${rec.time}
             </span>
-            <span class="text-xs text-slate-400 font-mono">
+            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">
               <i class="fa-regular fa-calendar text-[10px] mr-1"></i> ${rec.date}
             </span>
           </div>
 
           <div class="flex items-center gap-2">
-            <span class="text-[11px] text-slate-400">By: <strong class="text-white">${rec.userName}</strong> (${rec.userZion})</span>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">By: <strong class="text-slate-800 dark:text-white font-bold">${rec.userName}</strong> (${rec.userZion})</span>
             ${(CURRENT_USER.role === 'admin' || rec.userId === CURRENT_USER.userId) ? `
-              <button onclick="deleteMyRoomRecord('${rec.id}', event)" class="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition text-xs" title="Delete entry">
+              <button onclick="deleteMyRoomRecord('${rec.id}', event)" class="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-700 transition text-xs" title="Delete entry">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
             ` : ''}
@@ -1579,43 +2187,40 @@ function renderMyRoomView() {
 
         <!-- Sermon & Story Pair -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
             <div class="min-w-0">
-              <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1">
+              <div class="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
                 <i class="fa-solid fa-book-bible"></i> Preached Sermon
               </div>
-              <div class="font-bold text-white text-xs truncate mt-0.5">${rec.sermonTitle}</div>
+              <div class="font-extrabold text-slate-800 dark:text-white text-xs truncate mt-0.5">${rec.sermonTitle}</div>
             </div>
             ${rec.sermonUrl ? `
-              <button onclick="openFilePreview('${safeSermonUrl}')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-bold transition flex-shrink-0">
+              <button onclick="openFilePreview('${safeSermonUrl}')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-extrabold transition flex-shrink-0">
                 Preview
               </button>
             ` : ''}
           </div>
 
-          <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
             <div class="min-w-0">
-              <div class="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
-                <i class="fa-solid fa-scroll"></i> Paired Story
+              <div class="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                <i class="fa-solid fa-hands-praying"></i> Paired Story
               </div>
-              <div class="font-bold text-white text-xs truncate mt-0.5">${rec.storyTitle || 'None'}</div>
+              <div class="font-extrabold text-slate-800 dark:text-white text-xs truncate mt-0.5">${rec.storyTitle || 'None'}</div>
             </div>
             ${(rec.storyUrl && rec.storyTitle !== 'None') ? `
-              <button onclick="openFilePreview('${safeStoryUrl}')" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[11px] font-bold transition flex-shrink-0">
+              <button onclick="openFilePreview('${safeStoryUrl}')" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[11px] font-extrabold transition flex-shrink-0">
                 Preview
               </button>
             ` : ''}
           </div>
         </div>
 
-        <!-- Realization / Note -->
-        <div class="p-3.5 bg-slate-950/60 rounded-2xl border border-slate-800/80 text-xs text-slate-300 whitespace-pre-wrap">
-          <div class="text-[10px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1">
-            <i class="fa-solid fa-lightbulb text-amber-400"></i> Spiritual Realization / Congregation Notes:
+        ${rec.notes ? `
+          <div class="p-3 bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl text-xs text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-800 leading-relaxed font-normal">
+            <i class="fa-solid fa-quote-left text-slate-400 mr-1.5 text-[10px]"></i>${escapeHtml(rec.notes)}
           </div>
-          ${rec.realization}
-        </div>
-
+        ` : ''}
       </div>
     `;
   }).join('');
@@ -2056,21 +2661,7 @@ function renderSidebarCategories() {
     try { return JSON.parse(localStorage.getItem('wlh_hidden_categories') || '[]'); } catch(e) { return []; }
   })();
 
-  const visibleCategories = CATEGORIES.filter(cat => {
-    if (hiddenCats.includes(cat.id)) return false;
-    const allowed = modulePermissions[cat.id] || {
-      positions: cat.allowedPositions || ['all'],
-      users: cat.allowedUsers || []
-    };
-    // 1. If user has explicit module permission, show it
-    if (isEntityVisibleToUser(allowed, CURRENT_USER)) return true;
-
-    // 2. EXCEPTION: If module permission is restricted, but user has AT LEAST ONE directly assigned file inside this module, SHOW THIS MODULE!
-    return ALL_ITEMS.some(it => 
-      ((it.modules && it.modules.includes(cat.id)) || it.tab === cat.id) &&
-      isFileVisibleToUser(it, CURRENT_USER)
-    );
-  });
+  const visibleCategories = CATEGORIES.filter(cat => !hiddenCats.includes(cat.id));
 
   const isAdmin = isAdminUser();
 
@@ -3477,6 +4068,9 @@ function togglePin(url, event) {
 
 // 22. SETTINGS & PROFILE
 function openSettingsModal(tab) {
+  if (!isAdminUser() && tab === 'audit') {
+    tab = 'profile';
+  }
   switchSettingsTab(tab || 'profile');
   loadSettingsFormData();
 
@@ -3496,21 +4090,24 @@ function closeSettingsModal() {
 }
 
 function switchSettingsTab(tab) {
+  if (!isAdminUser() && tab === 'audit') {
+    tab = 'profile';
+  }
   const tabs = ['profile', 'security', 'audit', 'suggestion'];
   tabs.forEach(t => {
     const btn = document.getElementById('stab-' + t);
     const content = document.getElementById('tabContent-' + t);
     if (!btn || !content) return;
     if (t === tab) {
-      btn.className = 'px-3 py-2 border-b-2 border-indigo-500 text-indigo-400 font-bold';
+      btn.className = 'px-3 py-2 border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-extrabold';
       content.classList.remove('hidden');
     } else {
-      btn.className = 'px-3 py-2 border-b-2 border-transparent text-slate-400 hover:text-white';
+      btn.className = 'px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white';
       content.classList.add('hidden');
     }
   });
 
-  if (tab === 'audit') renderAuditView();
+  if (tab === 'audit' && isAdminUser()) renderAuditView();
   if (tab === 'suggestion') renderSuggestionsView();
 }
 
