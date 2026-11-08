@@ -1,4 +1,22 @@
 // ========================================================
+// GLOBAL CORE UTILITIES
+// ========================================================
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function hideIframeLoader() {
+  const loader = document.getElementById('iframeLoader');
+  if (loader) loader.classList.add('hidden');
+}
+
+// ========================================================
 // THEME MANAGEMENT (LIGHT & DARK MODE)
 // ========================================================
 function initTheme() {
@@ -1513,11 +1531,12 @@ function onAdminRoomUserChange(val) {
 }
 
 function getFilteredRoomRecords() {
+  if (!CURRENT_USER) return [];
   if (CURRENT_USER.role === 'admin') {
     if (adminRoomSelectedUser === 'all') return myRoomRecords;
-    return myRoomRecords.filter(r => r.userId.toLowerCase() === adminRoomSelectedUser.toLowerCase());
+    return myRoomRecords.filter(r => r && r.userId && r.userId.toLowerCase() === adminRoomSelectedUser.toLowerCase());
   }
-  return myRoomRecords.filter(r => r.userId.toLowerCase() === CURRENT_USER.userId.toLowerCase());
+  return myRoomRecords.filter(r => r && r.userId && CURRENT_USER.userId && r.userId.toLowerCase() === CURRENT_USER.userId.toLowerCase());
 }
 
 // ========================================================
