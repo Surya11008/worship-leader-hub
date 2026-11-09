@@ -142,6 +142,52 @@ function safeJsonParse(val, fallback) {
   }
 }
 
+// ========================================================
+// FIREBASE REALTIME DATABASE KEY SANITIZATION HELPERS
+// ========================================================
+function encodeFirebaseKey(key) {
+  if (!key) return '';
+  return String(key)
+    .replace(/%/g, '%25')
+    .replace(/\./g, '%2E')
+    .replace(/#/g, '%23')
+    .replace(/\$/g, '%24')
+    .replace(/\//g, '%2F')
+    .replace(/\[/g, '%5B')
+    .replace(/\]/g, '%5D');
+}
+
+function decodeFirebaseKey(key) {
+  if (!key) return '';
+  return String(key)
+    .replace(/%2E/g, '.')
+    .replace(/%23/g, '#')
+    .replace(/%24/g, '$')
+    .replace(/%2F/g, '/')
+    .replace(/%5B/g, '[')
+    .replace(/%5D/g, ']')
+    .replace(/%25/g, '%');
+}
+
+function encodeFirebaseObjectKeys(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  const sanitized = {};
+  for (const k of Object.keys(obj)) {
+    sanitized[encodeFirebaseKey(k)] = obj[k];
+  }
+  return sanitized;
+}
+
+function decodeFirebaseObjectKeys(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  const decoded = {};
+  for (const k of Object.keys(obj)) {
+    decoded[decodeFirebaseKey(k)] = obj[k];
+  }
+  return decoded;
+}
+
+
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -3891,8 +3937,10 @@ function submitNewResource(e) {
         catObj.groups.push(topic);
         if (!topicEdits[moduleId]) topicEdits[moduleId] = [];
         topicEdits[moduleId].push(topic);
-        localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
-        fbSync('topic_edits', topicEdits);
+        try {
+          localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
+          fbSync('topic_edits', topicEdits);
+        } catch (e) {}
       }
     }
 
@@ -3930,18 +3978,28 @@ function submitNewResource(e) {
     if (!Array.isArray(customItems)) customItems = [];
     customItems.unshift(newItem);
 
-    // Store permissions
+    // Store permissions locally
     if (!filePermissions || typeof filePermissions !== 'object') filePermissions = {};
     filePermissions[newItem.url] = {
       positions: fileAllowedPositions,
       users: fileAllowedUsers
     };
-    localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
-    fbSync('file_permissions', filePermissions);
+    try {
+      localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
+    } catch (e) {}
 
-    // Store custom resources in localStorage and sync with Firebase
-    localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); 
-    fbSync('custom_resources', customItems);
+    // Store custom resources locally
+    try {
+      localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); 
+    } catch (e) {}
+
+    // Non-blocking background sync with sanitized keys
+    try {
+      fbSync('file_permissions', filePermissions);
+      fbSync('custom_resources', customItems);
+    } catch (fbErr) {
+      console.warn('Non-blocking cloud sync notice:', fbErr);
+    }
 
     // Close modal
     closeAddResourceModal();
@@ -3951,41 +4009,24 @@ function submitNewResource(e) {
       switchView('resources');
     }
 
-    // 2. Select the category and topic of the newly added resource
+    // 2. Select the target category & subgroup so the user sees their new resource right away
     currentCategory = moduleId;
     currentSubgroup = topic;
-    isPinnedOnly = false;
-    searchQuery = '';
-    const searchInput = document.getElementById('searchInput');
+    activeSearchQuery = '';
+    const searchInput = document.getElementById('portalSearchInput');
     if (searchInput) searchInput.value = '';
 
-    // 3. Rebuild data model & render views
+    // 3. Immediately refresh data model & re-render the UI
     refreshDataModel();
     updateTotalCounts();
     renderSidebarCategories();
     renderSubgroupTabs();
     renderRecords();
-    if (typeof renderHomeNewArrivals === 'function') renderHomeNewArrivals();
 
-    // 4. Update sidebar active button styling
-    document.querySelectorAll('#sidebarCategoryList button[id^="cat-btn-"]').forEach(btn => {
-      btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
-      btn.classList.add('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
-    });
-    const activeBtn = document.getElementById('cat-btn-' + moduleId);
-    if (activeBtn) {
-      activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
-      activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-800');
-    }
-    const breadcrumb = document.getElementById('breadcrumbCurrent');
-    if (breadcrumb) {
-      breadcrumb.textContent = (catObj ? catObj.name : moduleId) + ' • ' + topic;
-    }
-
-    showToast('✨ Successfully added: ' + title);
-    logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
+    showToast('✅ Resource Saved & Added Successfully: ' + title);
+    logActivity('Resource Add', 'Added ' + title + ' to ' + (catObj ? catObj.name : moduleId));
   } catch (err) {
-    console.error('Error submitting new resource:', err);
+    console.error('Error saving resource:', err);
     showToast('Error saving resource: ' + err.message, 'error');
   }
 }
@@ -4343,6 +4384,15 @@ function openFilePreview(url) {
   document.getElementById('modalCategoryBadge').textContent = item.categoryName || item.tab || 'Resource';
   document.getElementById('modalCategoryIcon').textContent = item.categoryIcon || '📄';
   document.getElementById('modalExternalLink').href = item.url;
+
+  const tipEl = document.getElementById('modalEmbedTip');
+  if (tipEl) {
+    if (url.includes('docs.google.com') || url.includes('drive.google.com')) {
+      tipEl.classList.remove('hidden');
+    } else {
+      tipEl.classList.add('hidden');
+    }
+  }
 
   // Direct download / PDF button visibility
   const modalDlBtn = document.getElementById('modalDownloadBtn');
@@ -6554,10 +6604,13 @@ function processLivePermissionsUpdate(modPerms, topicPerms, filePerms) {
     localStorage.setItem('wlh_topic_permissions', JSON.stringify(topicPermissions));
     changed = true;
   }
-  if (filePerms && typeof filePerms === 'object' && JSON.stringify(filePermissions) !== JSON.stringify(filePerms)) {
-    filePermissions = filePerms;
-    localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
-    changed = true;
+  if (filePerms && typeof filePerms === 'object') {
+    const decodedPerms = decodeFirebaseObjectKeys(filePerms);
+    if (JSON.stringify(filePermissions) !== JSON.stringify(decodedPerms)) {
+      filePermissions = decodedPerms;
+      localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
+      changed = true;
+    }
   }
   if (changed) {
     console.log('⚡ [Live Instant Sync] Permissions updated');
@@ -6760,24 +6813,33 @@ function testFirebaseConnection() {
 }
 
 function fbSync(path, data) {
+  let payload = data;
+  if (path === 'file_permissions' || path === 'file_metadata') {
+    payload = encodeFirebaseObjectKeys(data);
+  }
+
   const restUrl = 'https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/' + path + '.json';
   if (IS_FIREBASE_CONNECTED && FIREBASE_DB) {
-    FIREBASE_DB.ref('l_support/' + path).set(data).catch(err => {
-      console.warn('Firebase SDK write failed for', path, err);
-      try {
-        fetch(restUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        }).catch(e => console.warn('REST fallback failed:', e));
-      } catch (e) {}
-    });
+    try {
+      FIREBASE_DB.ref('l_support/' + path).set(payload).catch(err => {
+        console.warn('Firebase SDK write failed for', path, err);
+        try {
+          fetch(restUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).catch(e => console.warn('REST fallback failed:', e));
+        } catch (e) {}
+      });
+    } catch (err) {
+      console.warn('Synchronous Firebase set error caught for', path, err);
+    }
   } else {
     try {
       fetch(restUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       }).catch(e => console.warn('Direct REST sync failed:', e));
     } catch (e) {}
   }
@@ -6908,7 +6970,7 @@ function setupRealtimeListeners() {
   FIREBASE_DB.ref('l_support/file_permissions').on('value', snap => {
     let val = snap.val();
     if (val && typeof val === 'object') {
-      filePermissions = val;
+      filePermissions = decodeFirebaseObjectKeys(val);
       localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
       if (typeof refreshDataModel === 'function') refreshDataModel();
       if (typeof updateTotalCounts === 'function') updateTotalCounts();
