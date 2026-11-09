@@ -494,20 +494,42 @@ function isFileVisibleToUser(item, user) {
   const uname = user.fullName ? String(user.fullName).trim().toLowerCase() : (user.name ? String(user.name).trim().toLowerCase() : '');
   const upos = user.position ? String(user.position).trim().toLowerCase() : '';
 
-  // Direct assignment exception (Overrides module restrictions as explicitly requested):
-  // If file is specifically assigned to this user (by userId, username, or explicit role targeting)
+  // Check if user is explicitly excluded (blockedUsers override)
+  const blockedUsers = Array.isArray(filePerm.blockedUsers) 
+    ? filePerm.blockedUsers.map(u => String(u).trim().toLowerCase()) 
+    : [];
+  if (uid && blockedUsers.includes(uid)) return false;
+  if (uname && blockedUsers.includes(uname)) return false;
+
+  // Direct assignment exception:
+  // If users list is non-empty and user IS in it → always show
+  // If users list is non-empty and user is NOT in it → check positions
+  const hasUsersList = fileUsers.length > 0;
+
   const isDirectlyAssignedToUser = Boolean(
     (uid && fileUsers.includes(uid)) ||
     (uname && fileUsers.includes(uname)) ||
     (filePerm.assignedTo && (filePerm.assignedTo.toLowerCase() === uid || filePerm.assignedTo.toLowerCase() === uname)) ||
-    (item.assignedTo && (item.assignedTo.toLowerCase() === uid || item.assignedTo.toLowerCase() === uname)) ||
-    (!filePositions.includes('all') && !filePositions.includes('*') && upos && filePositions.includes(upos))
+    (item.assignedTo && (item.assignedTo.toLowerCase() === uid || item.assignedTo.toLowerCase() === uname))
   );
 
-  // If directly assigned to this specific user or user's specific position, ALWAYS grant visibility!
-  if (isDirectlyAssignedToUser) {
+  // If users list exists and user is in it → grant
+  if (hasUsersList && isDirectlyAssignedToUser) {
     return true;
   }
+
+  // If users list exists but user is NOT in it → deny (users list acts as allowlist)
+  if (hasUsersList && !isDirectlyAssignedToUser) {
+    // Also check if positions allow them (category sharing + individual users combined mode)
+    const posAllows = filePositions.includes('all') || filePositions.includes('*') || filePositions.length === 0 || (upos && filePositions.includes(upos));
+    if (!posAllows) return false;
+    // Position allows but user not in explicit list → deny (explicit user list overrides)
+    return false;
+  }
+
+  // No users list → fall through to position check
+  const posDirectAssign = !filePositions.includes('all') && !filePositions.includes('*') && upos && filePositions.includes(upos);
+  if (posDirectAssign) return true;
 
   // 1. Otherwise, regular files must pass direct file permission check
   if (!isEntityVisibleToUser(filePerm, user)) return false;
@@ -537,7 +559,7 @@ function renderPositionCheckboxes(containerId, nameAttr, selectedPositions = [])
     const isChecked = isAll || selectedPositions.some(p => p.toLowerCase() === pos.toLowerCase());
     return `
       <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-800/80 cursor-pointer border border-slate-800 transition">
-        <input type="checkbox" name="${nameAttr}" value="${pos}" ${isChecked ? 'checked' : ''} class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
+        <input type="checkbox" name="${nameAttr}" value="${pos}" ${isChecked ? 'checked' : ''} onchange="if(nameAttr==='resourcePositionChoice') onPositionCheckboxChange()" class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0">
         <span class="text-slate-200 text-[11px] font-semibold">${pos}</span>
       </label>
     `;
@@ -3677,18 +3699,97 @@ function populateAddResourceModules() {
 
 function openAddResourceModal() {
   populateAddResourceModules();
+  addResourceInputMode = 'url'; // reset input mode
+  setAddResourceInputMode('url');
   if (currentCategory !== 'all') {
     document.getElementById('newResourceModule').value = currentCategory;
   }
   onModuleChangeInForm();
   renderPositionCheckboxes('resourcePositionsCheckboxList', 'resourcePositionChoice', ['all']);
   renderUserCheckboxes('resourceUsersCheckboxList', 'resourceUserChoice', []);
+  setResourceSharingMode('category'); // default mode
 
   const modal = document.getElementById('addResourceModal');
   const container = document.getElementById('addResourceModalContainer');
   modal.classList.remove('opacity-0', 'pointer-events-none');
   container.classList.remove('scale-95');
   container.classList.add('scale-100');
+}
+
+
+// =============================================
+// RESOURCE SHARING MODE (Category vs Users vs Both)
+// =============================================
+let resourceSharingMode = 'category'; // 'category' | 'users' | 'both'
+
+function setResourceSharingMode(mode) {
+  resourceSharingMode = mode;
+  const catSection = document.getElementById('resourceCategoryShareSection');
+  const userSection = document.getElementById('resourceUsersShareSection');
+  const catBtn = document.getElementById('shareModeCategoryBtn');
+  const usersBtn = document.getElementById('shareModeUsersBtn');
+  const bothBtn = document.getElementById('shareModeBothBtn');
+
+  const activeClass = 'bg-indigo-600 text-white';
+  const inactiveClass = 'bg-slate-800 text-slate-400 hover:text-white';
+
+  [catBtn, usersBtn, bothBtn].forEach(b => { if (b) b.className = b.className.replace(activeClass, inactiveClass); });
+
+  if (mode === 'category') {
+    if (catSection) catSection.classList.remove('hidden');
+    if (userSection) userSection.classList.add('hidden');
+    if (catBtn) catBtn.className = catBtn.className.replace(inactiveClass, activeClass);
+    // Clear user checkboxes so only positions determine visibility
+    const userCbs = document.querySelectorAll('input[name="resourceUserChoice"]');
+    userCbs.forEach(cb => cb.checked = false);
+  } else if (mode === 'users') {
+    if (catSection) catSection.classList.add('hidden');
+    if (userSection) userSection.classList.remove('hidden');
+    if (usersBtn) usersBtn.className = usersBtn.className.replace(inactiveClass, activeClass);
+    // Auto-check users who match currently checked positions
+    syncUsersFromPositions();
+    // Clear position checkboxes (only users determine visibility)
+    const posCbs = document.querySelectorAll('input[name="resourcePositionChoice"]');
+    posCbs.forEach(cb => cb.checked = false);
+  } else { // 'both'
+    if (catSection) catSection.classList.remove('hidden');
+    if (userSection) userSection.classList.remove('hidden');
+    if (bothBtn) bothBtn.className = bothBtn.className.replace(inactiveClass, activeClass);
+    // Sync users from positions
+    syncUsersFromPositions();
+  }
+}
+
+// Auto-check user checkboxes based on selected position checkboxes
+function syncUsersFromPositions() {
+  const checkedPositions = Array.from(
+    document.querySelectorAll('input[name="resourcePositionChoice"]:checked')
+  ).map(cb => cb.value.toLowerCase());
+
+  const isAll = checkedPositions.length === 0 || checkedPositions.includes('all');
+
+  const userCbs = document.querySelectorAll('input[name="resourceUserChoice"]');
+  userCbs.forEach(cb => {
+    if (isAll) {
+      cb.checked = true;
+      return;
+    }
+    // find user position
+    const user = (ALL_USERS || []).find(u => u && u.userId && u.userId.toLowerCase() === cb.value.toLowerCase());
+    if (user) {
+      const uPos = (user.position || '').toLowerCase();
+      cb.checked = checkedPositions.includes(uPos);
+    } else {
+      cb.checked = false;
+    }
+  });
+}
+
+// When position checkbox changes, update user checkboxes in 'both' mode
+function onPositionCheckboxChange() {
+  if (resourceSharingMode === 'both') {
+    syncUsersFromPositions();
+  }
 }
 
 function closeAddResourceModal() {
@@ -3850,8 +3951,9 @@ function submitNewResource(e) {
   renderSidebarCategories();
   renderSubgroupTabs();
   renderRecords();
+  if (typeof renderHomeNewArrivals === 'function') renderHomeNewArrivals();
 
-  showToast('✨ Resource added successfully: ' + title);
+  showToast('✨ ' + title + ' added!', 'success');
   logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
 }
 
