@@ -902,16 +902,6 @@
         </div>
 
         
-        <!-- Top + Add Resource Button (Admin Only) -->
-        <button 
-          onclick="openAddResourceModal()" 
-          id="btnTopAddResource"
-          class="admin-only-control hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-sm transition cursor-pointer flex-shrink-0"
-          title="Add New Resource Document / Link"
-        >
-          <i class="fa-solid fa-plus text-xs"></i>
-          <span class="hidden sm:inline">Add Resource</span>
-        </button>
 
         <!-- Live Text Edit Mode Button for Admin -->
         <button 
@@ -2286,38 +2276,60 @@
           </div>
         </div>
 
-        <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-xs font-bold text-slate-300">
-              <i class="fa-solid fa-users-viewfinder text-indigo-400 mr-1"></i> Visible to Positions
-            </label>
-            <div class="flex items-center gap-2">
-              <button type="button" onclick="toggleSelectAllPositions('resourcePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">Select All</button>
-              <span class="text-slate-600 text-[10px]">•</span>
-              <button type="button" onclick="toggleSelectAllPositions('resourcePositionChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
-            </div>
+        <!-- SMART SHARING: Category + Individual Users combined -->
+        <div class="space-y-3 p-3.5 bg-slate-950/60 rounded-2xl border border-indigo-500/30">
+          <div class="flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-shield-halved text-indigo-400"></i>
+            <span class="text-xs font-black text-slate-200 uppercase tracking-wide">Who Can See This File?</span>
           </div>
-          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="resourcePositionsCheckboxList">
-            <!-- Populated via JS -->
-          </div>
-          <p class="text-[10px] text-slate-500 mt-1">If all or none selected, file is visible to all members.</p>
-        </div>
 
-        <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-xs font-bold text-slate-300">
-              <i class="fa-solid fa-user-check text-purple-400 mr-1"></i> Visible to Specific Members
-            </label>
-            <div class="flex items-center gap-2">
-              <button type="button" onclick="toggleSelectAllUsers('resourceUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">Select All</button>
-              <span class="text-slate-600 text-[10px]">•</span>
-              <button type="button" onclick="toggleSelectAllUsers('resourceUserChoice', false)" class="text-[10px] text-slate-400 hover:underline">Clear</button>
+          <!-- Mode Selector: Category or Individual -->
+          <div class="flex gap-2 text-[11px] font-bold">
+            <button type="button" onclick="setResourceSharingMode('category')" id="shareModeCategoryBtn"
+              class="flex-1 py-1.5 rounded-lg bg-indigo-600 text-white transition text-center cursor-pointer">
+              📂 By Category (Positions)
+            </button>
+            <button type="button" onclick="setResourceSharingMode('users')" id="shareModeUsersBtn"
+              class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition text-center cursor-pointer">
+              👤 By Individual Users
+            </button>
+            <button type="button" onclick="setResourceSharingMode('both')" id="shareModeBothBtn"
+              class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition text-center cursor-pointer">
+              🔗 Both Combined
+            </button>
+          </div>
+
+          <!-- Category / Position Checkboxes -->
+          <div id="resourceCategoryShareSection">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[11px] font-bold text-indigo-300"><i class="fa-solid fa-layer-group mr-1"></i> Select Positions / Roles</label>
+              <div class="flex gap-2">
+                <button type="button" onclick="toggleSelectAllPositions('resourcePositionChoice', true)" class="text-[10px] text-indigo-400 hover:underline">All</button>
+                <span class="text-slate-600 text-[10px]">•</span>
+                <button type="button" onclick="toggleSelectAllPositions('resourcePositionChoice', false)" class="text-[10px] text-slate-400 hover:underline">None</button>
+              </div>
             </div>
+            <div class="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto bg-slate-900 p-2.5 rounded-xl border border-slate-800" id="resourcePositionsCheckboxList">
+              <!-- Populated via JS -->
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">File visible to all users with these positions. Leave all checked = everyone can see.</p>
           </div>
-          <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto bg-slate-950 p-2.5 rounded-2xl border border-slate-800" id="resourceUsersCheckboxList">
-            <!-- Populated via JS -->
+
+          <!-- Individual Users Checkboxes (auto-synced with category selection) -->
+          <div id="resourceUsersShareSection" class="hidden">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[11px] font-bold text-purple-300"><i class="fa-solid fa-user-check mr-1"></i> Select Specific Members</label>
+              <div class="flex gap-2">
+                <button type="button" onclick="toggleSelectAllUsers('resourceUserChoice', true)" class="text-[10px] text-purple-400 hover:underline">All</button>
+                <span class="text-slate-600 text-[10px]">•</span>
+                <button type="button" onclick="toggleSelectAllUsers('resourceUserChoice', false)" class="text-[10px] text-slate-400 hover:underline">None</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto bg-slate-900 p-2.5 rounded-xl border border-slate-800" id="resourceUsersCheckboxList">
+              <!-- Populated via JS -->
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">Only checked users can see this file (overrides category). Uncheck to block a user even if they are in the category.</p>
           </div>
-          <p class="text-[10px] text-slate-500 mt-1">Select individual members who should have access to this file.</p>
         </div>
 
         <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-2.5">
