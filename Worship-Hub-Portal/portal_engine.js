@@ -3855,106 +3855,139 @@ function hideCustomTopicInput() {
 
 function submitNewResource(e) {
   if (e && e.preventDefault) e.preventDefault();
-  const modSelect = document.getElementById('newResourceModule');
-  const moduleId = modSelect ? modSelect.value : (currentCategory !== 'all' ? currentCategory : (CATEGORIES[0] ? CATEGORIES[0].id : 'General'));
-  const topicSelect = document.getElementById('newResourceTopicSelect');
-  const topicSelectVal = topicSelect ? topicSelect.value : '';
-  const customTopicInput = document.getElementById('newResourceCustomTopic');
-  const customTopicVal = customTopicInput ? customTopicInput.value.trim() : '';
-  const titleInput = document.getElementById('newResourceTitle');
-  const title = titleInput ? titleInput.value.trim() : '';
+  try {
+    const modSelect = document.getElementById('newResourceModule');
+    const moduleId = modSelect && modSelect.value ? modSelect.value : (currentCategory !== 'all' ? currentCategory : (CATEGORIES[0] ? CATEGORIES[0].id : 'General'));
+    const topicSelect = document.getElementById('newResourceTopicSelect');
+    const topicSelectVal = topicSelect ? topicSelect.value : '';
+    const customTopicInput = document.getElementById('newResourceCustomTopic');
+    const customTopicVal = customTopicInput ? customTopicInput.value.trim() : '';
+    const titleInput = document.getElementById('newResourceTitle');
+    const title = titleInput ? titleInput.value.trim() : '';
 
-  const urlInput = document.getElementById('newResourceUrl');
-  const embedInput = document.getElementById('newResourceEmbedCode');
-  const urlVal = urlInput ? urlInput.value.trim() : '';
-  const embedVal = embedInput ? embedInput.value.trim() : '';
-  const rawInput = addResourceInputMode === 'url' ? (urlVal || embedVal) : (embedVal || urlVal);
+    const urlInput = document.getElementById('newResourceUrl');
+    const embedInput = document.getElementById('newResourceEmbedCode');
+    const urlVal = urlInput ? urlInput.value.trim() : '';
+    const embedVal = embedInput ? embedInput.value.trim() : '';
+    const rawInput = urlVal || embedVal;
 
-  if (!title) {
-    showToast('Please enter a Resource Title.', 'error');
-    if (titleInput) titleInput.focus();
-    return;
-  }
-  if (!rawInput) {
-    showToast('Please provide a File URL or Embed Code.', 'error');
-    if (addResourceInputMode === 'url' && urlInput) urlInput.focus();
-    else if (embedInput) embedInput.focus();
-    return;
-  }
-
-  let topic = customTopicVal || (topicSelectVal && topicSelectVal !== '__NEW_TOPIC__' ? topicSelectVal : (currentSubgroup !== 'all' ? currentSubgroup : 'General'));
-  
-  const catObj = CATEGORIES.find(c => c.id === moduleId);
-  if (catObj && customTopicVal) {
-    if (!catObj.groups) catObj.groups = [];
-    if (!catObj.groups.includes(topic)) {
-      catObj.groups.push(topic);
-      if (!topicEdits[moduleId]) topicEdits[moduleId] = [];
-      topicEdits[moduleId].push(topic);
-      localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
-      fbSync('topic_edits', topicEdits);
+    if (!title) {
+      showToast('⚠️ Please enter a Resource Title.', 'error');
+      if (titleInput) titleInput.focus();
+      return;
     }
-  }
+    if (!rawInput) {
+      showToast('⚠️ Please enter a File Link (URL) or Embed Code.', 'error');
+      if (urlInput) urlInput.focus();
+      return;
+    }
 
-  // Canonical Embed URL & Media Detection
-  const previewUrl = formatEmbedPreviewUrl(rawInput);
-  const mediaType = detectResourceMediaType(rawInput);
+    let topic = customTopicVal || (topicSelectVal && topicSelectVal !== '__NEW_TOPIC__' ? topicSelectVal : (currentSubgroup !== 'all' ? currentSubgroup : 'General'));
+    
+    const catObj = CATEGORIES.find(c => c.id === moduleId);
+    if (catObj && customTopicVal) {
+      if (!catObj.groups) catObj.groups = [];
+      if (!catObj.groups.includes(topic)) {
+        catObj.groups.push(topic);
+        if (!topicEdits[moduleId]) topicEdits[moduleId] = [];
+        topicEdits[moduleId].push(topic);
+        localStorage.setItem('wlh_topic_edits', JSON.stringify(topicEdits));
+        fbSync('topic_edits', topicEdits);
+      }
+    }
 
-  const fileAllowedPositions = getSelectedPositionsFromCheckboxes('resourcePositionChoice');
-  const fileAllowedUsers = getSelectedUsersFromCheckboxes('resourceUserChoice');
+    // Canonical Embed URL & Media Detection
+    const previewUrl = formatEmbedPreviewUrl(rawInput);
+    const mediaType = detectResourceMediaType(rawInput);
 
-  const newItem = {
-    title: title,
-    allowedPositions: fileAllowedPositions,
-    allowedUsers: fileAllowedUsers,
-    url: rawInput,
-    previewUrl: previewUrl,
-    mediaType: mediaType,
-    group: topic,
-    tab: moduleId,
-    modules: [moduleId],
-    topics: [topic],
-    categoryName: catObj ? catObj.name : moduleId,
-    categoryIcon: catObj ? catObj.icon : '📄',
-    badge: catObj ? catObj.badge : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-    btn: catObj ? catObj.btn : 'bg-emerald-600 hover:bg-emerald-500',
-    isCustom: true,
-    allowDownload: true,
-    id: 'custom_' + Date.now()
-  };
+    const fileAllowedPositions = getSelectedPositionsFromCheckboxes('resourcePositionChoice');
+    const fileAllowedUsers = getSelectedUsersFromCheckboxes('resourceUserChoice');
 
-  // Prepend to customItems
-  customItems.unshift(newItem);
+    const now = Date.now();
+    const newItem = {
+      title: title,
+      allowedPositions: fileAllowedPositions,
+      allowedUsers: fileAllowedUsers,
+      url: rawInput,
+      previewUrl: previewUrl,
+      mediaType: mediaType,
+      group: topic,
+      tab: moduleId,
+      modules: [moduleId],
+      topics: [topic],
+      categoryName: catObj ? catObj.name : moduleId,
+      categoryIcon: catObj ? catObj.icon : '📄',
+      badge: catObj ? catObj.badge : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      btn: catObj ? catObj.btn : 'bg-emerald-600 hover:bg-emerald-500',
+      isCustom: true,
+      customAdded: true,
+      addedAt: now,
+      allowDownload: true,
+      id: 'custom_' + now
+    };
 
-  // Store permissions
-  filePermissions[newItem.url] = {
-    positions: fileAllowedPositions,
-    users: fileAllowedUsers
-  };
-  localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
-  fbSync('file_permissions', filePermissions);
+    // Prepend to customItems
+    if (!Array.isArray(customItems)) customItems = [];
+    customItems.unshift(newItem);
 
-  // Store custom resources
-  localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); 
-  fbSync('custom_resources', customItems);
+    // Store permissions
+    if (!filePermissions || typeof filePermissions !== 'object') filePermissions = {};
+    filePermissions[newItem.url] = {
+      positions: fileAllowedPositions,
+      users: fileAllowedUsers
+    };
+    localStorage.setItem('wlh_file_permissions', JSON.stringify(filePermissions));
+    fbSync('file_permissions', filePermissions);
 
-  closeAddResourceModal();
+    // Store custom resources in localStorage and sync with Firebase
+    localStorage.setItem('wlh_custom_resources', JSON.stringify(customItems)); 
+    fbSync('custom_resources', customItems);
 
-  // If currently filtering in a different category, switch to the new resource category so it is immediately visible!
-  if (currentCategory !== 'all' && currentCategory !== moduleId) {
+    // Close modal
+    closeAddResourceModal();
+
+    // 1. Switch to resources view so the file is visible immediately!
+    if (typeof switchView === 'function') {
+      switchView('resources');
+    }
+
+    // 2. Select the category and topic of the newly added resource
     currentCategory = moduleId;
     currentSubgroup = topic;
+    isPinnedOnly = false;
+    searchQuery = '';
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+
+    // 3. Rebuild data model & render views
+    refreshDataModel();
+    updateTotalCounts();
+    renderSidebarCategories();
+    renderSubgroupTabs();
+    renderRecords();
+    if (typeof renderHomeNewArrivals === 'function') renderHomeNewArrivals();
+
+    // 4. Update sidebar active button styling
+    document.querySelectorAll('#sidebarCategoryList button[id^="cat-btn-"]').forEach(btn => {
+      btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
+      btn.classList.add('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
+    });
+    const activeBtn = document.getElementById('cat-btn-' + moduleId);
+    if (activeBtn) {
+      activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-600/30');
+      activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-800');
+    }
+    const breadcrumb = document.getElementById('breadcrumbCurrent');
+    if (breadcrumb) {
+      breadcrumb.textContent = (catObj ? catObj.name : moduleId) + ' • ' + topic;
+    }
+
+    showToast('✨ Successfully added: ' + title);
+    logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
+  } catch (err) {
+    console.error('Error submitting new resource:', err);
+    showToast('Error saving resource: ' + err.message, 'error');
   }
-
-  refreshDataModel();
-  updateTotalCounts();
-  renderSidebarCategories();
-  renderSubgroupTabs();
-  renderRecords();
-  if (typeof renderHomeNewArrivals === 'function') renderHomeNewArrivals();
-
-  showToast('✨ ' + title + ' added!', 'success');
-  logActivity('Resource Add', 'Added ' + title + ' to ' + moduleId);
 }
 
 // 17. MODULE CUSTOMIZER
