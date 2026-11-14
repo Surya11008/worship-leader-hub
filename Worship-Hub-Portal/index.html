@@ -156,6 +156,126 @@
       letter-spacing: -0.025em;
     }
 
+    
+    /* ========================================================
+       OFFICIAL SNI TOP HEADER STYLING
+       ======================================================== */
+    :root {
+        --navy: #071b3b;
+        --blue: #124b91;
+        --gold: #f5c75e;
+        --white: #ffffff;
+    }
+
+    .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 24px;
+        padding: 8px 4%;
+        background: var(--navy);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+        flex-shrink: 0;
+    }
+
+    .site-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--gold);
+        text-decoration: none;
+        transition: transform 0.25s ease;
+    }
+
+    .site-logo:hover {
+        transform: translateY(-2px);
+    }
+
+    .site-logo img {
+        display: block;
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+    }
+
+    .site-logo span {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.1;
+    }
+
+    .site-logo strong {
+        display: block;
+        font-size: 1.25rem;
+        letter-spacing: 0.08em;
+        color: var(--gold);
+        font-weight: 800;
+    }
+
+    .site-logo small {
+        display: block;
+        font-size: 0.65rem;
+        color: #e2e8f0;
+        letter-spacing: 0.12em;
+        font-weight: 600;
+    }
+
+    .site-nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .site-nav a {
+        padding: 6px 12px;
+        border-radius: 8px;
+        color: #cbd5e1;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 700;
+        transition: all 0.2s ease;
+    }
+
+    .site-nav a:hover,
+    .site-nav a.active {
+        color: var(--gold);
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateY(-1px);
+    }
+
+    .site-install-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border: 1px solid var(--gold);
+        border-radius: 999px;
+        background: var(--gold);
+        color: var(--navy);
+        cursor: pointer;
+        font-size: 0.82rem;
+        font-weight: 800;
+        box-shadow: 0 2px 8px rgba(245, 199, 94, 0.35);
+        transition: all 0.2s ease;
+    }
+
+    .site-install-button:hover {
+        transform: translateY(-2px);
+        background: #ffffff;
+        color: #071b3b;
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.5);
+    }
+
+    .site-install-button:active {
+        transform: scale(0.96);
+    }
+
     /* ========================================================
        SUPERIOR LIGHT & BRIGHT THEME STYLES (PURE DAYLIGHT)
        ======================================================== */
@@ -467,10 +587,10 @@
        "new ga open chesevariki site lopalo kanipinchakudadu, login page matrame kanipinchali"
        ======================================================== */
     html.portal-unauth-locked #portalAppRoot,
-    html.portal-unauth-locked header,
+    html.portal-unauth-locked header:not(#sni-site-header),
     html.portal-unauth-locked aside,
     html.portal-unauth-locked main,
-    html.portal-unauth-locked nav,
+    html.portal-unauth-locked nav:not(.site-nav),
     html.portal-unauth-locked #mainSidebar,
     html.portal-unauth-locked #contentScrollView {
       display: none !important;
@@ -481,6 +601,15 @@
       overflow: hidden !important;
     }
 
+    html.portal-unauth-locked #sni-site-header {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 1000000 !important;
+    }
+
     html.portal-unauth-locked #authModal {
       display: flex !important;
       visibility: visible !important;
@@ -488,6 +617,7 @@
       pointer-events: auto !important;
       position: fixed !important;
       inset: 0 !important;
+      padding-top: 60px !important;
       width: 100vw !important;
       height: 100vh !important;
       z-index: 999999 !important;
@@ -593,7 +723,23 @@
 
   </style>
 </head>
-<body class="h-full w-full font-sans antialiased bg-slate-50 text-slate-900 overflow-hidden select-none block">
+<body class="h-full w-full font-sans antialiased bg-slate-50 text-slate-900 overflow-hidden select-none flex flex-col">
+
+  <!-- Official SNI Top Header -->
+  <header class="site-header" id="sni-site-header">
+      <a class="site-logo" href="https://sni.org.in">
+          <img src="Images/sni-logo.png" alt="SNI Logo" style="width: 44px; height: 44px; object-fit: contain;">
+          <span><strong>SNI</strong><small>S NATURAL INTELLIGENCE</small></span>
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+          <a href="https://sni.org.in/#home">Home</a>
+          <a href="https://sni.org.in/#notices">Notices</a>
+          <button class="site-install-button" id="site-install-button" type="button" onclick="triggerPwaInstall()" aria-label="Install App" title="Install App on Phone">
+              <i class="fa-solid fa-mobile-screen-button text-xs"></i>
+              <span>Install</span>
+          </button>
+      </nav>
+  </header>
 
   <!-- Embedded Initial Application Data -->
   <script id="initial-app-data" type="application/json">
@@ -603,7 +749,7 @@
   <!-- ======================================================== -->
   <!-- PORTAL APPLICATION WRAPPER                               -->
   <!-- ======================================================== -->
-  <div id="portalAppRoot" class="h-full w-full flex flex-col flex-1 overflow-hidden relative" style="width: 100vw; height: 100vh; min-width: 100vw;">
+  <div id="portalAppRoot" class="flex-1 w-full flex flex-col overflow-hidden relative min-h-0" style="width: 100vw; min-width: 100vw;">
     <!-- Top Rainbow Aesthetic Accent Bar -->
     <div class="h-1.5 w-full bg-gradient-to-r from-pink-500 via-purple-500 via-indigo-500 via-cyan-400 via-emerald-400 via-yellow-400 to-rose-400 flex-shrink-0 animate-pulse shadow-xs"></div>
 
@@ -2898,14 +3044,14 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">User ID *</label>
-          <input type="text" id="loginUserId" required placeholder="User ID" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none transition font-medium">
+          <label class="block text-xs font-bold text-slate-700 mb-1">SNI ID *</label>
+          <input type="text" id="loginUserId" required placeholder="Enter SNI ID" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none transition font-medium">
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Password *</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1">SNI Password *</label>
           <div class="relative">
-            <input type="password" id="loginPassword" required placeholder="Password" class="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none transition font-medium">
+            <input type="password" id="loginPassword" required placeholder="Enter SNI Password" class="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none transition font-medium">
             <button type="button" onclick="togglePasswordVisibility('loginPassword', 'eyeLoginPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1" title="Show/Hide Password">
               <i id="eyeLoginPassword" class="fa-solid fa-eye text-xs"></i>
             </button>
@@ -3006,15 +3152,15 @@
           <input type="text" id="regFullName" required placeholder="Full Name" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none font-medium">
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-slate-700 mb-1">User ID *</label>
-          <input type="text" id="regUserId" required placeholder="User ID" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none font-medium">
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">SNI ID *</label>
+          <input type="text" id="regUserId" required placeholder="Enter SNI ID" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none font-medium">
         </div>
         
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-[11px] font-bold text-slate-700 mb-1">Password *</label>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">SNI Password *</label>
             <div class="relative">
-              <input type="password" id="regPassword" required placeholder="Password" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none font-medium">
+              <input type="password" id="regPassword" required placeholder="Enter SNI Password" class="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none font-medium">
               <button type="button" onclick="togglePasswordVisibility('regPassword', 'eyeRegPassword')" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
                 <i id="eyeRegPassword" class="fa-solid fa-eye text-xs"></i>
               </button>
