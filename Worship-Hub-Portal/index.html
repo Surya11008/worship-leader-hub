@@ -158,7 +158,7 @@
 
     
     /* ========================================================
-       OFFICIAL SNI TOP HEADER STYLING
+       OFFICIAL SNI TOP HEADER STYLING (NAVY & GOLD ENFORCED)
        ======================================================== */
     :root {
         --navy: #071b3b;
@@ -167,113 +167,127 @@
         --white: #ffffff;
     }
 
+    #sni-site-header,
+    header#sni-site-header,
     .site-header {
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px 24px;
-        padding: 8px 4%;
-        background: var(--navy);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.25);
-        flex-shrink: 0;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10000 !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 12px 24px !important;
+        padding: 10px 5% !important;
+        background: #071b3b !important;
+        background-color: #071b3b !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+        border-bottom: 1px solid rgba(245, 199, 94, 0.2) !important;
+        flex-shrink: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    .site-logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: var(--gold);
-        text-decoration: none;
-        transition: transform 0.25s ease;
+    #sni-site-header .site-logo {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        color: #f5c75e !important;
+        text-decoration: none !important;
+        transition: transform 0.25s ease !important;
     }
 
-    .site-logo:hover {
-        transform: translateY(-2px);
+    #sni-site-header .site-logo:hover {
+        transform: translateY(-2px) !important;
     }
 
-    .site-logo img {
-        display: block;
-        width: 44px;
-        height: 44px;
-        object-fit: contain;
+    #sni-site-header .site-logo img {
+        display: block !important;
+        width: 44px !important;
+        height: 44px !important;
+        object-fit: contain !important;
     }
 
-    .site-logo span {
-        display: flex;
-        flex-direction: column;
-        line-height: 1.1;
+    #sni-site-header .site-logo span {
+        display: flex !important;
+        flex-direction: column !important;
+        line-height: 1.1 !important;
     }
 
-    .site-logo strong {
-        display: block;
-        font-size: 1.25rem;
-        letter-spacing: 0.08em;
-        color: var(--gold);
-        font-weight: 800;
+    #sni-site-header .site-logo strong {
+        display: block !important;
+        font-size: 1.25rem !important;
+        letter-spacing: 0.08em !important;
+        color: #f5c75e !important;
+        font-weight: 800 !important;
+        line-height: 1.2 !important;
     }
 
-    .site-logo small {
-        display: block;
-        font-size: 0.65rem;
-        color: #e2e8f0;
-        letter-spacing: 0.12em;
-        font-weight: 600;
+    #sni-site-header .site-logo small {
+        display: block !important;
+        font-size: 0.65rem !important;
+        color: #e2e8f0 !important;
+        letter-spacing: 0.12em !important;
+        font-weight: 600 !important;
+        line-height: 1.1 !important;
     }
 
-    .site-nav {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
+    #sni-site-header .site-nav {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        flex-wrap: wrap !important;
     }
 
-    .site-nav a {
-        padding: 6px 12px;
-        border-radius: 8px;
-        color: #cbd5e1;
-        text-decoration: none;
-        font-size: 0.85rem;
-        font-weight: 700;
-        transition: all 0.2s ease;
+    #sni-site-header .site-nav a {
+        padding: 6px 14px !important;
+        border-radius: 8px !important;
+        color: #cbd5e1 !important;
+        text-decoration: none !important;
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        transition: all 0.2s ease !important;
     }
 
-    .site-nav a:hover,
-    .site-nav a.active {
-        color: var(--gold);
-        background: rgba(255, 255, 255, 0.12);
-        transform: translateY(-1px);
+    #sni-site-header .site-nav a:hover,
+    #sni-site-header .site-nav a.active {
+        color: #f5c75e !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        transform: translateY(-1px) !important;
     }
 
-    .site-install-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border: 1px solid var(--gold);
-        border-radius: 999px;
-        background: var(--gold);
-        color: var(--navy);
-        cursor: pointer;
-        font-size: 0.82rem;
-        font-weight: 800;
-        box-shadow: 0 2px 8px rgba(245, 199, 94, 0.35);
-        transition: all 0.2s ease;
+    #sni-site-header .site-install-button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 7px !important;
+        padding: 7px 16px !important;
+        border: 1px solid #f5c75e !important;
+        border-radius: 999px !important;
+        background: #f5c75e !important;
+        background-color: #f5c75e !important;
+        color: #071b3b !important;
+        cursor: pointer !important;
+        font-size: 0.82rem !important;
+        font-weight: 800 !important;
+        box-shadow: 0 2px 8px rgba(245, 199, 94, 0.4) !important;
+        transition: all 0.2s ease !important;
     }
 
-    .site-install-button:hover {
-        transform: translateY(-2px);
-        background: #ffffff;
-        color: #071b3b;
-        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.5);
+    #sni-site-header .site-install-button:hover {
+        transform: translateY(-2px) !important;
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #071b3b !important;
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.5) !important;
     }
 
-    .site-install-button:active {
-        transform: scale(0.96);
+    #sni-site-header .site-install-button i {
+        color: #071b3b !important;
+    }
+
+    #sni-site-header .site-install-button:active {
+        transform: scale(0.96) !important;
     }
 
     /* ========================================================
@@ -323,7 +337,7 @@
     }
 
     /* Header & Navigation */
-    html.light-mode header,
+    html.light-mode header:not(#sni-site-header),
     html.light-mode nav.top-nav {
       background-color: #ffffff !important;
       border-color: #e2e8f0 !important;
@@ -726,7 +740,7 @@
 <body class="h-full w-full font-sans antialiased bg-slate-50 text-slate-900 overflow-hidden select-none flex flex-col">
 
   <!-- Official SNI Top Header -->
-  <header class="site-header" id="sni-site-header">
+  <header class="site-header" id="sni-site-header" style="background-color: #071b3b !important; color: #ffffff !important;">
       <a class="site-logo" href="https://sni.org.in">
           <img src="Images/sni-logo.png" alt="SNI Logo" style="width: 44px; height: 44px; object-fit: contain;">
           <span><strong>SNI</strong><small>S NATURAL INTELLIGENCE</small></span>
