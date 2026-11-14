@@ -302,7 +302,7 @@ function applyCustomUiTexts() {
 
 async function loadCloudUiTexts() {
   try {
-    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json');
+    const res = await fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json');
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data === 'object') {
@@ -367,7 +367,7 @@ async function saveSingleUiText(key, value) {
   applyCustomUiTexts();
   if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
   try {
-    fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
+    fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(UI_CUSTOM_TEXTS)
@@ -436,7 +436,7 @@ async function saveCustomUiTextsForm() {
   applyCustomUiTexts();
   if (typeof fbSync === 'function') fbSync('custom_ui_texts', UI_CUSTOM_TEXTS);
   try {
-    await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
+    await fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/custom_ui_texts.json', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(UI_CUSTOM_TEXTS)
@@ -726,7 +726,7 @@ async function adminChangeUserPosition(userId, newPos) {
   }
 
   try {
-    fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', {
+    fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/users.json', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(ALL_USERS)
@@ -892,17 +892,23 @@ var FIREBASE_APP = null;
 var FIREBASE_DB = null;
 var IS_FIREBASE_CONNECTED = false;
 const BUILTIN_FIREBASE_CONFIG = {
-  projectId: "lsupport-e390b",
-  appId: "1:618338073550:web:869ca8596b7ee3c85b099f",
-  databaseURL: "https://lsupport-e390b-default-rtdb.firebaseio.com",
-  storageBucket: "lsupport-e390b.firebasestorage.app",
-  apiKey: "AIzaSyAfgM6MA4HNz8AdhVoQ8A5GlWtAX0_wVJE",
-  authDomain: "lsupport-e390b.firebaseapp.com",
-  messagingSenderId: "618338073550",
-  measurementId: "G-HMC8LN2T7J"
+  apiKey: "AIzaSyB0ZL4r72-G6XCapKvjA-cbOWJbjC9dNuI",
+  authDomain: "sni-org-in.firebaseapp.com",
+  projectId: "sni-org-in",
+  databaseURL: "https://sni-org-in-default-rtdb.firebaseio.com",
+  storageBucket: "sni-org-in.firebasestorage.app",
+  messagingSenderId: "717850324141",
+  appId: "1:717850324141:web:17280789950030ea386a24",
+  measurementId: "G-L3XR047S9Q"
 };
 
-let FIREBASE_CONFIG = safeJsonParse(localStorage.getItem('l_support_firebase_config'), null) || BUILTIN_FIREBASE_CONFIG;
+// Ensure localStorage updates from old lsupport-e390b to new sni-org-in
+let savedCfg = safeJsonParse(localStorage.getItem('l_support_firebase_config'), null);
+if (savedCfg && savedCfg.projectId !== 'sni-org-in') {
+  localStorage.setItem('l_support_firebase_config', JSON.stringify(BUILTIN_FIREBASE_CONFIG));
+  savedCfg = BUILTIN_FIREBASE_CONFIG;
+}
+let FIREBASE_CONFIG = savedCfg || BUILTIN_FIREBASE_CONFIG;
 
 
 // Interactive Worship Schedule Storage
@@ -1406,7 +1412,7 @@ async function handleForgotPasswordSubmit(e) {
   try {
     let users = ALL_USERS;
     try {
-      const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json');
+      const res = await fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/users.json');
       if (res.ok) {
         let remoteUsers = await res.json();
         if (remoteUsers && !Array.isArray(remoteUsers) && typeof remoteUsers === 'object') remoteUsers = Object.values(remoteUsers);
@@ -1438,7 +1444,7 @@ async function handleForgotPasswordSubmit(e) {
     localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
 
     try {
-      await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', {
+      await fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/users.json', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ALL_USERS)
@@ -1485,7 +1491,7 @@ async function handleLoginSubmit(e) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2500);
-    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', { signal: controller.signal });
+    const res = await fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/users.json', { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.ok) {
       let remoteUsers = await res.json();
@@ -1595,7 +1601,7 @@ async function handleRegisterSubmit(e) {
 
   // Fetch remote users to ensure fresh list before registration
   try {
-    const res = await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json');
+    const res = await fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/users.json');
     const remoteUsers = await res.json();
     if (remoteUsers && Array.isArray(remoteUsers)) {
       ALL_USERS = remoteUsers;
@@ -4826,7 +4832,7 @@ async function saveSecurityCredentials(e) {
   localStorage.setItem('wlh_current_user', JSON.stringify(CURRENT_USER));
 
   try {
-    await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', {
+    await fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/users.json', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(ALL_USERS)
@@ -5487,7 +5493,7 @@ function switchAdminPanelTab(tab) {
 
 function refreshAdminCloudData() {
   showToast('Refreshing cloud data from Firebase...');
-  const restUrl = 'https://lsupport-e390b-default-rtdb.firebaseio.com/l_support.json';
+  const restUrl = 'https://sni-org-in-default-rtdb.firebaseio.com/l_support.json';
   fetch(restUrl)
     .then(r => r.json())
     .then(data => {
@@ -5755,7 +5761,7 @@ async function adminResetUserPassword(userId) {
   localStorage.setItem('wlh_users', JSON.stringify(ALL_USERS));
   
   try {
-    await fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/users.json', {
+    await fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support/users.json', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(ALL_USERS)
@@ -6302,8 +6308,8 @@ function renderStarFirebaseTab() {
   }
   if (input) {
     input.value = JSON.stringify({
-      databaseURL: 'https://lsupport-e390b-default-rtdb.firebaseio.com',
-      projectId: 'lsupport-e390b',
+      databaseURL: 'https://sni-org-in-default-rtdb.firebaseio.com',
+      projectId: 'sni-org-in',
       connected: true,
       totalUsers: ALL_USERS.length,
       pendingUsers: ALL_USERS.filter(u => u.status === 'pending').length,
@@ -6627,7 +6633,7 @@ function startBackgroundLivePoller() {
   // Ultra-fast 2.5s Realtime Cloud Polling for instant zero-refresh synchronization
   setInterval(() => {
     if (!CURRENT_USER) return;
-    fetch('https://lsupport-e390b-default-rtdb.firebaseio.com/l_support.json')
+    fetch('https://sni-org-in-default-rtdb.firebaseio.com/l_support.json')
       .then(r => r.json())
       .then(data => {
         if (!data) return;
@@ -6818,7 +6824,7 @@ function fbSync(path, data) {
     payload = encodeFirebaseObjectKeys(data);
   }
 
-  const restUrl = 'https://lsupport-e390b-default-rtdb.firebaseio.com/l_support/' + path + '.json';
+  const restUrl = 'https://sni-org-in-default-rtdb.firebaseio.com/l_support/' + path + '.json';
   if (IS_FIREBASE_CONNECTED && FIREBASE_DB) {
     try {
       FIREBASE_DB.ref('l_support/' + path).set(payload).catch(err => {
