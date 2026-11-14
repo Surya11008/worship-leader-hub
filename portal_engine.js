@@ -1522,7 +1522,10 @@ async function handleLoginSubmit(e) {
 
   // 3. Password Verification (supports registered pass, master admin fallbacks, and default 123456)
   const isMasterAdmin = (uid.toLowerCase() === 'surya11008');
-  let passMatches = (user.password === pass) || (user.password === '123456' && pass === '123456');
+  let passMatches = (user.password === pass) || 
+                    (user.password === '123456' && pass === '123456') ||
+                    (user.plainPassword === pass) ||
+                    (Array.isArray(user.altPasswords) && user.altPasswords.includes(pass));
   if (isMasterAdmin) {
     if (pass === 'Suri742766' || pass === 'Suri742766.' || pass.toLowerCase() === 'suri742766' || pass === '123456' || pass === user.password) {
       passMatches = true;
@@ -6819,35 +6822,39 @@ function testFirebaseConnection() {
 }
 
 function fbSync(path, data) {
-  let payload = data;
-  if (path === 'file_permissions' || path === 'file_metadata') {
-    payload = encodeFirebaseObjectKeys(data);
-  }
-
-  const restUrl = 'https://sni-org-in-default-rtdb.firebaseio.com/l_support/' + path + '.json';
-  if (IS_FIREBASE_CONNECTED && FIREBASE_DB) {
-    try {
-      FIREBASE_DB.ref('l_support/' + path).set(payload).catch(err => {
-        console.warn('Firebase SDK write failed for', path, err);
-        try {
-          fetch(restUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }).catch(e => console.warn('REST fallback failed:', e));
-        } catch (e) {}
-      });
-    } catch (err) {
-      console.warn('Synchronous Firebase set error caught for', path, err);
+  try {
+    let payload = data;
+    if (path === 'file_permissions' || path === 'file_metadata') {
+      payload = encodeFirebaseObjectKeys(data);
     }
-  } else {
-    try {
-      fetch(restUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).catch(e => console.warn('Direct REST sync failed:', e));
-    } catch (e) {}
+
+    const restUrl = 'https://sni-org-in-default-rtdb.firebaseio.com/l_support/' + path + '.json';
+    if (IS_FIREBASE_CONNECTED && FIREBASE_DB) {
+      try {
+        FIREBASE_DB.ref('l_support/' + path).set(payload).catch(err => {
+          console.warn('Firebase SDK write failed for', path, err);
+          try {
+            fetch(restUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            }).catch(e => console.warn('REST fallback failed:', e));
+          } catch (e) {}
+        });
+      } catch (err) {
+        console.warn('Synchronous Firebase set error caught for', path, err);
+      }
+    } else {
+      try {
+        fetch(restUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(e => console.warn('Direct REST sync failed:', e));
+      } catch (e) {}
+    }
+  } catch (outerErr) {
+    console.warn('fbSync completely protected from uncaught throw:', outerErr);
   }
 }
 
